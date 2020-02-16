@@ -233,6 +233,7 @@ static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, co
 		qr<<" "<<tuple.ofs[i];
 	qr<<"' on duplicate key update id=id";
 	retval=boinc_db.do_query(qr.str().c_str());
+	mysql_free_result(mysql_store_result(boinc_db.mysql));
 	if(retval) throw EDatabase("spt row insert failed");
 }
 static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, const char* kind)
@@ -545,9 +546,9 @@ void database_reprocess()
 	};
 
 	if(mysql_stmt_bind_result(enum_stmt, bind_res))
-		throw EDatabase("spt_result insert bind");
+		throw EDatabase("spt_result enum bind");
 	if(mysql_stmt_execute(enum_stmt))
-		throw EDatabase("spt_result insert");
+		throw EDatabase("spt_result enum exec");
 	long n_proc = 0;
 	long n_inval =0;
 	while( (retval=mysql_stmt_fetch(enum_stmt)) == 0) {
