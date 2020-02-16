@@ -233,7 +233,6 @@ static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, co
 		qr<<" "<<tuple.ofs[i];
 	qr<<"' on duplicate key update id=id";
 	retval=boinc_db.do_query(qr.str().c_str());
-	mysql_free_result(mysql_store_result(boinc_db.mysql));
 	if(retval) throw EDatabase("spt row insert failed");
 }
 static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, const char* kind)
@@ -327,13 +326,11 @@ void result_insert(RESULT& result, TOutput output) {
 				<<start2 <<" and k=0 and d>="<<d <<");";
 				retval=boinc_db.do_query(qr.str().c_str());
 				if(retval) throw EDatabase("spt_gap insert select failed");
-				mysql_free_result(mysql_store_result(boinc_db.mysql));
 				qr=std::stringstream();
 				qr<<"delete from spt_gap where k=0 and start>"
 				<<start2 <<" and d<="<< d <<";";
 				retval=boinc_db.do_query(qr.str().c_str());
 				if(retval) throw EDatabase("spt_gap delete failed");
-				mysql_free_result(mysql_store_result(boinc_db.mysql));
 			}
 			start2 = start2 + 2 + d;
 		}
@@ -346,13 +343,11 @@ void result_insert(RESULT& result, TOutput output) {
 			<<start2 <<" and k="<<tuple.k <<" and d>="<<maxd <<");";
 			retval=boinc_db.do_query(qr.str().c_str());
 			if(retval) throw EDatabase("spt_gap insert select failed");
-			mysql_free_result(mysql_store_result(boinc_db.mysql));
 			qr=std::stringstream();
 			qr<<"delete from spt_gap where k>5 and start>"
 			<<start2 <<" and d<="<< maxd <<";";
 			retval=boinc_db.do_query(qr.str().c_str());
 			if(retval) throw EDatabase("spt_gap delete failed");
-			mysql_free_result(mysql_store_result(boinc_db.mysql));
 		}
 	}
 }
