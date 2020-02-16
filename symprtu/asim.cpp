@@ -539,7 +539,7 @@ void database_reprocess()
 	while(enum_row=mysql_fetch_row(enum_res)) {
 		result.id= atol(enum_row[0]);
 		result.userid= enum_row[1]? atol(enum_row[1]) : 0;
-		result.batch= enum_row[1]? atol(enum_row[2]) : 0;
+		result.batch= enum_row[2]? atol(enum_row[2]) : 0;
 		unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 		try {
 			std::cout<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
