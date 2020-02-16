@@ -544,7 +544,7 @@ void database_reprocess()
 		{.length=&res_out_len, .buffer=res_out, .buffer_length=128*1024, .buffer_type=MYSQL_TYPE_LONG_BLOB, 0},
 	};
 
-	if(mysql_stmt_bind_param(enum_stmt, bind_res))
+	if(mysql_stmt_bind_result(enum_stmt, bind_res))
 		throw EDatabase("spt_result insert bind");
 	if(mysql_stmt_execute(enum_stmt))
 		throw EDatabase("spt_result insert");
@@ -552,7 +552,7 @@ void database_reprocess()
 	long n_inval =0;
 	while( (retval=mysql_stmt_fetch(enum_stmt)) == 0) {
 		try {
-			std::cout<<"\r"<<n_proc<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
+			std::cout<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
 			CStream res_inp_s(res_inp,res_inp_len);
 			try {
