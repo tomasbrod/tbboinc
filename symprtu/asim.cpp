@@ -548,7 +548,7 @@ void database_reprocess()
 		throw EDatabase("spt_result insert bind");
 	long n_proc = 0;
 	long n_inval =0;
-	while( (retval=mysql_stmt_fetch(spt_result_stmt)) != MYSQL_NO_DATA) {
+	while( (retval=mysql_stmt_fetch(spt_result_stmt)) != 0) {
 		try {
 			std::cout<<"\r"<<n_proc<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
@@ -566,6 +566,8 @@ void database_reprocess()
 			n_inval++;
 		}
 	}
+	if(retval!=MYSQL_NO_DATA)
+		throw EDatabase("fetch spt_result row");
 	std::cout<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
 }
 
