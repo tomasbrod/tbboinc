@@ -517,10 +517,10 @@ void process_ready_results(long gen_limit)
 
 void database_reprocess()
 {
-	std::cout<<"truncate tables\n";
-	retval=boinc_db.do_query("truncate table spt");
+	std::cout<<"truncate...\n";
+	retval=boinc_db.do_query("delete from spt");
 	if(retval) throw EDatabase("spt truncate failed");
-	retval=boinc_db.do_query("truncate table spt_gap");
+	retval=boinc_db.do_query("delete from spt_gap");
 	if(retval) throw EDatabase("spt_gap truncate failed");
 	std::cout<<"count...\n";
 	long row_count;
