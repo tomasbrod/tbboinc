@@ -535,7 +535,7 @@ void database_reprocess()
 }
 
 int main(int argc, char** argv) {
-	bool f_write;
+	bool f_write, f_reproc;
 	long gen_limit;
 	int batchno;
 	char *check1;
@@ -544,17 +544,21 @@ int main(int argc, char** argv) {
 			exit(2);
 	}
 	f_write = (argv[1][0]=='y');
+	f_reproc = (argv[1][1]=='R');
 	gen_limit = strtol(argv[2],&check1,10);
-	if((argv[1][0]!='n' && !f_write) || *check1) {
+	if((argv[1][0]!='n' && !f_write && !f_reproc) || *check1) {
 			cerr<<"Invalid argument format"<<endl;
 			exit(2);
 	}
-	cerr<<"f_write="<<f_write<<" limit="<<gen_limit<<endl;
+	cerr<<"f_write="<<f_write<<" f_reproc="<<f_reproc<<" limit="<<gen_limit<<endl;
 	//connect db if requested
 	initz();
 	if(boinc_db.start_transaction())
 		exit(4);
-	process_ready_results(gen_limit);
+	if(f_reproc)
+		database_reprocess();
+	else
+		process_ready_results(gen_limit);
 	if(f_write) {
 		if(boinc_db.commit_transaction()) {
 			cerr<<"Can't commit transaction!"<<endl;
