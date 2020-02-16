@@ -529,7 +529,7 @@ void database_reprocess()
 
 	MYSQL_STMT* enum_stmt = mysql_stmt_init(boinc_db.mysql);
 	char stmt[] = "select id, uid, batch, input, output from spt_result where 1";
-	if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
+	if(mysql_stmt_prepare(enum_stmt, stmt, sizeof stmt ))
 		throw EDatabase("spt_result enum prepare");
 	RESULT result;
 	unsigned long	res_inp_len, res_out_len;
@@ -544,13 +544,13 @@ void database_reprocess()
 		{.length=&res_out_len, .buffer=res_out, .buffer_length=128*1024, .buffer_type=MYSQL_TYPE_LONG_BLOB, 0},
 	};
 
-	if(mysql_stmt_bind_param(spt_result_stmt, bind_res))
+	if(mysql_stmt_bind_param(enum_stmt, bind_res))
 		throw EDatabase("spt_result insert bind");
-	if(mysql_stmt_execute(spt_result_stmt))
+	if(mysql_stmt_execute(enum_stmt))
 		throw EDatabase("spt_result insert");
 	long n_proc = 0;
 	long n_inval =0;
-	while( (retval=mysql_stmt_fetch(spt_result_stmt)) == 0) {
+	while( (retval=mysql_stmt_fetch(enum_stmt)) == 0) {
 		try {
 			std::cout<<"\r"<<n_proc<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
