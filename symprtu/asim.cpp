@@ -528,7 +528,7 @@ void database_reprocess()
 	std::cout<<"Count: "<<row_count<<endl;
 
 	MYSQL_STMT* enum_stmt = mysql_stmt_init(boinc_db.mysql);
-	char stmt[] = "select id, input, uid, batch, output from spt_result where 1";
+	char stmt[] = "select id, uid, batch, input, output from spt_result where 1";
 	if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
 		throw EDatabase("spt_result enum prepare");
 	RESULT result;
