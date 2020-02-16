@@ -551,7 +551,8 @@ void database_reprocess()
 			catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
 
 			result_validate(result, res_inp_s, rstate);
-			result_insert(result, rstate);
+			//result_insert(result, rstate);
+			boinc_db.do_query("SELECT 1");
 			n_proc++;
 		} catch (EInvalid& e) {
 			std::cout<<"Invalid: "<<e.what()<<endl;
