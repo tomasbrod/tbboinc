@@ -143,18 +143,18 @@ void submit_wu_in(uint64_t start, uint64_t end, int batch)
 		inp.end= end;
 
 		inp.mine_k= 14;
-		inp.mino_k= 255;
+		inp.mino_k= 11;
 		inp.max_k= 64;
 		inp.upload = 0;
 		inp.exit_early= 0;
 		inp.out_last_primes= 0;
 		inp.out_all_primes= 0;
 		inp.primes_in.clear();
-		inp.twin_k=255;
+		inp.twin_k=6;
 		inp.twin_min_k=10;
 		inp.twin_gap_k=6;
-		inp.twin_gap_min=65535;
-		inp.twin_gap_kmin=76;
+		inp.twin_gap_min=778;
+		inp.twin_gap_kmin=490;
 
 		wu.appid = spt_app.id;
 		//14e12 is one hour on mangan-pc
@@ -196,11 +196,11 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	uint64_t start=                  5;
-	uint64_t   end=  21223000000000000;
+	uint64_t start=  21223000000000000;
+	uint64_t   end= 600000000000000000;
 	uint64_t  step=      1965000000000;
 	unsigned maxcnt = 16000;
-	int batch = 64;
+	int batch = 65;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
 		submit_wu_in(curr, next, batch);
 		count++;
 	}
-	post_batch_msg(batch,start,next,count,"spt-ftb","Recalculate the affected interval with two fixes. Even twin tuples and twin_k6_gaps only.");
+	post_batch_msg(batch,start,next,count,"spt-bi","Continue all in.");
 	cerr<<"Count: "<<count<<endl;
 	cerr<<"First: "<<start<<endl;
 	cerr<<"Next : "<<next<<endl;
