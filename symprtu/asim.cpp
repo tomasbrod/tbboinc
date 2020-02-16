@@ -533,14 +533,13 @@ void database_reprocess()
 	if(!enum_res) throw EDatabase("spt_result enum use");
 
 	RESULT result;
-
 	long n_proc = 0;
 	long n_inval =0;
 	MYSQL_ROW enum_row;
 	while(enum_row=mysql_fetch_row(enum_res)) {
 		result.id= atol(enum_row[0]);
-		result.userid= atol(enum_row[1]);
-		result.batch= atol(enum_row[2]);
+		result.userid= enum_row[1]? atol(enum_row[1]) : 0;
+		result.batch= enum_row[1]? atol(enum_row[2]) : 0;
 		unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 		try {
 			std::cout<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
