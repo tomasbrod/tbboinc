@@ -546,9 +546,11 @@ void database_reprocess()
 
 	if(mysql_stmt_bind_param(spt_result_stmt, bind_res))
 		throw EDatabase("spt_result insert bind");
+	if(mysql_stmt_execute(spt_result_stmt))
+		throw EDatabase("spt_result insert");
 	long n_proc = 0;
 	long n_inval =0;
-	while( (retval=mysql_stmt_fetch(spt_result_stmt)) != 0) {
+	while( (retval=mysql_stmt_fetch(spt_result_stmt)) == 0) {
 		try {
 			std::cout<<"\r"<<n_proc<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
