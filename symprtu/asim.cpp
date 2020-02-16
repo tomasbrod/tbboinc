@@ -327,11 +327,13 @@ void result_insert(RESULT& result, TOutput output) {
 				<<start2 <<" and k=0 and d>="<<d <<");";
 				retval=boinc_db.do_query(qr.str().c_str());
 				if(retval) throw EDatabase("spt_gap insert select failed");
+				mysql_free_result(mysql_store_result(boinc_db.mysql));
 				qr=std::stringstream();
 				qr<<"delete from spt_gap where k=0 and start>"
 				<<start2 <<" and d<="<< d <<";";
 				retval=boinc_db.do_query(qr.str().c_str());
 				if(retval) throw EDatabase("spt_gap delete failed");
+				mysql_free_result(mysql_store_result(boinc_db.mysql));
 			}
 			start2 = start2 + 2 + d;
 		}
@@ -344,11 +346,13 @@ void result_insert(RESULT& result, TOutput output) {
 			<<start2 <<" and k="<<tuple.k <<" and d>="<<maxd <<");";
 			retval=boinc_db.do_query(qr.str().c_str());
 			if(retval) throw EDatabase("spt_gap insert select failed");
+			mysql_free_result(mysql_store_result(boinc_db.mysql));
 			qr=std::stringstream();
 			qr<<"delete from spt_gap where k>5 and start>"
 			<<start2 <<" and d<="<< maxd <<";";
 			retval=boinc_db.do_query(qr.str().c_str());
 			if(retval) throw EDatabase("spt_gap delete failed");
+			mysql_free_result(mysql_store_result(boinc_db.mysql));
 		}
 	}
 }
@@ -528,36 +532,27 @@ void database_reprocess()
 	DB_BASE{"spt_result",&boinc_db}.count(row_count);
 	std::cout<<"Count: "<<row_count<<endl;
 
-	MYSQL_STMT* enum_stmt = mysql_stmt_init(boinc_db.mysql);
-	char stmt[] = "select id, uid, batch, input, output from spt_result where 1";
-	if(mysql_stmt_prepare(enum_stmt, stmt, sizeof stmt ))
-		throw EDatabase("spt_result enum prepare");
+	retval=boinc_db.do_query("select id, uid, batch, input, output from spt_result where 1");
+	if(retval) throw EDatabase("spt_result enum query");
+	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
+	if(!enum_res) throw EDatabase("spt_result enum use");
+
 	RESULT result;
-	unsigned long	res_inp_len, res_out_len;
-	byte res_inp[128];
-	byte *res_out = (byte*)malloc(128*1024);
 
-	MYSQL_BIND bind_res[] = {
-		{.buffer=&result.id, .buffer_type=MYSQL_TYPE_LONG, 0},
-		{.buffer=&result.userid, .buffer_type=MYSQL_TYPE_LONG, 0},
-		{.buffer=&result.batch, .buffer_type=MYSQL_TYPE_LONG, 0},
-		{.length=&res_inp_len, .buffer=res_inp, .buffer_length=128, .buffer_type=MYSQL_TYPE_BLOB, 0},
-		{.length=&res_out_len, .buffer=res_out, .buffer_length=128*1024, .buffer_type=MYSQL_TYPE_LONG_BLOB, 0},
-	};
-
-	if(mysql_stmt_bind_result(enum_stmt, bind_res))
-		throw EDatabase("spt_result enum bind");
-	if(mysql_stmt_execute(enum_stmt))
-		throw EDatabase("spt_result enum exec");
 	long n_proc = 0;
 	long n_inval =0;
-	while( (retval=mysql_stmt_fetch(enum_stmt)) == 0) {
+	MYSQL_ROW enum_row;
+	while(enum_row=mysql_fetch_row(enum_res)) {
+		result.id= atol(enum_row[0]);
+		result.userid= atol(enum_row[1]);
+		result.batch= atol(enum_row[2]);
+		unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 		try {
 			std::cout<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
-			CStream res_inp_s(res_inp,res_inp_len);
+			CStream res_inp_s((byte*)enum_row[3],enum_len[3]);
 			try {
-				rstate.readOutput(CStream(res_out,res_out_len));
+				rstate.readOutput(CStream((byte*)enum_row[4],enum_len[4]));
 			} catch (EStreamOutOufBounds& e){ throw EInvalid("can't deserialize output file"); }
 			catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
 
