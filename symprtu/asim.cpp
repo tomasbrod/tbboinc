@@ -503,6 +503,7 @@ int main(int argc, char** argv) {
 	<<" and server_state="<<RESULT_SERVER_STATE_OVER
 	<<" and outcome="<<RESULT_OUTCOME_SUCCESS<<" and validate_state="<<VALIDATE_STATE_INIT<<" limit "<<gen_limit<<";";
 	DB_RESULT result;
+	time_t t_begin = time(0);
 	while(1) {
 		int retval= result.enumerate(enum_qr.str().c_str());
 		if(retval) {
@@ -526,7 +527,9 @@ int main(int argc, char** argv) {
 		// b) error - unexpected error
 		// c) valid - result saved, segment updated, credit granted
 		// d) redundant/unnown - result saved, segment not found, credit granted -> valid
-		
+		if( time(0) - t_begin > 30 ) {
+			break;
+		}
 	}
 	if(f_write) {
 		if(boinc_db.commit_transaction()) {
