@@ -217,7 +217,7 @@ int read_output_file_doc_in(RESULT const& result, CDynamicStream& buf) {
 const float credit_m= 2.3148E-12* 15;
 //credit/200 = gigaflop (wrong)
 
-static void insert_spt_tuple(const DB_RESULT& result, const TOutputTuple& tuple, const char* kind, bool deriv)
+static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, const char* kind, bool deriv)
 {
 	std::stringstream qr;
 	qr=std::stringstream();
@@ -235,7 +235,7 @@ static void insert_spt_tuple(const DB_RESULT& result, const TOutputTuple& tuple,
 	retval=boinc_db.do_query(qr.str().c_str());
 	if(retval) throw EDatabase("spt row insert failed");
 }
-static void insert_spt_tuples(const DB_RESULT& result, const vector<TOutputTuple>& tuples, const char* kind)
+static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, const char* kind)
 {
 	std::stringstream qr;
 	for( const auto& tuple : tuples ) {
@@ -248,7 +248,7 @@ static void insert_spt_tuples(const DB_RESULT& result, const vector<TOutputTuple
 		}
 	}
 }
-static void insert_twin_tuples(const DB_RESULT& result, const vector<TOutputTuple>& tuples)
+static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples)
 {
 	std::stringstream qr;
 	for( const auto& tuple : tuples) {
@@ -256,7 +256,7 @@ static void insert_twin_tuples(const DB_RESULT& result, const vector<TOutputTupl
 	}
 }
 
-void result_validate(DB_RESULT& result, CDynamicStream input, TOutput output) {
+void result_validate(RESULT& result, CStream& input, TOutput output) {
 	if(output.status!=TOutput::x_end)
 		throw EInvalid("incomplete run");
 	// check if the tuple offsets are all even and nonzero
@@ -301,7 +301,7 @@ void result_validate(DB_RESULT& result, CDynamicStream input, TOutput output) {
 	//TODO: more consistency checks
 }
 
-void result_insert(DB_RESULT& result, TOutput output) {
+void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
 	insert_spt_tuples(result, output.tuples, "spt");
 	insert_twin_tuples(result, output.twins);
@@ -517,21 +517,56 @@ void process_ready_results(long gen_limit)
 
 void database_reprocess()
 {
-	std::cout<<"truncate...\n";
-	retval=boinc_db.do_query("delete from spt");
+	std::cout<<"truncate tables...\n";
+	retval=boinc_db.do_query("truncate table spt");
 	if(retval) throw EDatabase("spt truncate failed");
-	retval=boinc_db.do_query("delete from spt_gap");
+	retval=boinc_db.do_query("truncate table spt_gap");
 	if(retval) throw EDatabase("spt_gap truncate failed");
 	std::cout<<"count...\n";
 	long row_count;
 	DB_BASE{"spt_result",&boinc_db}.count(row_count);
 	std::cout<<"Count: "<<row_count<<endl;
-#if 0	
-	enum_stmt = mysql_stmt_init(boinc_db.mysql);
-	char stmt[] = "select id, input, output, uid, batch from spt_result where 1";
-		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
-			throw EDatabase("spt_result insert prepare");
-#endif
+
+	MYSQL_STMT* enum_stmt = mysql_stmt_init(boinc_db.mysql);
+	char stmt[] = "select id, input, uid, batch, output from spt_result where 1";
+	if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
+		throw EDatabase("spt_result enum prepare");
+	RESULT result;
+	unsigned long	res_inp_len, res_out_len;
+	byte res_inp[128];
+	byte *res_out = (byte*)malloc(128*1024);
+
+	MYSQL_BIND bind_res[] = {
+		{.buffer=&result.id, .buffer_type=MYSQL_TYPE_LONG, 0},
+		{.buffer=&result.userid, .buffer_type=MYSQL_TYPE_LONG, 0},
+		{.buffer=&result.batch, .buffer_type=MYSQL_TYPE_LONG, 0},
+		{.length=&res_inp_len, .buffer=res_inp, .buffer_length=128, .buffer_type=MYSQL_TYPE_BLOB, 0},
+		{.length=&res_out_len, .buffer=res_out, .buffer_length=128*1024, .buffer_type=MYSQL_TYPE_LONG_BLOB, 0},
+	};
+
+	if(mysql_stmt_bind_param(spt_result_stmt, bind_res))
+		throw EDatabase("spt_result insert bind");
+	long n_proc = 0;
+	long n_inval =0;
+	while( (retval=mysql_stmt_fetch(spt_result_stmt)) != MYSQL_NO_DATA) {
+		try {
+			std::cout<<"\r"<<n_proc<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
+			TOutput rstate;
+			CStream res_inp_s(res_inp,res_inp_len);
+			try {
+				rstate.readOutput(CStream(res_out,res_out_len));
+			} catch (EStreamOutOufBounds& e){ throw EInvalid("can't deserialize output file"); }
+			catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
+
+			result_validate(result, res_inp_s, rstate);
+			result_insert(result, rstate);
+			n_proc++;
+		} catch (EInvalid& e) {
+			std::cout<<"Invalid: "<<e.what()<<endl;
+			n_inval++;
+		}
+	}
+	std::cout<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
 }
 
 int main(int argc, char** argv) {
@@ -546,7 +581,7 @@ int main(int argc, char** argv) {
 	f_write = (argv[1][0]=='y');
 	f_reproc = (argv[1][1]=='R');
 	gen_limit = strtol(argv[2],&check1,10);
-	if((argv[1][0]!='n' && !f_write && !f_reproc) || *check1) {
+	if((argv[1][0]!='n' && !f_write && !f_reproc) || *check1 || (f_reproc&&!f_write)) {
 			cerr<<"Invalid argument format"<<endl;
 			exit(2);
 	}
