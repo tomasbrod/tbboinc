@@ -527,9 +527,15 @@ void database_reprocess()
 	DB_BASE{"spt_result",&boinc_db}.count(row_count);
 	std::cout<<"Count: "<<row_count<<endl;
 
-	retval=boinc_db.do_query("select id, uid, batch, input, output from spt_result where 1");
+	DB_CONN enum_db;
+	retval = enum_db.open(
+			config.db_name, config.db_host, config.db_user, config.db_passwd
+	);
+	if (retval) throw EDatabase("Cant open second db connection.");
+
+	retval=enum_db.do_query("select id, uid, batch, input, output from spt_result where 1");
 	if(retval) throw EDatabase("spt_result enum query");
-	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
+	MYSQL_RES* enum_res= mysql_use_result(enum_db.mysql);
 	if(!enum_res) throw EDatabase("spt_result enum use");
 
 	RESULT result;
@@ -551,8 +557,7 @@ void database_reprocess()
 			catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
 
 			result_validate(result, res_inp_s, rstate);
-			//result_insert(result, rstate);
-			boinc_db.do_query("SELECT 1");
+			result_insert(result, rstate);
 			n_proc++;
 		} catch (EInvalid& e) {
 			std::cout<<"Invalid: "<<e.what()<<endl;
@@ -561,6 +566,7 @@ void database_reprocess()
 	}
 	if(retval!=MYSQL_NO_DATA)
 		throw EDatabase("fetch spt_result row");
+	mysql_free_result(enum_res);
 	std::cout<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
 }
 
