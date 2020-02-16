@@ -476,26 +476,8 @@ void set_result_invalid(DB_RESULT& result) {
 	if (hav.host_id && hav.update_validator(hav0)) throw EDatabase("Host-App-Version update error");
 }
 
-int main(int argc, char** argv) {
-	bool f_write;
-	long gen_limit;
-	int batchno;
-	char *check1;
-	if(argc!=3) {
-			cerr<<"Expect 2 command line argument: f_write limit"<<endl;
-			exit(2);
-	}
-	f_write = (argv[1][0]=='y');
-	gen_limit = strtol(argv[2],&check1,10);
-	if((argv[1][0]!='n' && !f_write) || *check1) {
-			cerr<<"Invalid argument format"<<endl;
-			exit(2);
-	}
-	cerr<<"f_write="<<f_write<<" limit="<<gen_limit<<endl;
-	//connect db if requested
-	initz();
-	if(boinc_db.start_transaction())
-		exit(4);
+void process_ready_results(long gen_limit)
+{
 	//enumerate results
 	std::stringstream enum_qr;
 	//enum_qr<<"where appid="<<spt_app.id
@@ -531,6 +513,48 @@ int main(int argc, char** argv) {
 			break;
 		}
 	}
+}
+
+void database_reprocess()
+{
+	std::cout<<"truncate tables\n";
+	retval=boinc_db.do_query("truncate table spt");
+	if(retval) throw EDatabase("spt truncate failed");
+	retval=boinc_db.do_query("truncate table spt_gap");
+	if(retval) throw EDatabase("spt_gap truncate failed");
+	std::cout<<"count...\n";
+	long row_count;
+	DB_BASE{"spt_result",&boinc_db}.count(row_count);
+	std::cout<<"Count: "<<row_count<<endl;
+#if 0	
+	enum_stmt = mysql_stmt_init(boinc_db.mysql);
+	char stmt[] = "select id, input, output, uid, batch from spt_result where 1";
+		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
+			throw EDatabase("spt_result insert prepare");
+#endif
+}
+
+int main(int argc, char** argv) {
+	bool f_write;
+	long gen_limit;
+	int batchno;
+	char *check1;
+	if(argc!=3) {
+			cerr<<"Expect 2 command line argument: f_write limit"<<endl;
+			exit(2);
+	}
+	f_write = (argv[1][0]=='y');
+	gen_limit = strtol(argv[2],&check1,10);
+	if((argv[1][0]!='n' && !f_write) || *check1) {
+			cerr<<"Invalid argument format"<<endl;
+			exit(2);
+	}
+	cerr<<"f_write="<<f_write<<" limit="<<gen_limit<<endl;
+	//connect db if requested
+	initz();
+	if(boinc_db.start_transaction())
+		exit(4);
+	process_ready_results(gen_limit);
 	if(f_write) {
 		if(boinc_db.commit_transaction()) {
 			cerr<<"Can't commit transaction!"<<endl;
@@ -540,6 +564,3 @@ int main(int argc, char** argv) {
 	boinc_db.close();
 	return 0;
 }
-
-// pre-experiemt id: 1996184, batch: 54
-// spt id: 67154
