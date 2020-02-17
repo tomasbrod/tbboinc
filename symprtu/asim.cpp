@@ -277,12 +277,8 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 		if(!check_prime(tuple.start))
 			throw EInvalid("check_symm_primes composite start");
 		unsigned d =0;
-		if( (tuple.k&1) && tuple.ofs.size()>(tuple.k/2)){
-			if(tuple.ofs.size()!=((tuple.k/2)+1))
-				throw EInvalid("check_symm_primes: invalid ofs size");
-			if(tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
-				throw EInvalid("check_symm_primes: not symmetric odd");
-		}
+		if( (tuple.k&1) && tuple.ofs.size()!=(tuple.k/2) && tuple.ofs.size()!=((tuple.k/2)+1))
+			throw EInvalid("check_symm_primes: invalid ofs size");
 		for(unsigned i=0; i<tuple.k; ++i) {
 			// 36 36 26 28 14 18 10 2  k=16, k/2=8
 			//  0  1  2  3  4  5  6 7
@@ -301,7 +297,8 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 				throw EInvalid("check_symm_primes composite");
 			}
 		}
-		//TODO
+		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
+			throw EInvalid("check_symm_primes: not symmetric odd");
 	}
 }
 
