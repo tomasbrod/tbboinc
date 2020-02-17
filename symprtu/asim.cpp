@@ -261,23 +261,30 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 	}
 }
 
-void check_prime(const uint64_t n)
+bool check_prime(const uint64_t n)
 {
-	if(n<2) throw EInvalid("Prime < 2");
+	if(n<2) return false;
 	for( const auto& p : primes_small ) {
 		if(0==( n % p ))
-			throw EInvalid("Not a prime");
+			return false;
 	}
+	return true;
 }
 
 void check_symm_primes(const vector<TOutputTuple>& tuples)
 {
 	for( const auto& tuple : tuples) {
-		check_prime(tuple.start);
+		if(!check_prime(tuple.start))
+			throw EInvalid("check_symm_primes composite start");
 		unsigned d =0;
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
+		for(unsigned i=0; i<tuple.ofs.size(); ++i) {
 			d += tuple.ofs[i];
-			check_prime(tuple.start + d);
+			if(!check_prime(tuple.start + d)) {
+				cerr<<"check_symm_primes: "<<tuple.start<<"("<<tuple.k<<") ";
+				for(auto a : tuple.ofs) cerr<<a<<" ";
+				cerr<<"i="<<i<<" d="<<d<<endl;
+				throw EInvalid("check_symm_primes composite");
+			}
 		}
 		//TODO
 	}
@@ -286,13 +293,16 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 void check_twin_primes(const vector<TOutputTuple>& tuples)
 {
 	for( const auto& tuple : tuples) {
-		check_prime(tuple.start);
+		if(!check_prime(tuple.start))
+			throw EInvalid("check_twin_primes composite start");
 		unsigned d =0;
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
+		for(unsigned i=0; i<tuple.ofs.size(); ++i) {
 			d += 2;
-			check_prime(tuple.start + d);
+			if(!check_prime(tuple.start + d))
+				throw EInvalid("check_twin_primes composite_2");
 			d += tuple.ofs[i];
-			check_prime(tuple.start + d);
+			if(!check_prime(tuple.start + d))
+				throw EInvalid("check_twin_primes composite_d");
 		}
 	}
 }
@@ -609,8 +619,10 @@ void database_reprocess()
 			n_inval++;
 		}
 	}
-	if(retval!=MYSQL_NO_DATA)
+	if(retval=mysql_errno(boinc_db.mysql)) {
+		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(boinc_db.mysql)<<endl;
 		throw EDatabase("fetch spt_result row");
+	}
 	mysql_free_result(enum_res);
 	std::cout<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
 }
