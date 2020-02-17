@@ -18,6 +18,7 @@ using std::cerr;
 using std::endl;
 using std::string;
 
+#include "primesieve.hpp"
 #include "config.h"
 #include "backend_lib.h"
 #include "error_numbers.h"
@@ -90,6 +91,7 @@ class CFileStream
 DB_APP spt_app;
 DB_APP stpt_app;
 MYSQL_STMT* spt_result_stmt;
+std::vector<long> primes_small;
 
 void initz() {
 	int retval = config.parse_file();
@@ -124,6 +126,9 @@ void initz() {
 		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
 			throw EDatabase("spt_result insert prepare");
 	}
+
+  primesieve::generate_primes(80000, &primes_small);
+  std::cout<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
 }
 
 int read_output_file(RESULT const& result, CDynamicStream& buf) {
@@ -256,6 +261,42 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 	}
 }
 
+void check_prime(const uint64_t n)
+{
+	if(n<2) throw EInvalid("Prime < 2");
+	for( const auto& p : primes_small ) {
+		if(0==( n % p ))
+			throw EInvalid("Not a prime");
+	}
+}
+
+void check_symm_primes(const vector<TOutputTuple>& tuples)
+{
+	for( const auto& tuple : tuples) {
+		check_prime(tuple.start);
+		unsigned d =0;
+		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
+			d += tuple.ofs[i];
+			check_prime(tuple.start + d);
+		}
+		//TODO
+	}
+}
+
+void check_twin_primes(const vector<TOutputTuple>& tuples)
+{
+	for( const auto& tuple : tuples) {
+		check_prime(tuple.start);
+		unsigned d =0;
+		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
+			d += 2;
+			check_prime(tuple.start + d);
+			d += tuple.ofs[i];
+			check_prime(tuple.start + d);
+		}
+	}
+}
+
 void result_validate(RESULT& result, CStream& input, TOutput output) {
 	if(output.status!=TOutput::x_end)
 		throw EInvalid("incomplete run");
@@ -298,6 +339,10 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 			) throw EInvalid("bad TPT offset");
 		}
 	}
+	check_symm_primes(output.tuples);
+	check_symm_primes(output.twin_tuples);
+	check_twin_primes(output.twins);
+	check_twin_primes(output.twin_gap);
 	//TODO: more consistency checks
 }
 
