@@ -265,6 +265,8 @@ bool check_prime(const uint64_t n)
 {
 	if(n<2) return false;
 	for( const auto& p : primes_small ) {
+		if( p >= n )
+			return true;
 		if(0==( n % p ))
 			return false;
 	}
@@ -600,7 +602,7 @@ void database_reprocess()
 	);
 	if (retval) throw EDatabase("Cant open second db connection.");
 
-	retval=enum_db.do_query("select id, uid, batch, input, output from spt_result where 1");
+	retval=enum_db.do_query("select r.id, COALESCE(r.uid,s.userid), COALESCE(r.batch,s.batch), r.input, r.output from spt_result r left join result s on r.id=s.id where 1");
 	if(retval) throw EDatabase("spt_result enum query");
 	MYSQL_RES* enum_res= mysql_use_result(enum_db.mysql);
 	if(!enum_res) throw EDatabase("spt_result enum use");
@@ -631,8 +633,8 @@ void database_reprocess()
 			n_inval++;
 		}
 	}
-	if(retval=mysql_errno(boinc_db.mysql)) {
-		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(boinc_db.mysql)<<endl;
+	if(retval=mysql_errno(enum_db.mysql)) {
+		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(enum_db.mysql)<<endl;
 		throw EDatabase("fetch spt_result row");
 	}
 	mysql_free_result(enum_res);
