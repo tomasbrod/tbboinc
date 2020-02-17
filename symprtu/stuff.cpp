@@ -192,7 +192,7 @@ void mksample() {
 	inp.start=    530051400000000000;
 	inp.end= inp.start  +65500000000;
 	inp.mine_k= 16;
-	inp.mino_k= 13;
+	inp.mino_k=  9;
 	inp.max_k= 32;
 	inp.upload = 0;
 	inp.exit_early= 0;
