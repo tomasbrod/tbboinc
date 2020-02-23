@@ -128,7 +128,7 @@ void initz() {
 			throw EDatabase("spt_result insert prepare");
 	}
 
-  primesieve::generate_primes(80000, &primes_small);
+  primesieve::generate_primes(4000, &primes_small);
   cerr<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
 
   memset(spt_counters, 0, sizeof spt_counters);
