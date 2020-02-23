@@ -92,6 +92,7 @@ DB_APP spt_app;
 DB_APP stpt_app;
 MYSQL_STMT* spt_result_stmt;
 std::vector<long> primes_small;
+unsigned long spt_counters[3][64];
 
 void initz() {
 	int retval = config.parse_file();
@@ -129,6 +130,8 @@ void initz() {
 
   primesieve::generate_primes(80000, &primes_small);
   std::cout<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
+
+  memset(spt_counters, 0, sizeof spt_counters);
 }
 
 int read_output_file(RESULT const& result, CDynamicStream& buf) {
@@ -222,14 +225,19 @@ int read_output_file_doc_in(RESULT const& result, CDynamicStream& buf) {
 const float credit_m= 2.3148E-12* 15;
 //credit/200 = gigaflop (wrong)
 
-static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, const char* kind, bool deriv)
+static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, short kind, bool deriv)
 {
 	std::stringstream qr;
 	qr=std::stringstream();
 	qr<<"insert into spt set batch="<<result.batch;
 	qr<<", start="<<tuple.start;
 	qr<<", k="<<tuple.k;
-	qr<<", kind='"<<kind<<"'";
+	if(kind==0)
+		qr<<", kind='spt'";
+	else if(kind==1)
+		qr<<", kind='stpt'";
+	else if(kind==2)
+		qr<<", kind='tpt'";
 	qr<<", deriv="<<deriv<<"";
 	qr<<", userid="<<result.userid;
 	qr<<", resid="<<result.id;
@@ -240,16 +248,19 @@ static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, co
 	retval=boinc_db.do_query(qr.str().c_str());
 	if(retval) throw EDatabase("spt row insert failed");
 }
-static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, const char* kind)
+static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min_odd, short min_even)
 {
 	std::stringstream qr;
 	for( const auto& tuple : tuples ) {
-		insert_spt_tuple(result, tuple, kind, 0);
+		short min = tuple.k &1 ? min_odd : min_even;
+		spt_counters[!min_odd][tuple.k] += 1;
+		if(tuple.k>=min)
+			insert_spt_tuple(result, tuple, !min_odd, 0);
 		TOutputTuple tu2= tuple;
-		for( tu2.k= tuple.k-2; tu2.k>=16; tu2.k-=2 ) {
+		for( tu2.k= tuple.k-2; tu2.k>=min; tu2.k-=2 ) {
 			tu2.start += tu2.ofs[0];
 			tu2.ofs .erase(tu2.ofs.begin());
-			insert_spt_tuple(result, tu2, kind, 1);
+			insert_spt_tuple(result, tu2, !min_odd, 1);
 		}
 	}
 }
@@ -257,7 +268,8 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 {
 	std::stringstream qr;
 	for( const auto& tuple : tuples) {
-		insert_spt_tuple(result, tuple, "tpt", 0);
+		spt_counters[2][tuple.k] += 1;
+		insert_spt_tuple(result, tuple, 2, 0);
 	}
 }
 
@@ -281,6 +293,8 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 		unsigned d =0;
 		if( (tuple.k&1) && tuple.ofs.size()!=(tuple.k/2) && tuple.ofs.size()!=((tuple.k/2)+1))
 			throw EInvalid("check_symm_primes: invalid ofs size");
+		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
+			throw EInvalid("check_symm_primes: not symmetric odd");
 		for(unsigned i=0; i<tuple.k; ++i) {
 			// 36 36 26 28 14 18 10 2  k=16, k/2=8
 			//  0  1  2  3  4  5  6 7
@@ -299,8 +313,6 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 				throw EInvalid("check_symm_primes composite");
 			}
 		}
-		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
-			throw EInvalid("check_symm_primes: not symmetric odd");
 	}
 }
 
@@ -326,7 +338,7 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 		throw EInvalid("incomplete run");
 	// check if the tuple offsets are all even and nonzero
 	for( const auto& tuple : output.tuples) {
-		if(tuple.k==0)
+		if(tuple.k==0||tuple.k>64)
 			throw EInvalid("bad tuple k");
 		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
 			if( (tuple.ofs[i]<=1) // must not be zero
@@ -335,7 +347,7 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 		}
 	}
 	for( const auto& tuple : output.twins) {
-		if(tuple.ofs.size()==0)
+		if(tuple.ofs.size()==0||tuple.k>64)
 			throw EInvalid("bad twins size");
 		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
 			if( (tuple.ofs[i]<=1) // must be >2
@@ -344,7 +356,7 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 		}
 	}
 	for( const auto& tuple : output.twin_tuples) {
-		if(tuple.k==0)
+		if(tuple.k==0||tuple.k>64)
 			throw EInvalid("bad tuple k");
 		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
 			if( (tuple.ofs[i]<=1) // must not be zero
@@ -353,7 +365,7 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 		}
 	}
 	for( const auto& tuple : output.twin_gap) {
-		if(tuple.ofs.size()==0)
+		if(tuple.ofs.size()==0||tuple.k>64)
 			throw EInvalid("bad twin_gap size");
 		if(tuple.k!=(tuple.ofs.size()+1))
 			throw EInvalid("bad twin_gap size");
@@ -372,9 +384,9 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 
 void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
-	insert_spt_tuples(result, output.tuples, "spt");
+	insert_spt_tuples(result, output.tuples, 9, 10);
 	insert_twin_tuples(result, output.twins);
-	insert_spt_tuples(result, output.twin_tuples, "stpt");
+	insert_spt_tuples(result, output.twin_tuples, 0, 8);
 
 	/* insert into largest gap table */
 	/* check: find entry starting lower, but with larger d */
