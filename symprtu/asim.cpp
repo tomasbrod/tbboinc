@@ -538,7 +538,7 @@ void show_spt_counters()
 	for(short kind=0; kind<3; ++kind) {
 		short first, last;
 		for(first=0; first<64 && !spt_counters[kind][first]; ++first);
-		for(last=63; last>first && !spt_counters[kind][first]; --first);
+		for(last=63; last>first && !spt_counters[kind][first]; --last);
 		cerr<<"Count "<<label[kind]<<":";
 		for(short i=first; i<=last; i++) {
 			cerr<<" "<<i<<":"<<spt_counters[kind][i];
