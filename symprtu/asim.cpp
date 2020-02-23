@@ -123,13 +123,13 @@ void initz() {
 	
 	{
 		spt_result_stmt = mysql_stmt_init(boinc_db.mysql);
-		char stmt[] = "insert into spt_result SET id=?, input=?, output=?, uid=?";
+		char stmt[] = "insert into spt_result SET id=?, input=?, output=?, batch=?, uid=?";
 		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
 			throw EDatabase("spt_result insert prepare");
 	}
 
   primesieve::generate_primes(80000, &primes_small);
-  std::cout<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
+  cerr<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
 
   memset(spt_counters, 0, sizeof spt_counters);
 }
@@ -225,6 +225,89 @@ int read_output_file_doc_in(RESULT const& result, CDynamicStream& buf) {
 const float credit_m= 2.3148E-12* 15;
 //credit/200 = gigaflop (wrong)
 
+bool check_prime(const uint64_t n)
+{
+	if(n<2) return false;
+	for( const auto& p : primes_small ) {
+		if( p >= n )
+			return true;
+		if(0==( n % p ))
+			return false;
+	}
+	return true;
+}
+
+void check_symm_primes(const vector<TOutputTuple>& tuples)
+{
+	for( const auto& tuple : tuples) {
+		if(tuple.k==0||tuple.k>64)
+			throw EInvalid("bad tuple k");
+		if(!check_prime(tuple.start))
+			throw EInvalid("check_symm_primes composite start");
+		unsigned d =0;
+		if( (tuple.k&1) && tuple.ofs.size()!=(tuple.k/2) && tuple.ofs.size()!=((tuple.k/2)+1))
+			throw EInvalid("check_symm_primes: invalid ofs size");
+		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
+			throw EInvalid("check_symm_primes: not symmetric odd");
+		for(unsigned i=0; i<tuple.k; ++i) {
+			// 36 36 26 28 14 18 10 2  k=16, k/2=8
+			//  0  1  2  3  4  5  6 7
+			// 14 13 12 11 10  9  8
+			// 30 30 24 36  k=9, k/2=4
+			//  0  1  2  3
+			//  7  6  5  4
+			if(i>=(tuple.k/2))
+				d += tuple.ofs[ tuple.k-i-2 ];
+			else {
+				d += tuple.ofs[i];
+				if( (tuple.ofs[i]<=1) // must be >2
+					||(tuple.ofs[i]&1)  // must be even
+				) throw EInvalid("bad tuple offset");
+			}
+			if(!check_prime(tuple.start + d)) {
+				cerr<<"check_symm_primes: "<<tuple.start<<"("<<tuple.k<<") ";
+				for(auto a : tuple.ofs) cerr<<a<<" ";
+				cerr<<"i="<<i<<" d="<<d<<endl;
+				throw EInvalid("check_symm_primes composite");
+			}
+		}
+	}
+}
+
+void check_twin_primes(const vector<TOutputTuple>& tuples)
+{
+	for( const auto& tuple : tuples) {
+		if(!check_prime(tuple.start))
+			throw EInvalid("check_twin_primes composite start");
+		unsigned d =0;
+		if(tuple.ofs.size()==0||tuple.k>64)
+			throw EInvalid("bad twin tuple k");
+		if(tuple.k!=(tuple.ofs.size()+1))
+			throw EInvalid("bad twin ofs size");
+		for(unsigned i=0; i<tuple.ofs.size(); ++i) {
+			if( (tuple.ofs[i]<=1) // must be >2
+				||(tuple.ofs[i]&1)  // must be even
+			) throw EInvalid("bad twin offset");
+			d += 2;
+			if(!check_prime(tuple.start + d))
+				throw EInvalid("check_twin_primes composite_2");
+			d += tuple.ofs[i];
+			if(!check_prime(tuple.start + d))
+				throw EInvalid("check_twin_primes composite_d");
+		}
+	}
+}
+
+void result_validate(RESULT& result, CStream& input, TOutput output) {
+	if(output.status!=TOutput::x_end)
+		throw EInvalid("incomplete run");
+	check_symm_primes(output.tuples);
+	check_symm_primes(output.twin_tuples);
+	check_twin_primes(output.twins);
+	check_twin_primes(output.twin_gap);
+	//TODO: more consistency checks
+}
+
 static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, short kind, bool deriv)
 {
 	std::stringstream qr;
@@ -271,115 +354,6 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 		spt_counters[2][tuple.k] += 1;
 		insert_spt_tuple(result, tuple, 2, 0);
 	}
-}
-
-bool check_prime(const uint64_t n)
-{
-	if(n<2) return false;
-	for( const auto& p : primes_small ) {
-		if( p >= n )
-			return true;
-		if(0==( n % p ))
-			return false;
-	}
-	return true;
-}
-
-void check_symm_primes(const vector<TOutputTuple>& tuples)
-{
-	for( const auto& tuple : tuples) {
-		if(!check_prime(tuple.start))
-			throw EInvalid("check_symm_primes composite start");
-		unsigned d =0;
-		if( (tuple.k&1) && tuple.ofs.size()!=(tuple.k/2) && tuple.ofs.size()!=((tuple.k/2)+1))
-			throw EInvalid("check_symm_primes: invalid ofs size");
-		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
-			throw EInvalid("check_symm_primes: not symmetric odd");
-		for(unsigned i=0; i<tuple.k; ++i) {
-			// 36 36 26 28 14 18 10 2  k=16, k/2=8
-			//  0  1  2  3  4  5  6 7
-			// 14 13 12 11 10  9  8
-			// 30 30 24 36  k=9, k/2=4
-			//  0  1  2  3
-			//  7  6  5  4
-			if(i>=(tuple.k/2))
-				d += tuple.ofs[ tuple.k-i-2 ];
-			else
-				d += tuple.ofs[i];
-			if(!check_prime(tuple.start + d)) {
-				cerr<<"check_symm_primes: "<<tuple.start<<"("<<tuple.k<<") ";
-				for(auto a : tuple.ofs) cerr<<a<<" ";
-				cerr<<"i="<<i<<" d="<<d<<endl;
-				throw EInvalid("check_symm_primes composite");
-			}
-		}
-	}
-}
-
-void check_twin_primes(const vector<TOutputTuple>& tuples)
-{
-	for( const auto& tuple : tuples) {
-		if(!check_prime(tuple.start))
-			throw EInvalid("check_twin_primes composite start");
-		unsigned d =0;
-		for(unsigned i=0; i<tuple.ofs.size(); ++i) {
-			d += 2;
-			if(!check_prime(tuple.start + d))
-				throw EInvalid("check_twin_primes composite_2");
-			d += tuple.ofs[i];
-			if(!check_prime(tuple.start + d))
-				throw EInvalid("check_twin_primes composite_d");
-		}
-	}
-}
-
-void result_validate(RESULT& result, CStream& input, TOutput output) {
-	if(output.status!=TOutput::x_end)
-		throw EInvalid("incomplete run");
-	// check if the tuple offsets are all even and nonzero
-	for( const auto& tuple : output.tuples) {
-		if(tuple.k==0||tuple.k>64)
-			throw EInvalid("bad tuple k");
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
-			if( (tuple.ofs[i]<=1) // must not be zero
-				||(tuple.ofs[i]&1)  // must be even
-			) throw EInvalid("bad SPT offset");
-		}
-	}
-	for( const auto& tuple : output.twins) {
-		if(tuple.ofs.size()==0||tuple.k>64)
-			throw EInvalid("bad twins size");
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
-			if( (tuple.ofs[i]<=1) // must be >2
-				||(tuple.ofs[i]&1)  // must be even
-			) throw EInvalid("bad TPT offset");
-		}
-	}
-	for( const auto& tuple : output.twin_tuples) {
-		if(tuple.k==0||tuple.k>64)
-			throw EInvalid("bad tuple k");
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
-			if( (tuple.ofs[i]<=1) // must not be zero
-				||(tuple.ofs[i]&1)  // must be even
-			) throw EInvalid("bad STPT offset");
-		}
-	}
-	for( const auto& tuple : output.twin_gap) {
-		if(tuple.ofs.size()==0||tuple.k>64)
-			throw EInvalid("bad twin_gap size");
-		if(tuple.k!=(tuple.ofs.size()+1))
-			throw EInvalid("bad twin_gap size");
-		for(unsigned i=1; i<tuple.ofs.size(); ++i) {
-			if( (tuple.ofs[i]<=1) // must not be zero
-				||(tuple.ofs[i]&1)  // must be even
-			) throw EInvalid("bad TPT offset");
-		}
-	}
-	check_symm_primes(output.tuples);
-	check_symm_primes(output.twin_tuples);
-	check_twin_primes(output.twins);
-	check_twin_primes(output.twin_gap);
-	//TODO: more consistency checks
 }
 
 void result_insert(RESULT& result, TOutput output) {
@@ -472,6 +446,7 @@ void process_result(DB_RESULT& result) {
 		{.buffer=&result.id, .buffer_type=MYSQL_TYPE_LONG, 0},
 		{.length=&bind_2_length, .buffer=inbuf.getbase(), .buffer_type=MYSQL_TYPE_BLOB, 0},
 		{.length=&bind_3_length, .buffer=buf.getbase(), .buffer_type=MYSQL_TYPE_BLOB, 0},
+		{.buffer=&result.batch, .buffer_type=MYSQL_TYPE_LONG, 0},
 		{.buffer=&result.userid, .buffer_type=MYSQL_TYPE_LONG, 0}
 	};
 	if(mysql_stmt_bind_param(spt_result_stmt, bind))
@@ -557,6 +532,21 @@ void set_result_invalid(DB_RESULT& result) {
 	if (hav.host_id && hav.update_validator(hav0)) throw EDatabase("Host-App-Version update error");
 }
 
+void show_spt_counters()
+{
+	const char* label[] = {"SPT", "STPT", "TPT"};
+	for(short kind=0; kind<3; ++kind) {
+		short first, last;
+		for(first=0; first<64 && !spt_counters[kind][first]; ++first);
+		for(last=63; first>first && !spt_counters[kind][first]; --first);
+		cerr<<"Count "<<label[kind]<<":";
+		for(short i=first; i<=last; i++) {
+			cerr<<" "<<i<<spt_counters[kind][i];
+		}
+		cerr<<endl;
+	}
+}
+
 void process_ready_results(long gen_limit)
 {
 	//enumerate results
@@ -576,11 +566,11 @@ void process_ready_results(long gen_limit)
 			}
 			break;
 		}
-		std::cout<<"result "<<result.name<<endl;
+		cerr<<"result "<<result.name<<endl;
 		try {
 			process_result(result);
 		} catch (EInvalid& e) {
-			std::cout<<" Invalid: "<<e.what()<<endl;
+			cerr<<" Invalid: "<<e.what()<<endl;
 			strncat(result.stderr_out,"Validator: ",BLOB_SIZE-1);
 			strncat(result.stderr_out,e.what(),BLOB_SIZE-1);
 			set_result_invalid(result);
@@ -594,19 +584,20 @@ void process_ready_results(long gen_limit)
 			break;
 		}
 	}
+	show_spt_counters();
 }
 
 void database_reprocess()
 {
-	std::cout<<"truncate tables...\n";
+	cerr<<"truncate tables...\n";
 	retval=boinc_db.do_query("truncate table spt");
 	if(retval) throw EDatabase("spt truncate failed");
 	retval=boinc_db.do_query("truncate table spt_gap");
 	if(retval) throw EDatabase("spt_gap truncate failed");
-	std::cout<<"count...\n";
+	cerr<<"count...\n";
 	long row_count;
 	DB_BASE{"spt_result",&boinc_db}.count(row_count);
-	std::cout<<"Count: "<<row_count<<endl;
+	cerr<<"Count: "<<row_count<<endl;
 
 	DB_CONN enum_db;
 	retval = enum_db.open(
@@ -629,7 +620,7 @@ void database_reprocess()
 		result.batch= enum_row[2]? atol(enum_row[2]) : 0;
 		unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 		try {
-			std::cout<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
+			cerr<<"\r"<<(n_proc+n_inval)<<" / "<<row_count<<" +inv"<<n_inval<<" #"<<result.id<<"               ";
 			TOutput rstate;
 			CStream res_inp_s((byte*)enum_row[3],enum_len[3]);
 			try {
@@ -641,7 +632,7 @@ void database_reprocess()
 			result_insert(result, rstate);
 			n_proc++;
 		} catch (EInvalid& e) {
-			std::cout<<"Invalid: "<<e.what()<<endl;
+			cerr<<"Invalid: "<<e.what()<<endl;
 			n_inval++;
 		}
 	}
@@ -650,7 +641,7 @@ void database_reprocess()
 		throw EDatabase("fetch spt_result row");
 	}
 	mysql_free_result(enum_res);
-	std::cout<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
+	cerr<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
 }
 
 int main(int argc, char** argv) {
