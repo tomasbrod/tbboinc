@@ -358,7 +358,7 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 
 void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
-	insert_spt_tuples(result, output.tuples, 9, 10); // 11, 14
+	insert_spt_tuples(result, output.tuples, 11, 14); // 11, 14
 	insert_twin_tuples(result, output.twins);
 	insert_spt_tuples(result, output.twin_tuples, 0, 10);
 
