@@ -123,7 +123,7 @@ void initz() {
 	
 	{
 		spt_result_stmt = mysql_stmt_init(boinc_db.mysql);
-		char stmt[] = "insert into spt_result SET id=?, input=?, output=?, batch=?, uid=?";
+		char stmt[] = "insert ignore into spt_result SET id=?, input=?, output=?, batch=?, uid=?";
 		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
 			throw EDatabase("spt_result insert prepare");
 	}
@@ -249,7 +249,7 @@ void check_symm_primes(const vector<TOutputTuple>& tuples)
 			throw EInvalid("check_symm_primes: invalid ofs size");
 		if((tuple.k&1) && tuple.ofs.size()>(tuple.k/2) && tuple.ofs[tuple.ofs.size()-1] != tuple.ofs[tuple.ofs.size()-2])
 			throw EInvalid("check_symm_primes: not symmetric odd");
-		for(unsigned i=0; i<tuple.k; ++i) {
+		for(unsigned i=0; i<(tuple.k-1); ++i) {
 			// 36 36 26 28 14 18 10 2  k=16, k/2=8
 			//  0  1  2  3  4  5  6 7
 			// 14 13 12 11 10  9  8
@@ -358,9 +358,9 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 
 void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
-	insert_spt_tuples(result, output.tuples, 9, 10);
+	insert_spt_tuples(result, output.tuples, 9, 10); // 11, 14
 	insert_twin_tuples(result, output.twins);
-	insert_spt_tuples(result, output.twin_tuples, 0, 8);
+	insert_spt_tuples(result, output.twin_tuples, 0, 10);
 
 	/* insert into largest gap table */
 	/* check: find entry starting lower, but with larger d */
@@ -433,7 +433,7 @@ void process_result(DB_RESULT& result) {
 	CDynamicStream inbuf;
 	try {
 		std::stringstream fn;
-		fn<<"download/"<<wu.name<<".in";
+		fn<<config.download_dir<<"/"<<wu.name<<".in";
 		inbuf = CFileStream( fn.str().c_str() );
 	} catch (EStreamOutOufBounds& e){ throw EDatabase("can't read input file"); }
 
@@ -580,9 +580,9 @@ void process_ready_results(long gen_limit)
 		// b) error - unexpected error
 		// c) valid - result saved, segment updated, credit granted
 		// d) redundant/unnown - result saved, segment not found, credit granted -> valid
-		if( time(0) - t_begin > 30 ) {
+		/*if( time(0) - t_begin > 30 ) {
 			break;
-		}
+		}*/
 	}
 	show_spt_counters();
 }
@@ -635,6 +635,10 @@ void database_reprocess()
 			cerr<<"Invalid: "<<e.what()<<endl;
 			n_inval++;
 		}
+		if(0== n_proc % 500) {
+			cerr<<endl;
+			show_spt_counters();
+		}
 	}
 	if(retval=mysql_errno(enum_db.mysql)) {
 		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(enum_db.mysql)<<endl;
@@ -642,6 +646,7 @@ void database_reprocess()
 	}
 	mysql_free_result(enum_res);
 	cerr<<endl<<"ok="<<n_proc<<" inval="<<n_inval<<endl;
+	show_spt_counters();
 }
 
 int main(int argc, char** argv) {
@@ -678,3 +683,10 @@ int main(int argc, char** argv) {
 	boinc_db.close();
 	return 0;
 }
+
+/* ok=357052 inval=270
+Count SPT: 9:1415304 10:0 11:320979 12:15032 13:6131 14:6598462 15:60 16:530544 17:1 18:25702 19:0 20:1314 21:0 22:69 23:0 24:4
+Count STPT: 8:40655218 9:0 10:472777 11:0 12:22856 13:0 14:25 15:0 16:2
+Count TPT: 6:2107451 7:98346 8:3084 9:88 10:2
+* [Inferior 1 (process 66590) exited normally]
+*/
