@@ -163,7 +163,7 @@ void submit_wu_in(uint64_t start, uint64_t end, int batch)
 		wu.rsc_memory_bound = 399e6;
 		wu.rsc_disk_bound = 1e8; //todo 100m
 		wu.delay_bound = 6 * 24 * 3600;
-		wu.priority = 10;
+		wu.priority = 2;
 		wu.batch= batch;
 		wu.target_nresults= wu.min_quorum = 1;
 		wu.max_error_results= wu.max_total_results= 8;
@@ -196,11 +196,11 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	uint64_t start=  23345200000000000;
+	uint64_t start=  54785200000000000;
 	uint64_t   end= 600000000000000000;
 	uint64_t  step=      1965000000000;
-	unsigned maxcnt = 16000;
-	int batch = 66;
+	unsigned maxcnt = 64000;
+	int batch = 67;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
