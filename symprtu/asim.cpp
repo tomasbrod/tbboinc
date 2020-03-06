@@ -580,9 +580,9 @@ void process_ready_results(long gen_limit)
 		// b) error - unexpected error
 		// c) valid - result saved, segment updated, credit granted
 		// d) redundant/unnown - result saved, segment not found, credit granted -> valid
-		/*if( time(0) - t_begin > 30 ) {
+		if( time(0) - t_begin > 30 ) {
 			break;
-		}*/
+		}
 	}
 	show_spt_counters();
 }
