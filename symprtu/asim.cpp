@@ -128,7 +128,7 @@ void initz() {
 			throw EDatabase("spt_result insert prepare");
 	}
 
-  primesieve::generate_primes(4000, &primes_small);
+  primesieve::generate_primes(1600, &primes_small);
   cerr<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
 
   memset(spt_counters, 0, sizeof spt_counters);
@@ -343,7 +343,9 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 		for( tu2.k= tuple.k-2; tu2.k>=min; tu2.k-=2 ) {
 			tu2.start += tu2.ofs[0];
 			tu2.ofs .erase(tu2.ofs.begin());
-			insert_spt_tuple(result, tu2, !min_odd, 1);
+			if( min_odd || tu2.ofs[0]==2 ) { // truncate by 4 if STPT
+				insert_spt_tuple(result, tu2, !min_odd, 1);
+			}
 		}
 	}
 }
