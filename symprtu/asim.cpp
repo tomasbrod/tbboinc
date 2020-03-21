@@ -598,11 +598,11 @@ void database_reprocess()
 {
 	cerr<<"truncate tables...\n";
 	retval=boinc_db.do_query("truncate table spt");
-	#ifndef DONT_CHANGE_TUPLES
 	if(retval) throw EDatabase("spt truncate failed");
+	#ifndef DONT_CHANGE_TUPLES
 	retval=boinc_db.do_query("truncate table spt_gap");
-	#endif
 	if(retval) throw EDatabase("spt_gap truncate failed");
+	#endif
 	cerr<<"count...\n";
 	long row_count;
 	DB_BASE{"spt_result",&boinc_db}.count(row_count);
