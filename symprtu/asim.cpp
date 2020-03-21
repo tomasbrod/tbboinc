@@ -31,6 +31,7 @@ using std::string;
 #include "wio.cpp"
 
 //TODO: deduplicate this code
+#define DONT_CHANGE_TUPLES
 
 struct EApp : std::runtime_error { using std::runtime_error::runtime_error; };
 struct EBoincApi : std::exception {
@@ -301,9 +302,11 @@ void check_twin_primes(const vector<TOutputTuple>& tuples)
 void result_validate(RESULT& result, CStream& input, TOutput output) {
 	if(output.status!=TOutput::x_end)
 		throw EInvalid("incomplete run");
+	#ifndef DONT_CHANGE_TUPLES
 	check_symm_primes(output.tuples);
 	check_symm_primes(output.twin_tuples);
 	check_twin_primes(output.twins);
+	#endif
 	check_twin_primes(output.twin_gap);
 	//TODO: more consistency checks
 }
@@ -360,9 +363,11 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 
 void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
+	#ifndef DONT_CHANGE_TUPLES
 	insert_spt_tuples(result, output.tuples, 11, 14); // 11, 14
 	insert_twin_tuples(result, output.twins);
 	insert_spt_tuples(result, output.twin_tuples, 0, 10);
+	#endif
 
 	/* insert into largest gap table */
 	/* check: find entry starting lower, but with larger d */
@@ -593,8 +598,10 @@ void database_reprocess()
 {
 	cerr<<"truncate tables...\n";
 	retval=boinc_db.do_query("truncate table spt");
+	#ifndef DONT_CHANGE_TUPLES
 	if(retval) throw EDatabase("spt truncate failed");
 	retval=boinc_db.do_query("truncate table spt_gap");
+	#endif
 	if(retval) throw EDatabase("spt_gap truncate failed");
 	cerr<<"count...\n";
 	long row_count;
@@ -637,10 +644,12 @@ void database_reprocess()
 			cerr<<"Invalid: "<<e.what()<<endl;
 			n_inval++;
 		}
+		#ifndef DONT_CHANGE_TUPLES
 		if(0== n_proc % 500) {
 			cerr<<endl;
 			show_spt_counters();
 		}
+		#endif
 	}
 	if(retval=mysql_errno(enum_db.mysql)) {
 		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(enum_db.mysql)<<endl;
