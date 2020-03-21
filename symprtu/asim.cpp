@@ -397,7 +397,7 @@ void result_insert(RESULT& result, TOutput output) {
 			<<start2 <<','<<maxd <<','<<result.id <<","<<tuple.k <<",'";
 			for(auto o : tuple.ofs)	qr<<" "<<o;
 			qr<<"' from dual where not exists (select * from spt_gap where start<="
-			<<start2 <<" and k="<<tuple.k <<" and d>="<<maxd <<");";
+			<<start2 <<" and k>5 and d>="<<maxd <<");";
 			retval=boinc_db.do_query(qr.str().c_str());
 			if(retval) throw EDatabase("spt_gap insert select failed");
 			qr=std::stringstream();
