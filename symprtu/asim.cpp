@@ -31,7 +31,8 @@ using std::string;
 #include "wio.cpp"
 
 //TODO: deduplicate this code
-#define DONT_CHANGE_TUPLES
+//#define DONT_CHANGE_TUPLES
+#define DONT_TRUNC_GAPS
 
 struct EApp : std::runtime_error { using std::runtime_error::runtime_error; };
 struct EBoincApi : std::exception {
@@ -238,9 +239,13 @@ bool check_prime(const uint64_t n)
 	return true;
 }
 
-void check_symm_primes(const vector<TOutputTuple>& tuples)
+void check_symm_primes(const vector<TOutputTuple>& tuples, short mino, short mine)
 {
 	for( const auto& tuple : tuples) {
+		if((tuple.k&1) && tuple.k<mino)
+			continue;
+		if(!(tuple.k&1) && tuple.k<mine)
+			continue;
 		if(tuple.k==0||tuple.k>64)
 			throw EInvalid("bad tuple k");
 		if(!check_prime(tuple.start))
@@ -303,8 +308,8 @@ void result_validate(RESULT& result, CStream& input, TOutput output) {
 	if(output.status!=TOutput::x_end)
 		throw EInvalid("incomplete run");
 	#ifndef DONT_CHANGE_TUPLES
-	check_symm_primes(output.tuples);
-	check_symm_primes(output.twin_tuples);
+	check_symm_primes(output.tuples, 11, 14);
+	check_symm_primes(output.twin_tuples, 0, 10);
 	check_twin_primes(output.twins);
 	#endif
 	check_twin_primes(output.twin_gap);
@@ -597,9 +602,11 @@ void process_ready_results(long gen_limit)
 void database_reprocess()
 {
 	cerr<<"truncate tables...\n";
+	#ifndef DONT_CHANGE_TUPLES
 	retval=boinc_db.do_query("truncate table spt");
 	if(retval) throw EDatabase("spt truncate failed");
-	#ifndef DONT_CHANGE_TUPLES
+	#endif
+	#ifndef DONT_TRUNC_GAPS
 	retval=boinc_db.do_query("truncate table spt_gap");
 	if(retval) throw EDatabase("spt_gap truncate failed");
 	#endif

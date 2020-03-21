@@ -10,7 +10,7 @@ function show() {
   $db = BoincDb::get();
   $clausule=" k=0 ";
   if($t>0)
-    $clausule=" k>0 ";
+    $clausule=" k>5 ";
   $set = $db->do_query("select start, d, k, ofs, resid from spt_gap where $clausule order by start");
   echo "# Copyright Tomas Brada, ask on forum about reuse or citation.\n";
   echo "# tp_gaps where $clausule\n";
@@ -25,12 +25,14 @@ function show() {
     if($f==3) {
       echo "{$row->start}: 0 2";
       $a=2;
-      foreach($row->ofs as $d) {
-	$a1+=$d;
+      foreach(explode(' ',$row->ofs) as $d) {
+	if($d==="") continue;
+	$a1=$a+$d;
 	$a=$a1+2;
-	echo " $a1 $a"
+	echo " $a1 $a";
       }
-      echo " [$ix {$row->resid}]\n";
+      echo "\n";
+      //echo "  [$ix {$row->resid}]\n";
     } else
     if($f==4) {
       echo "$ix todo A329164\n";
@@ -39,13 +41,11 @@ function show() {
       echo "$ix todo A329165\n";
     } else
     {
-      echo "$ix {$row->start} {$row->ofs}\n";
+      echo "{$row->start}:{$row->ofs}  [$ix {$row->resid}]\n";
     }
-    $astr=convert_tuple($row->ofs,$row->k);
-    echo "{$row->start}: $astr\n";
-    if($row->id>$lastid) $lastid=$row->id; $rcount++;
+    $ix++;
   }
-  echo "# last = $lastid # count = $rcount\n";
+  echo "# count = ".($ix-1)."\n";
   $set->free();
 }
 
