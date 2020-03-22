@@ -636,7 +636,7 @@ int handle_file_download(const char* query) {
         enum_len[1]
     );
     fprintf(stdout,
-        "Content-type: application/octet-stream\n"
+        "Content-type: text/plain\n"
         "X-brod-wu-id: %s\n"
         "Status: 200 OK\n"
         "Content-length: %lu\n\n",
