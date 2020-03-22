@@ -22,11 +22,27 @@
 /* BROD: db object info
  * in boinc, the filename is authenticator to upload it
  * match by prefix?
- * spt_NAME_C_rAUTH
+ * spt_NAME_C_dAUTH
  * ^--------^ (string point query, point join)
- * spt_NAME_C_dAUTH (d=database)
  * db_ID_rAUTH (integer point query)
  * name: spt_NAME_C.out url: fuh?ID:AUTH
+ * spt_NAME.in
+ * ^------^ (string point query, point join)
+What should happen:
+- file gets uploaded
+- saved to db as a blob
+- saved to file if it is too big
+- the result is marked for validation
+    client_state, validate_state ?
+
+Schema:
+input_file:  wu, data
+result_file: id, res, data, batch, user
+
+calling:
+post: fuh? upload
+get: fuh?spt_NAME.in
+
 */
 
 #include "config.h"
@@ -101,6 +117,31 @@ int return_error(bool transient, const char* message, ...) {
         "Returning error to client %s: %s (%s)\n",
         get_remote_addr(), buf,
         transient?"transient":"permanent"
+    );
+    return 1;
+}
+
+int return_dwnld_error(int code, const char* message, ...) {
+    va_list va;
+    va_start(va, message);
+    char buf[10240];
+
+    vsprintf(buf, message, va);
+    va_end(va);
+
+    fprintf(stdout,
+        "Content-type: text/plain\n"
+        "Status: %d Error\n\n"
+        "<data_server_reply>\n"
+        "    <status>%d</status>\n"
+        "    <message>%s</message>\n"
+        "</data_server_reply>\n",
+        code, code, buf
+    );
+
+    log_messages.printf(MSG_NORMAL,
+        "Returning error to donwload client %s: %s (%d)\n",
+        get_remote_addr(), buf, code
     );
     return 1;
 }
@@ -565,6 +606,49 @@ int handle_get_file_size(char* file_name) {
     return return_success(buf);
 }
 
+int handle_file_download(const char* query) {
+    safe_strcpy(this_filename, query);
+    char* dot = strrchr(this_filename, '.');
+    if(!dot)
+        return return_dwnld_error(400, "Bad Filename");
+    //todo: check size and suffix is .in
+    *dot = 0;
+    char sql[MAX_QUERY_LEN];
+    sprintf(sql, "select r.id, f.data from result r join input_file f on r.id=f.wu where r.name='%s' limit 1", this_filename);
+    int retval=boinc_db.do_query(sql);
+	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
+	if(retval || !enum_res) {
+        log_messages.printf(MSG_CRITICAL,"handle_file_download do_query failed");
+        return return_dwnld_error(500, "DB Query error");
+    }
+	
+    MYSQL_ROW row=mysql_fetch_row(enum_res);
+	if(!row) {
+        log_messages.printf(MSG_CRITICAL,"handle_file_download record for workunit %s not found",this_filename);
+        return return_dwnld_error(404, "File Not Found");
+    }
+    unsigned long *enum_len= mysql_fetch_lengths(enum_res);
+
+    log_messages.printf(MSG_NORMAL,
+        "Starting download of %s R#%s from %s [offset=??, nbytes=%.0f]\n",
+        query, row[0],
+        get_remote_addr(),
+        enum_len[1]
+    );
+    fprintf(stdout,
+        "Content-type: application/octet-stream\n"
+        "X-brod-wu-id: %s\n"
+        "Status: 200 OK\n"
+        "Content-length: %lu\n\n",
+        enum_len[1], row[0]
+    );
+
+    size_t rc = fwrite(row[1], 1, enum_len[1], stdout);
+
+    mysql_free_result(enum_res);
+    return 0;
+}
+
 // always generates an HTML reply
 //
 int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
@@ -575,6 +659,17 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
     double start_time = dtime();
 
     //BROD: db file download hook
+    const char* method= getenv("REQUEST_METHOD");
+    if(0==strcmp(method,"GET")) {
+        const char* query= getenv("QUERY_STRING");
+        if(!query[0])
+            return return_dwnld_error(400, "Missing Filename");
+        return handle_file_download(query);
+    }
+    if(0!=strcmp(method,"POST")) {
+        return return_dwnld_error(400, "Bad request Method");
+    }
+        
 
 #ifdef _USING_FCGI_
     log_messages.set_indent_level(1);

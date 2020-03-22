@@ -1,4 +1,4 @@
-all: sievetest spt generate1 asim1 stuff sample.dat
+all: sievetest spt generate1 asim1 stuff fuh sample.dat
 
 scpn1: scpn1.cpp
 	g++ -g -o $@ -O1 scpn1.cpp -lprimesieve
@@ -27,3 +27,6 @@ sample.dat: stuff
 output.dat: sample.dat spt
 	cp sample.dat input.dat
 	./spt
+
+fuh: file_upload_handler.cpp Makefile
+	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc file_upload_handler.cpp ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a ../boinc/lib/libboinc_crypt.a -lmysqlclient -lpthread -lssl -lcrypto
