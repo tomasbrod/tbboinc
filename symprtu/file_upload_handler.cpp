@@ -370,7 +370,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key) {
     strcpy(xml_signature, "");
     bool found_data = false;
     while (fgets(buf, 256, in)) {
-        log_messages.printf(MSG_DETAIL, "got:%s\n", buf);
+        log_messages.printf(MSG_DEBUG, "got:%s\n", buf);
         if (match_tag(buf, "<file_info>")) continue;
         if (match_tag(buf, "</file_info>")) continue;
         if (match_tag(buf, "<signed_xml>")) continue;
@@ -660,7 +660,7 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
 
     //BROD: db file download hook
     const char* method= getenv("REQUEST_METHOD");
-    log_messages.printf(MSG_DETAIL, "handle_request: method = %s", method);
+    log_messages.printf(MSG_NORMAL, "handle_request: method = %s", method);
     if(0==strcmp(method,"GET")) {
         const char* query= getenv("QUERY_STRING");
         if(!query[0])
@@ -676,7 +676,7 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
     log_messages.set_indent_level(1);
 #endif
     while (fgets(buf, 256, in)) {
-        log_messages.printf(MSG_DETAIL, "handle_request: %s", buf);
+        log_messages.printf(MSG_DEBUG, "handle_request: %s", buf);
         if (parse_int(buf, "<core_client_major_version>", major)) {
             continue;
         } else if (parse_int(buf, "<core_client_minor_version>", minor)) {
