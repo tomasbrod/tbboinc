@@ -614,7 +614,7 @@ int handle_file_download(const char* query) {
     //todo: check size and suffix is .in
     *dot = 0;
     char sql[MAX_QUERY_LEN];
-    sprintf(sql, "select r.id, f.data from result r join input_file f on r.id=f.wu where r.name='%s' limit 1", this_filename);
+    sprintf(sql, "select r.id, f.data from workunit r join input_file f on r.id=f.wu where r.name='%s' limit 1", this_filename);
     int retval=boinc_db.do_query(sql);
 	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
 	if(retval || !enum_res) {
