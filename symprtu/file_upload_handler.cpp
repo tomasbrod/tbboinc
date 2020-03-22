@@ -624,7 +624,7 @@ int handle_file_download(const char* query) {
 	
     MYSQL_ROW row=mysql_fetch_row(enum_res);
 	if(!row) {
-        log_messages.printf(MSG_CRITICAL,"handle_file_download record for workunit %s not found",this_filename);
+        log_messages.printf(MSG_CRITICAL,"handle_file_download record for workunit %s not found\n",this_filename);
         return return_dwnld_error(404, "File Not Found");
     }
     unsigned long *enum_len= mysql_fetch_lengths(enum_res);
