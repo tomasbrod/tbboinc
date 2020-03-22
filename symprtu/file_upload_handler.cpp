@@ -355,9 +355,29 @@ int copy_socket_to_file(FILE* in, char* name, char* path, double offset, double 
     return return_success(0);
 }
 
+
+bool is_valid_result_name(const char* name) {
+    size_t n = strlen(name);
+    for (size_t i=0; i<n; i++) {
+        if (iscntrl(name[i])) {
+            return false;
+        }
+    }
+    if (strstr(name, "..")) {
+        return false;
+    }
+    if (strchr(name, '\'')) {
+        return false;
+    }
+    if (name[0] == '/') {
+        return false;
+    }
+    return true;
+}
+
 // ALWAYS generates an HTML reply
 //
-int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key) {
+int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
     char buf[256], path[MAXPATHLEN], signed_xml[1024];
     char name[256], stemp[256];
     double max_nbytes=-1;
@@ -462,6 +482,60 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key) {
     }
 
     //BROD: db upload hook
+    if(use_db) {
+        char* rpos= strrchr(name, 'r');
+        if(!rpos || rpos==name || rpos[-1]!='_' || !is_valid_result_name(name))
+            return return_error(ERR_PERMANENT, "file_upload_handler: invalid result name");
+        *rpos=0;
+        //find result
+        char sql[MAX_QUERY_LEN];
+        sprintf(sql, "where name='%s' limit 1", name);
+        DB_RESULT result;
+        retval=result.lookup(sql);
+        if(retval==ERR_DB_NOT_FOUND)
+            return return_error(ERR_PERMANENT, "file_upload_handler: result %s not found", name);
+        if(retval)
+            return return_error(ERR_TRANSIENT, "file_upload_handler: result lookup failed");
+        //insert
+        MYSQL_STMT* insert_stmt = 0;
+        void* blob_data = 0;
+        unsigned long bind_data_length = nbytes;
+        blob_data = malloc(bind_data_length);
+        if(!blob_data)
+            return return_error(ERR_TRANSIENT, "file_upload_handler: buffer memory alloc failed");
+        size_t rc = fread(blob_data, 1, bind_data_length, in);
+        if(rc!=bind_data_length) {
+            free(blob_data);
+            return return_error(ERR_TRANSIENT, "file_upload_handler: fread failed %s",strerror(ferror(in)));
+        }
+        insert_stmt = mysql_stmt_init(boinc_db.mysql);
+		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, data=?";
+        MYSQL_BIND bind[] = {
+            {.buffer=&result.id, .buffer_type=MYSQL_TYPE_LONG, 0},
+            {.buffer=&result.workunitid, .buffer_type=MYSQL_TYPE_LONG, 0},
+            {.buffer=&result.batch, .buffer_type=MYSQL_TYPE_LONG, 0},
+            {.buffer=&result.userid, .buffer_type=MYSQL_TYPE_LONG, 0},
+            {.length=&bind_data_length, .buffer=blob_data, .buffer_type=MYSQL_TYPE_BLOB, 0},
+        };
+		if(!insert_stmt
+            || mysql_stmt_prepare(insert_stmt, stmt, sizeof stmt )
+            || mysql_stmt_bind_param(insert_stmt, bind)
+            || mysql_stmt_execute(insert_stmt)
+        ) {
+            mysql_stmt_close(insert_stmt);
+            free(blob_data);
+            return return_error(ERR_TRANSIENT, "file_upload_handler: db error %s",mysql_error(boinc_db.mysql));
+        } else {
+            mysql_stmt_close(insert_stmt);
+            free(blob_data);
+            log_messages.printf(MSG_NORMAL,
+                "Uploaded %s R# %ulB from %s\n",
+                name, result.id, bind_data_length,
+                get_remote_addr()
+            );
+            return return_success(0);
+        }
+    }
 
     retval = dir_hier_path(
         name, config.upload_dir, config.uldl_dir_fanout,
@@ -523,12 +597,16 @@ bool volume_full(char* path) {
 
 // always returns HTML reply
 //
-int handle_get_file_size(char* file_name) {
+int handle_get_file_size(char* file_name, bool use_db) {
     struct stat sbuf;
     char path[MAXPATHLEN], buf[256];
     int retval, pid, fd;
 
     //BROD: db upload hook
+    if(use_db) {
+        //DB files do not support upload resume, always return 0
+        return return_success("<file_size>0</file_size>");
+    }
 
     // TODO: check to ensure path doesn't point somewhere bad
     // Use 64-bit variant
@@ -609,7 +687,7 @@ int handle_get_file_size(char* file_name) {
 int handle_file_download(const char* query) {
     safe_strcpy(this_filename, query);
     char* dot = strrchr(this_filename, '.');
-    if(!dot)
+    if(!dot || !is_valid_result_name(this_filename))
         return return_dwnld_error(400, "Bad Filename");
     //todo: check size and suffix is .in
     *dot = 0;
@@ -630,7 +708,7 @@ int handle_file_download(const char* query) {
     unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 
     log_messages.printf(MSG_NORMAL,
-        "Starting download of %s R#%s from %s [offset=??, nbytes=%d]\n",
+        "Starting download of %s W#%s from %s [offset=??, nbytes=%d]\n",
         query, row[0],
         get_remote_addr(),
         enum_len[1]
@@ -660,9 +738,9 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
 
     //BROD: db file download hook
     const char* method= getenv("REQUEST_METHOD");
+    const char* query= getenv("QUERY_STRING");
     log_messages.printf(MSG_NORMAL, "handle_request: method = %s\n", method);
     if(0==strcmp(method,"GET")) {
-        const char* query= getenv("QUERY_STRING");
         if(!query || !query[0])
             return return_dwnld_error(400, "Missing Filename");
         return handle_file_download(query);
@@ -684,14 +762,14 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
         } else if (parse_int(buf, "<core_client_release>", release)) {
             continue;
         } else if (match_tag(buf, "<file_upload>")) {
-            retval = handle_file_upload(in, key);
+            retval = handle_file_upload(in, key, (query && query[0]=='d'));
             did_something = true;
             break;
         } else if (parse_str(buf, "<get_file_size>", file_name, sizeof(file_name))) {
             if (strstr(file_name, "..")) {
                 return return_error(ERR_PERMANENT, "Bad filename");
             }
-            retval = handle_get_file_size(file_name);
+            retval = handle_get_file_size(file_name, (query && query[0]=='d'));
             did_something = true;
             break;
         } else if (match_tag(buf, "<data_server_request>")) {
