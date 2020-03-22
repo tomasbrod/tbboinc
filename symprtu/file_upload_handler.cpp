@@ -660,6 +660,7 @@ int handle_request(FILE* in, R_RSA_PUBLIC_KEY& key) {
 
     //BROD: db file download hook
     const char* method= getenv("REQUEST_METHOD");
+    log_messages.printf(MSG_DETAIL, "handle_request: method = %s", method);
     if(0==strcmp(method,"GET")) {
         const char* query= getenv("QUERY_STRING");
         if(!query[0])
