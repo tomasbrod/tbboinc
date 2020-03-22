@@ -640,7 +640,7 @@ int handle_file_download(const char* query) {
         "X-brod-wu-id: %s\n"
         "Status: 200 OK\n"
         "Content-length: %lu\n\n",
-        enum_len[1], row[0]
+        row[0], enum_len[1]
     );
 
     size_t rc = fwrite(row[1], 1, enum_len[1], stdout);
