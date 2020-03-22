@@ -630,7 +630,7 @@ int handle_file_download(const char* query) {
     unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 
     log_messages.printf(MSG_NORMAL,
-        "Starting download of %s R#%s from %s [offset=??, nbytes=%.0f]\n",
+        "Starting download of %s R#%s from %s [offset=??, nbytes=%d]\n",
         query, row[0],
         get_remote_addr(),
         enum_len[1]
