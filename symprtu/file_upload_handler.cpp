@@ -908,6 +908,16 @@ int main(int argc, char *argv[]) {
         config.fuh_set_completed_permission &= (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
     }
 
+	retval = boinc_db.open(
+			config.db_name, config.db_host, config.db_user, config.db_passwd
+	);
+	if (retval) {
+			log_messages.printf(MSG_CRITICAL,
+					"boinc_db.open failed: %s\n", boincerror(retval)
+			);
+			exit(1);
+	}
+
 #ifdef _USING_FCGI_
     log_messages.flush();
     while(FCGI_Accept() >= 0) {
