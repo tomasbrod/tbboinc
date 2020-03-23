@@ -529,7 +529,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             mysql_stmt_close(insert_stmt);
             free(blob_data);
             log_messages.printf(MSG_NORMAL,
-                "Uploaded %s R# %ulB from %s\n",
+                "Uploaded %s R#%ul to DB size=%ul from %s\n",
                 name, result.id, bind_data_length,
                 get_remote_addr()
             );
