@@ -499,6 +499,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             return return_error(ERR_PERMANENT, "file_upload_handler: result %s not found", name);
         if(retval)
             return return_error(ERR_TRANSIENT, "file_upload_handler: result lookup failed");
+        //TODO check result state
         //insert
         MYSQL_STMT* insert_stmt = 0;
         void* blob_data = 0;
@@ -518,12 +519,13 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             return return_error(ERR_TRANSIENT, "file_upload_handler: MD5 mismatch");
         }
         insert_stmt = mysql_stmt_init(boinc_db.mysql);
-		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, data=?";
+		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, app=?, data=?";
         MYSQL_BIND bind[] = {
             {.buffer=&result.id, .buffer_type=MYSQL_TYPE_LONG, 0},
             {.buffer=&result.workunitid, .buffer_type=MYSQL_TYPE_LONG, 0},
             {.buffer=&result.batch, .buffer_type=MYSQL_TYPE_LONG, 0},
             {.buffer=&result.userid, .buffer_type=MYSQL_TYPE_LONG, 0},
+            {.buffer=&result.appid, .buffer_type=MYSQL_TYPE_LONG, 0},
             {.length=&bind_data_length, .buffer=blob_data, .buffer_type=MYSQL_TYPE_BLOB, 0},
         };
 		if(!insert_stmt
@@ -542,6 +544,8 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
                 name, result.id, bind_data_length,
                 get_remote_addr()
             );
+            //TODO: update result state - mark for validation
+            //How? Which field?
             return return_success(0);
         }
     }
