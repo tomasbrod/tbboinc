@@ -486,7 +486,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
         char* rpos= strrchr(name, 'r');
         if(!rpos || rpos==name || rpos[-1]!='_' || !is_valid_result_name(name))
             return return_error(ERR_PERMANENT, "file_upload_handler: invalid result name");
-        *rpos=0;
+        rpos[-1]=0;
         //find result
         char sql[MAX_QUERY_LEN];
         sprintf(sql, "where name='%s' limit 1", name);
