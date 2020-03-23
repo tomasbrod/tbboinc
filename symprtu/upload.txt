@@ -1,0 +1,22 @@
+<data_server_request>
+  <!--command>curl -i -X POST https://boinc.tbrada.eu/tbrada_cgi/file_upload_handler?d --data-binary @./upload.txt</command-->
+  <core_client_major_version>1</core_client_major_version>
+  <core_client_minor_version>1</core_client_minor_version>
+  <core_client_release>1</core_client_release>
+  <file_upload>
+    <file_info>
+      <name>tot5_51c_Si2Uz93t37Xj7JUyM2snNnkZb_2_r770595304_0</name>
+      <xml_signature>
+943321d092bc209455b26ea3afc65a0aa1ca118e7625647ff3cedfc92c6cd96e
+b8ed2d6f98f43932498197251ae16fef3739fc0ab5e99b4d5948ba1297d3b4db
+085b09865b4ccd41e5b5695aed9f69bbf949d9b03f63754e51d820d8fc74a5ba
+994014a5f59667df48de29ae286a2a35a0c30a4cfdf7eb6fafbbf08486d4c664
+.
+</xml_signature>
+      <max_nbytes>128000000.000000</max_nbytes>
+    </file_info>
+    <nbytes>13</nbytes>
+    <md5_cksum>8ddd8be4b179a529afa5f2ffae4b9858</md5_cksum>
+    <offset>0</offset>
+<data>
+Hello World!
