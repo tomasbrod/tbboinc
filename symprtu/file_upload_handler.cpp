@@ -483,6 +483,8 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
 
     //BROD: db upload hook
     if(use_db) {
+        if(offset)
+            return return_error(ERR_PERMANENT, "file_upload_handler: DB upload with size not supported");
         char* rpos= strrchr(name, 'r');
         if(!rpos || rpos==name || rpos[-1]!='_' || !is_valid_result_name(name))
             return return_error(ERR_PERMANENT, "file_upload_handler: invalid result name");
@@ -529,7 +531,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             mysql_stmt_close(insert_stmt);
             free(blob_data);
             log_messages.printf(MSG_NORMAL,
-                "Uploaded %s R#%ul to DB size=%ul from %s\n",
+                "Uploaded %s R#%lu to DB size=%lu from %s\n",
                 name, result.id, bind_data_length,
                 get_remote_addr()
             );
