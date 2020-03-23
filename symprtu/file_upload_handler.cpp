@@ -484,7 +484,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
     //BROD: db upload hook
     if(use_db) {
         if(offset)
-            return return_error(ERR_PERMANENT, "file_upload_handler: DB upload with size not supported");
+            return return_error(ERR_PERMANENT, "file_upload_handler: DB upload with offset not supported");
         char* rpos= strrchr(name, 'r');
         if(!rpos || rpos==name || rpos[-1]!='_' || !is_valid_result_name(name))
             return return_error(ERR_PERMANENT, "file_upload_handler: invalid result name");
