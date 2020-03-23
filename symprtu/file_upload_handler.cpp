@@ -75,6 +75,7 @@ get: fuh?spt_NAME.in
 #include "sched_config.h"
 #include "sched_msgs.h"
 #include "sched_util.h"
+#include "md5_file.h"
 
 using std::string;
 
@@ -379,7 +380,7 @@ bool is_valid_result_name(const char* name) {
 //
 int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
     char buf[256], path[MAXPATHLEN], signed_xml[1024];
-    char name[256], stemp[256];
+    char name[256], stemp[256], upload_md5[256];
     double max_nbytes=-1;
     char xml_signature[1024];
     int retval;
@@ -398,7 +399,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
         if (parse_bool(buf, "generated_locally", btemp)) continue;
         if (parse_bool(buf, "upload_when_present", btemp)) continue;
         if (parse_str(buf, "<url>", stemp, sizeof(stemp))) continue;
-        if (parse_str(buf, "<md5_cksum>", stemp, sizeof(stemp))) continue;
+        if (parse_str(buf, "<md5_cksum>", upload_md5, sizeof(upload_md5))) continue;
         if (match_tag(buf, "<xml_signature>")) {
             copy_element_contents(
                 in, "</xml_signature>", xml_signature, sizeof(xml_signature)
@@ -502,6 +503,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
         MYSQL_STMT* insert_stmt = 0;
         void* blob_data = 0;
         unsigned long bind_data_length = nbytes;
+        char md5[256];
         blob_data = malloc(bind_data_length);
         if(!blob_data)
             return return_error(ERR_TRANSIENT, "file_upload_handler: buffer memory alloc failed");
@@ -509,6 +511,11 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
         if(rc!=bind_data_length) {
             free(blob_data);
             return return_error(ERR_TRANSIENT, "file_upload_handler: fread failed %s",strerror(ferror(in)));
+        }
+        md5_block((const unsigned char*)blob_data, bind_data_length, md5);
+        if(0!=strcmp(upload_md5, md5)) {
+            free(blob_data);
+            return return_error(ERR_TRANSIENT, "file_upload_handler: MD5 mismatch");
         }
         insert_stmt = mysql_stmt_init(boinc_db.mysql);
 		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, data=?";
