@@ -204,6 +204,10 @@ class CDynamicStream
 			wend= base + res;
 		}
 	}
+	~CDynamicStream()
+	{
+		free(storage);
+	}
 };
 
 #ifdef TEST

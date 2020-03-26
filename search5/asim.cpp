@@ -23,6 +23,7 @@
 #include "sched_util.h"
 #include "validate_util.h"
 #include "credit.h"
+#include "md5_file.h"
 
 #include "odlkcommon/namechdlk10.cpp"
 #include "odlkcommon/kvio.cpp"
@@ -78,6 +79,7 @@ void initz() {
 	}
 }
 
+#if 1
 int read_output_file(RESULT const& result, CDynamicStream& buf) {
     char path[MAXPATHLEN];
 		path[0]=0;
@@ -182,6 +184,28 @@ void readFile(const std::string& fn, CDynamicStream& buf) {
 		buf.setpos(0);
 		fclose(f);
 }
+#endif
+
+int read_output_file_db(RESULT const& result, CDynamicStream& buf) {
+	char sql[MAX_QUERY_LEN];
+	sprintf(sql, "select id, data from result_file where res='%lu' order by id desc limit 1", result.id);
+	int retval=boinc_db.do_query(sql);
+	if(retval) return retval;
+	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
+	if(!enum_res) return -1;
+	MYSQL_ROW row=mysql_fetch_row(enum_res);
+	if (row == 0) {
+		mysql_free_result(enum_res);
+		return ERR_DB_NOT_FOUND;
+	}
+	unsigned long *enum_len= mysql_fetch_lengths(enum_res);
+	buf.setpos(0);
+	buf.reserve(enum_len[1]);
+	buf.write(row[1], enum_len[1]);
+	buf.setpos(0);
+	mysql_free_result(enum_res);
+	return 0;
+}
 
 void validate_result_output(State& rstate) {
 	return; //todo
@@ -197,12 +221,17 @@ const float
 void process_result(DB_RESULT& result) {
 	// Read the result file
 	CDynamicStream buf;
-	retval=read_output_file(result,buf);
-	if(retval==ERR_XML_PARSE) {
-		retval=read_output_file_doc_in(result,buf);
+	retval=read_output_file_db(result,buf);
+	#if 1
+	if(retval==ERR_DB_NOT_FOUND) {
+		retval=read_output_file(result,buf);
+		if(retval==ERR_XML_PARSE) {
+			retval=read_output_file_doc_in(result,buf);
+		}
 	}
+	#endif
 	/* edit: skip processing if file error */
-	if(retval && 0) {
+	if(retval && 1) {
 		cerr<<"error: Can't read the output file. "<<result.name<<endl;
 		return;
 	}

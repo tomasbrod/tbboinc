@@ -21,6 +21,7 @@
 #include "error_numbers.h"
 #include "sched_config.h"
 #include "sched_util.h"
+#include "md5_file.h"
 
 #include "odlkcommon/namechdlk10.cpp"
 #include "odlkcommon/kvio.cpp"
