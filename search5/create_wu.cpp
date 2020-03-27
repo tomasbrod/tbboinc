@@ -48,7 +48,7 @@ int create_work3(
     snprintf(wu.xml_doc, sizeof(wu.xml_doc),
     "<file_info>\n<name>%s.in</name>\n"
     "<url>https://boinc.tbrada.eu/tbrada_cgi/fuh?%s.in</url>\n"
-    "<md5_cksum>%s</md5_cksum>\n<nbytes>%lu</nbytes>\n</file_info>"
+    "<md5_cksum>%s</md5_cksum>\n<nbytes>%lu</nbytes>\n</file_info>\n"
     "<workunit>\n<file_ref>\n<file_name>%s.in</file_name>\n"
     "<open_name>input.dat</open_name>\n</file_ref>\n</workunit>\n"
     , wu.name, wu.name

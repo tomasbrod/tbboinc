@@ -200,7 +200,7 @@ int read_output_file_db(RESULT const& result, CDynamicStream& buf) {
 	}
 	unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 	buf.setpos(0);
-	buf.reserve(enum_len[1]);
+	//buf.reserve(enum_len[1]);
 	buf.write(row[1], enum_len[1]);
 	buf.setpos(0);
 	mysql_free_result(enum_res);
