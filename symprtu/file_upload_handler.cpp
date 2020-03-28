@@ -50,6 +50,17 @@ changes:
     - asimilator: to read the output from db (like read_output_file_db)
     - work gen: pass buffer to create_work3
     - boinc binaries modified: transitioner
+
+int create_work3(
+    DB_WORKUNIT& wu,
+    const char* result_template_filename,
+    SCHED_CONFIG& config_loc,
+    CStream& input_data,
+    //extra stuff like: cmdline, extra inputs
+);
+* maybe pass the info to transitioner as extra flag in output template
+* instead of input template
+
 */
 
 #include "config.h"
