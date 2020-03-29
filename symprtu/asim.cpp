@@ -60,7 +60,7 @@ class CFileStream
 {
 	public:
 	using CDynamicStream::CDynamicStream;
-	CFileStream( const char* name )
+	void readFile( const char* name )
 	{
 		FILE* f = boinc_fopen(name, "r");
 		if(!f) {
@@ -359,11 +359,11 @@ void process_result(DB_RESULT& result) {
 	} catch (EStreamOutOufBounds& e){ throw EInvalid("can't deserialize output file"); }
 	catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
 
-	CDynamicStream inbuf;
+	CFileStream inbuf;
 	try {
 		std::stringstream fn;
 		fn<<config.download_dir<<"/"<<wu.name<<".in";
-		inbuf = CFileStream( fn.str().c_str() );
+		inbuf.readFile( fn.str().c_str() );
 	} catch (EStreamOutOufBounds& e){ throw EDatabase("can't read input file"); }
 
 	result_validate(result, inbuf, rstate);
