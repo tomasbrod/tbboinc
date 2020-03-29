@@ -25,6 +25,7 @@ using std::endl;
 #include "sched_util.h"
 #include "validate_util.h"
 #include "credit.h"
+#include "md5_file.h"
 
 #include "wio.cpp"
 
@@ -45,6 +46,8 @@ struct EBoincApi : std::exception {
 struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 struct EInvalid	: std::runtime_error { using runtime_error::runtime_error; };
 static int retval;
+
+#include "../bocom/Wiodb.cpp"
 
 class CFileStream
 	: public CDynamicStream
@@ -85,10 +88,6 @@ class CFileStream
 };
 
 DB_APP spt_app;
-const char spt_template [] =
-"<input_template><file_info><number>0</number></file_info><workunit><file_ref>"
-"<file_number>0</file_number><open_name>input.dat</open_name></file_ref>"
-"</workunit></input_template>\n";
 
 
 void initz() {
@@ -172,20 +171,11 @@ void submit_wu_in(uint64_t start, uint64_t end, int batch)
 	wuname<<"spt_"<<wu.batch<<"_"<<inp.start;
 	std::cout<<" WU "<<wuname.str()<<" "<<inp.end<<endl;
 	strcpy(wu.name, wuname.str().c_str());
-	CFileStream buf;
-	inp.writeInput(buf);
-	std::stringstream fninp;
-	fninp<<config.download_dir<<"/"<<wuname.str()<<".in";
-	try{
-		buf.writeFile(fninp.str().c_str());
-	}
-	catch(std::runtime_error& e) {
-		throw EDatabase("Unable to write next input file");
-	}
-	vector<INFILE_DESC> infile_specs{1};
-	infile_specs[0].is_remote = false;
-	strcpy(infile_specs[0].name, (wuname.str()+".in").c_str());
-	retval= create_work2(wu, spt_template,"templates/spt_out",0,infile_specs,config,0,0,0);
+	CDynamicStream input_buf;
+	inp.writeInput(input_buf);
+
+	retval= create_work3(wu, "templates/spt_out", config, input_buf);
+
 	if(retval) throw EDatabase("create_work2 failed");
 }
 
