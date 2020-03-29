@@ -14,7 +14,7 @@
 #include "family_mar/prov_blk_trans.h"
 
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 #include "config.h"
 #include "backend_lib.h"
@@ -32,6 +32,7 @@ struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 struct EInvalid	: std::runtime_error { using runtime_error::runtime_error; };
 static int retval;
 
+#include "bocom/Wiodb.cpp"
 #include "wio.cpp"
 #include "gener.cpp"
 #include "create_wu.cpp"
@@ -80,50 +81,6 @@ void initz() {
 }
 
 #if 1
-int read_output_file(RESULT const& result, CDynamicStream& buf) {
-    char path[MAXPATHLEN];
-		path[0]=0;
-    string name;
-		double usize = 0;
-		double usize_max = 0;
-    MIOFILE mf;
-    mf.init_buf_read(result.xml_doc_out);
-    XML_PARSER xp(&mf);
-    while (!xp.get_tag()) {
-			if (!xp.is_tag) continue;
-			if (xp.match_tag("file_info")) {
-				while(!xp.get_tag()) {
-					if (!xp.is_tag) continue;
-					if(xp.parse_string("name",name)) continue;
-					if(xp.parse_double("nbytes",usize)) continue;
-					if(xp.parse_double("max_nbytes",usize_max)) continue;
-					if (xp.match_tag("/file_info")) {
-						if(!name[0] || !usize) {
-							return ERR_XML_PARSE;
-						}
-						dir_hier_path(
-							name.c_str(), config.upload_dir,
-							config.uldl_dir_fanout, path
-						);
-
-						FILE* f = boinc_fopen(path, "r");
-						if(!f && ENOENT==errno) return ERR_FILE_MISSING;
-						if(!f) return ERR_READ;
-						struct stat stat_buf;
-						if(fstat(fileno(f), &stat_buf)<0) return ERR_READ;
-						buf.setpos(0);
-						buf.reserve(stat_buf.st_size);
-						if( fread(buf.getbase(), 1, stat_buf.st_size, f) !=stat_buf.st_size)
-							return ERR_READ;
-						buf.setpos(0);
-						fclose(f);
-						return 0;
-					}
-				}
-			}
-		}
-    return ERR_XML_PARSE;
-}
 
 int read_output_file_doc_in(RESULT const& result, CDynamicStream& buf) {
     char path[MAXPATHLEN];
@@ -185,27 +142,6 @@ void readFile(const std::string& fn, CDynamicStream& buf) {
 		fclose(f);
 }
 #endif
-
-int read_output_file_db(RESULT const& result, CDynamicStream& buf) {
-	char sql[MAX_QUERY_LEN];
-	sprintf(sql, "select id, data from result_file where res='%lu' order by id desc limit 1", result.id);
-	int retval=boinc_db.do_query(sql);
-	if(retval) return retval;
-	MYSQL_RES* enum_res= mysql_use_result(boinc_db.mysql);
-	if(!enum_res) return -1;
-	MYSQL_ROW row=mysql_fetch_row(enum_res);
-	if (row == 0) {
-		mysql_free_result(enum_res);
-		return ERR_DB_NOT_FOUND;
-	}
-	unsigned long *enum_len= mysql_fetch_lengths(enum_res);
-	buf.setpos(0);
-	//buf.reserve(enum_len[1]);
-	buf.write(row[1], enum_len[1]);
-	buf.setpos(0);
-	mysql_free_result(enum_res);
-	return 0;
-}
 
 void validate_result_output(State& rstate) {
 	return; //todo
@@ -368,27 +304,6 @@ void process_result(DB_RESULT& result) {
 		segment.prio_adjust = (rstate.nkf<=rstate.nsn) * 1;
 		gen_padls_wu(segment, wu_gen_cfg );
 	}
-}
-
-void set_result_invalid(DB_RESULT& result) {
-	DB_WORKUNIT wu;
-	if(wu.lookup_id(result.workunitid)) throw EDatabase("Workunit not found");
-	DB_HOST_APP_VERSION hav, hav0;
-	retval = hav_lookup(hav0, result.hostid,
-			generalized_app_version_id(result.app_version_id, result.appid)
-	);
-	hav= hav0;
-	hav.consecutive_valid = 0;
-	if (hav.max_jobs_per_day > config.daily_result_quota) {
-			hav.max_jobs_per_day--;
-	}
-	result.validate_state=VALIDATE_STATE_INVALID;
-	result.outcome=6;
-	wu.transition_time = time(0);
-	//result.file_delete_state=FILE_DELETE_READY; - keep for analysis
-	if(result.update()) throw EDatabase("Result update error");
-	if(wu.update()) throw EDatabase("Workunit update error");
-	if (hav.host_id && hav.update_validator(hav0)) throw EDatabase("Host-App-Version update error");
 }
 
 int main(int argc, char** argv) {

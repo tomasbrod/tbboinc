@@ -14,7 +14,7 @@
 #include "family_mar/prov_blk_trans.h"
 
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 #include "config.h"
 #include "backend_lib.h"
@@ -22,6 +22,7 @@
 #include "sched_config.h"
 #include "sched_util.h"
 #include "md5_file.h"
+#include "credit.h"
 
 #include "odlkcommon/namechdlk10.cpp"
 #include "odlkcommon/kvio.cpp"
@@ -30,6 +31,7 @@ struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 struct EInvalid	: std::runtime_error { using runtime_error::runtime_error; };
 static int retval;
 
+#include "bocom/Wiodb.cpp"
 #include "wio.cpp"
 #include "gener.cpp"
 #include "create_wu.cpp"

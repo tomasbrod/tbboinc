@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 using std::vector;
 using std::cerr;
@@ -26,6 +26,7 @@ using std::string;
 #include "sched_util.h"
 #include "validate_util.h"
 #include "credit.h"
+#include "md5_file.h"
 #include <mysql.h>
 
 #include "wio.cpp"
@@ -51,6 +52,8 @@ struct EBoincApi : std::exception {
 struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 struct EInvalid	: std::runtime_error { using runtime_error::runtime_error; };
 static int retval;
+
+#include "bocom/Wiodb.cpp"
 
 class CFileStream
 	: public CDynamicStream
@@ -92,7 +95,7 @@ class CFileStream
 
 DB_APP spt_app;
 DB_APP stpt_app;
-MYSQL_STMT* spt_result_stmt;
+//MYSQL_STMT* spt_result_stmt;
 std::vector<long> primes_small;
 unsigned long spt_counters[3][64];
 
@@ -122,106 +125,20 @@ void initz() {
 		std::cerr<<"can't find app stpt\n";
 		exit(4);
 	}
-	
+
+	#ifdef ENABLE_SPT_RESULT_INSERT
 	{
 		spt_result_stmt = mysql_stmt_init(boinc_db.mysql);
 		char stmt[] = "insert ignore into spt_result SET id=?, input=?, output=?, batch=?, uid=?";
 		if(mysql_stmt_prepare(spt_result_stmt, stmt, sizeof stmt ))
 			throw EDatabase("spt_result insert prepare");
 	}
+	#endif
 
   primesieve::generate_primes(1600, &primes_small);
   cerr<<"Primes: "<<primes_small.size()<<" ^"<<primes_small.back()<<endl;
 
   memset(spt_counters, 0, sizeof spt_counters);
-}
-
-int read_output_file(RESULT const& result, CDynamicStream& buf) {
-    char path[MAXPATHLEN];
-		path[0]=0;
-    string name;
-		double usize = 0;
-		double usize_max = 0;
-    MIOFILE mf;
-    mf.init_buf_read(result.xml_doc_out);
-    XML_PARSER xp(&mf);
-    while (!xp.get_tag()) {
-			if (!xp.is_tag) continue;
-			if (xp.match_tag("file_info")) {
-				while(!xp.get_tag()) {
-					if (!xp.is_tag) continue;
-					if(xp.parse_string("name",name)) continue;
-					if(xp.parse_double("nbytes",usize)) continue;
-					if(xp.parse_double("max_nbytes",usize_max)) continue;
-					if (xp.match_tag("/file_info")) {
-						if(!name[0] || !usize) {
-							return ERR_XML_PARSE;
-						}
-						dir_hier_path(
-							name.c_str(), config.upload_dir,
-							config.uldl_dir_fanout, path
-						);
-
-						FILE* f = boinc_fopen(path, "r");
-						if(!f && ENOENT==errno) return ERR_FILE_MISSING;
-						if(!f) return ERR_READ;
-						struct stat stat_buf;
-						if(fstat(fileno(f), &stat_buf)<0) return ERR_READ;
-						buf.setpos(0);
-						buf.reserve(stat_buf.st_size);
-						if( fread(buf.getbase(), 1, stat_buf.st_size, f) !=stat_buf.st_size)
-							return ERR_READ;
-						buf.setpos(0);
-						fclose(f);
-						return 0;
-					}
-				}
-			}
-		}
-    return ERR_XML_PARSE;
-}
-
-int read_output_file_doc_in(RESULT const& result, CDynamicStream& buf) {
-    char path[MAXPATHLEN];
-		path[0]=0;
-    string name;
-		double usize = 0;
-		double usize_max = 0;
-    MIOFILE mf;
-    mf.init_buf_read(result.xml_doc_in);
-    XML_PARSER xp(&mf);
-    while (!xp.get_tag()) {
-			if (!xp.is_tag) continue;
-			if (xp.match_tag("file_info")) {
-				while(!xp.get_tag()) {
-					if (!xp.is_tag) continue;
-					if(xp.parse_string("name",name)) continue;
-					if (xp.match_tag("/file_info")) {
-						if(!name[0]) {
-							return ERR_XML_PARSE;
-						}
-						dir_hier_path(
-							name.c_str(), config.upload_dir,
-							config.uldl_dir_fanout, path
-						);
-
-						FILE* f = boinc_fopen(path, "r");
-						if(!f && ENOENT==errno) return ERR_FILE_MISSING;
-						if(!f) return ERR_READ;
-						struct stat stat_buf;
-						if(fstat(fileno(f), &stat_buf)<0) return ERR_READ;
-						buf.setpos(0);
-						buf.reserve(stat_buf.st_size);
-						if( fread(buf.getbase(), 1, stat_buf.st_size, f) !=stat_buf.st_size)
-							return ERR_READ;
-						buf.setpos(0);
-						fclose(f);
-						return 0;
-					}
-				}
-			}
-		}
-    return ERR_XML_PARSE;
 }
 
 const float credit_m= 2.3148E-12* 15;
@@ -425,9 +342,9 @@ void process_result(DB_RESULT& result) {
 	if(wu.lookup_id(result.workunitid)) throw EDatabase("Workunit not found");
 	// Read the result file
 	CDynamicStream buf;
-	retval=read_output_file(result,buf);
+	retval=read_output_file_db(result,buf);
 	if(retval==ERR_XML_PARSE) {
-		retval=read_output_file_doc_in(result,buf);
+		retval=read_output_file(result,buf);
 	}
 	/* edit: skip processing if file error */
 	if(retval && 0) {
@@ -452,6 +369,7 @@ void process_result(DB_RESULT& result) {
 	result_validate(result, inbuf, rstate);
 
 	/* Insert into result db */
+	#ifdef ENABLE_SPT_RESULT_INSERT
 	unsigned long bind_2_length = inbuf.length();
 	unsigned long bind_3_length = buf.length();
 	MYSQL_BIND bind[] = {
@@ -465,6 +383,7 @@ void process_result(DB_RESULT& result) {
 		throw EDatabase("spt_result insert bind");
 	if(mysql_stmt_execute(spt_result_stmt))
 		throw EDatabase("spt_result insert");
+	#endif
 
 	result_insert(result, rstate);
 
@@ -518,28 +437,6 @@ void process_result(DB_RESULT& result) {
 		wu.canonical_resultid = result.id;
 		wu.canonical_credit = result.granted_credit;
 	}
-	if(wu.update()) throw EDatabase("Workunit update error");
-	if (hav.host_id && hav.update_validator(hav0)) throw EDatabase("Host-App-Version update error");
-}
-
-void set_result_invalid(DB_RESULT& result) {
-	DB_WORKUNIT wu;
-	if(wu.lookup_id(result.workunitid)) throw EDatabase("Workunit not found");
-	DB_HOST_APP_VERSION hav, hav0;
-	retval = hav_lookup(hav0, result.hostid,
-			generalized_app_version_id(result.app_version_id, result.appid)
-	);
-	hav= hav0;
-	hav.consecutive_valid = 0;
-	if (hav.max_jobs_per_day > config.daily_result_quota) {
-			hav.max_jobs_per_day--;
-	}
-	//TODO: reset workunit transition time
-	result.validate_state=VALIDATE_STATE_INVALID;
-	result.outcome=6;
-	wu.transition_time = time(0);
-	//result.file_delete_state=FILE_DELETE_READY; - keep for analysis
-	if(result.update()) throw EDatabase("Result update error");
 	if(wu.update()) throw EDatabase("Workunit update error");
 	if (hav.host_id && hav.update_validator(hav0)) throw EDatabase("Host-App-Version update error");
 }

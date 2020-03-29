@@ -14,7 +14,7 @@
 #include "family_mar/prov_blk_trans.h"
 
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 #include "config.h"
 #include "backend_lib.h"

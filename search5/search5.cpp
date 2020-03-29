@@ -11,7 +11,7 @@
 #include "odlkcommon/namechdlk10.h"
 #include "family_mar/prov_blk_trans.h"
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 #include "odlkcommon/namechdlk10.cpp"
 #include "odlkcommon/kvio.cpp"
@@ -23,8 +23,6 @@ using std::endl;
 
 #include "wio.cpp"
 #include "gener.cpp"
-
-struct EFileNotFound	: std::exception { const char * what () const noexcept {return "File Not Found";} };
 
 void writeAtomFile(const char* fn, const CStream& buf, bool resolv=false) {
 	if(resolv) {

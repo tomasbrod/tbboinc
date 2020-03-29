@@ -9,7 +9,7 @@
 
 #include "odlkcommon/common.h"
 #include "odlkcommon/namechdlk10.h"
-#include "Stream.cpp"
+#include "bocom/Stream.cpp"
 
 #include "odlkcommon/namechdlk10.cpp"
 #include "odlkcommon/kvio.cpp"

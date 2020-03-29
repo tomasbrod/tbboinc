@@ -1,21 +1,21 @@
 all: search mksample show gensegments genwu asim cleaner
 
-search: kan_hash.o kanonizator.o prov_blk_trans.o search5.cpp Stream.cpp wio.cpp gener.cpp Makefile
+search: kan_hash.o kanonizator.o prov_blk_trans.o search5.cpp ../bocom/Stream.cpp wio.cpp gener.cpp Makefile
 	g++ -o $@ -O3 -static -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc search5.cpp kan_hash.o kanonizator.o prov_blk_trans.o ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a -lpthread
 
-show: show.cpp Stream.cpp wio.cpp Makefile
+show: show.cpp ../bocom/Stream.cpp wio.cpp Makefile
 	g++ -o $@ -g -O0 -I .. show.cpp
 
-mksample: mksample.cpp Stream.cpp wio.cpp Makefile
+mksample: mksample.cpp ../bocom/Stream.cpp wio.cpp Makefile
 	g++ -o $@ -g -O0 -I .. mksample.cpp
 
-gensegments: gensegments.cpp Stream.cpp wio.cpp Makefile
+gensegments: gensegments.cpp ../bocom/Stream.cpp wio.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc gensegments.cpp ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a -lmysqlclient -lpthread
 
-genwu: genwu.cpp Stream.cpp wio.cpp create_wu.cpp Makefile
+genwu: genwu.cpp ../bocom/Stream.cpp wio.cpp create_wu.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc genwu.cpp ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a ../boinc/lib/libboinc_crypt.a -lmysqlclient -lpthread -lssl -lcrypto
 
-asim: asim.cpp Stream.cpp wio.cpp create_wu.cpp Makefile
+asim: asim.cpp ../bocom/Stream.cpp wio.cpp create_wu.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc asim.cpp ../boinc/sched/validate_util.o ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a ../boinc/lib/libboinc_crypt.a -lmysqlclient -lpthread -lssl -lcrypto
 
 cleaner: cleaner.cpp Makefile

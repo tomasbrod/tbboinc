@@ -12,7 +12,7 @@
 
 
 #include "boinc_api.h"
-#include "Stream.cpp"
+#include "../bocom/Stream.cpp"
 
 using std::vector;
 using std::cerr;
