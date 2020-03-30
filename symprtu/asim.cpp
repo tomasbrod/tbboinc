@@ -360,11 +360,13 @@ void process_result(DB_RESULT& result) {
 	catch (std::length_error& e){ throw EInvalid("can't deserialize output file (bad vector length)"); }
 
 	CFileStream inbuf;
+	#ifdef ENABLE_SPT_RESULT_INSERT
 	try {
 		std::stringstream fn;
 		fn<<config.download_dir<<"/"<<wu.name<<".in";
 		inbuf.readFile( fn.str().c_str() );
 	} catch (EStreamOutOufBounds& e){ throw EDatabase("can't read input file"); }
+	#endif
 
 	result_validate(result, inbuf, rstate);
 
