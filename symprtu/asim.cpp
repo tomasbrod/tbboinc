@@ -407,6 +407,10 @@ void process_result(DB_RESULT& result) {
 	qr=std::stringstream();
 	if(host.lookup_id(result.hostid)) throw EDatabase("Host not found");
 	//is_valid
+	result.server_state=RESULT_SERVER_STATE_OVER;
+	result.outcome=RESULT_OUTCOME_SUCCESS;
+	result.validate_state=VALIDATE_STATE_VALID;
+	result.file_delete_state=FILE_DELETE_READY;
 	double turnaround = result.received_time - result.sent_time;
 	compute_avg_turnaround(host, turnaround);
 	DB_HOST_APP_VERSION hav,hav0;
@@ -417,8 +421,6 @@ void process_result(DB_RESULT& result) {
 	hav.max_jobs_per_day++;
 	hav.consecutive_valid++;
 	//grant_credit
-	result.validate_state=VALIDATE_STATE_VALID;
-	result.file_delete_state=FILE_DELETE_READY;
 	if(result.granted_credit==0) {
 		result.granted_credit = credit;
 		grant_credit(host, result.sent_time, result.granted_credit);
