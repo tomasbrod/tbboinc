@@ -538,6 +538,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             free(blob_data);
             return return_error(ERR_TRANSIENT, "file_upload_handler: MD5 mismatch");
         }
+
         insert_stmt = mysql_stmt_init(boinc_db.mysql);
 		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, app=?, data=?";
         MYSQL_BIND bind[] = {
@@ -556,18 +557,24 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             mysql_stmt_close(insert_stmt);
             free(blob_data);
             return return_error(ERR_TRANSIENT, "file_upload_handler: db error %s",mysql_error(boinc_db.mysql));
-        } else {
-            mysql_stmt_close(insert_stmt);
-            free(blob_data);
-            log_messages.printf(MSG_NORMAL,
-                "Uploaded %s R#%lu to DB size=%lu from %s\n",
-                name, result.id, bind_data_length,
-                get_remote_addr()
-            );
-            //TODO: update result state - mark for validation
-            //How? Which field?
-            return return_success(0);
         }
+        mysql_stmt_close(insert_stmt);
+        free(blob_data);
+
+        //result.client_state= RESULT_FILES_DOWNLOADED;
+        //result.validate_state= VALIDATE_STATE_UPLOADED;
+        sprintf(sql, "update result set validate_state= 9 where id=%lu", result.id);
+        retval = boinc_db.do_query(sql);
+        if(retval) log_messages.printf(MSG_WARNING,
+                      "Result R#%lu validate_state update failed (%d)\n",
+                      result.id, retval );
+
+        log_messages.printf(MSG_NORMAL,
+            "Uploaded %s R#%lu to DB size=%lu from %s\n",
+            name, result.id, bind_data_length,
+            get_remote_addr()
+        );
+        return return_success(0);
     }
 
     retval = dir_hier_path(
