@@ -43,23 +43,36 @@ calling:
 post: fuh? upload
 get: fuh?spt_NAME.in
 
-changes:
-    - create_result: change the upload url (based on tag in wu.doc_in)
-    - create_work2: generate custom doc_in (with tag for transitioner)
-    - somewhere insert buffer file into db (in create_work2)
-    - asimilator: to read the output from db (like read_output_file_db)
-    - work gen: pass buffer to create_work3
-    - boinc binaries modified: transitioner
+Flag for validator/asimilator
+* server_state: constant 4
+* outcome: 0
+* client_state: 0(new) -> 2(running)
+* validate_state: 0(init) -> 9(uploaded)
 
-int create_work3(
-    DB_WORKUNIT& wu,
-    const char* result_template_filename,
-    SCHED_CONFIG& config_loc,
-    CStream& input_data,
-    //extra stuff like: cmdline, extra inputs
-);
-* maybe pass the info to transitioner as extra flag in output template
-* instead of input template
+New validate_state 9(uploaded) -
+* assigned bu fuh to trigger validator
+
+Better states:
+* inactive
+* unsent
+* sent
+* received
+* success
+* no_reply
+* could_not_send
+* download_error
+* upload_error
+* computation_error
+* invalid
+* too_late
+* didnt_need
+* client_abort
+* server_abort
+* inconclusive
+* wu_error
+
+Validation Pending flag.
+
 
 */
 
