@@ -43,23 +43,36 @@ calling:
 post: fuh? upload
 get: fuh?spt_NAME.in
 
-changes:
-    - create_result: change the upload url (based on tag in wu.doc_in)
-    - create_work2: generate custom doc_in (with tag for transitioner)
-    - somewhere insert buffer file into db (in create_work2)
-    - asimilator: to read the output from db (like read_output_file_db)
-    - work gen: pass buffer to create_work3
-    - boinc binaries modified: transitioner
+Flag for validator/asimilator
+* server_state: constant 4
+* outcome: 0
+* client_state: 0(new) -> 2(running)
+* validate_state: 0(init) -> 9(uploaded)
 
-int create_work3(
-    DB_WORKUNIT& wu,
-    const char* result_template_filename,
-    SCHED_CONFIG& config_loc,
-    CStream& input_data,
-    //extra stuff like: cmdline, extra inputs
-);
-* maybe pass the info to transitioner as extra flag in output template
-* instead of input template
+New validate_state 9(uploaded) -
+* assigned bu fuh to trigger validator
+
+Better states:
+* inactive
+* unsent
+* sent
+* received
+* success
+* no_reply
+* could_not_send
+* download_error
+* upload_error
+* computation_error
+* invalid
+* too_late
+* didnt_need
+* client_abort
+* server_abort
+* inconclusive
+* wu_error
+
+Validation Pending flag.
+
 
 */
 
@@ -538,6 +551,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             free(blob_data);
             return return_error(ERR_TRANSIENT, "file_upload_handler: MD5 mismatch");
         }
+
         insert_stmt = mysql_stmt_init(boinc_db.mysql);
 		char stmt[] = "insert into result_file SET res=?, wu=?, batch=?, user=?, app=?, data=?";
         MYSQL_BIND bind[] = {
@@ -556,18 +570,24 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             mysql_stmt_close(insert_stmt);
             free(blob_data);
             return return_error(ERR_TRANSIENT, "file_upload_handler: db error %s",mysql_error(boinc_db.mysql));
-        } else {
-            mysql_stmt_close(insert_stmt);
-            free(blob_data);
-            log_messages.printf(MSG_NORMAL,
-                "Uploaded %s R#%lu to DB size=%lu from %s\n",
-                name, result.id, bind_data_length,
-                get_remote_addr()
-            );
-            //TODO: update result state - mark for validation
-            //How? Which field?
-            return return_success(0);
         }
+        mysql_stmt_close(insert_stmt);
+        free(blob_data);
+
+        //result.client_state= RESULT_FILES_DOWNLOADED;
+        //result.validate_state= VALIDATE_STATE_UPLOADED;
+        sprintf(sql, "update result set validate_state= 9 where id=%lu", result.id);
+        retval = boinc_db.do_query(sql);
+        if(retval) log_messages.printf(MSG_WARNING,
+                      "Result R#%lu validate_state update failed (%d)\n",
+                      result.id, retval );
+
+        log_messages.printf(MSG_NORMAL,
+            "Uploaded %s R#%lu to DB size=%lu from %s\n",
+            name, result.id, bind_data_length,
+            get_remote_addr()
+        );
+        return return_success(0);
     }
 
     retval = dir_hier_path(
