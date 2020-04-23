@@ -194,7 +194,7 @@ int read_output_file_db(RESULT const& result, CDynamicStream& buf) {
 	MYSQL_ROW row=mysql_fetch_row(enum_res);
 	if (row == 0) {
 		mysql_free_result(enum_res);
-		return ERR_DB_NOT_FOUND;
+		return ERR_FILE_MISSING;
 	}
 	unsigned long *enum_len= mysql_fetch_lengths(enum_res);
 	buf.setpos(0);

@@ -343,7 +343,7 @@ void process_result(DB_RESULT& result) {
 	// Read the result file
 	CDynamicStream buf;
 	retval=read_output_file_db(result,buf);
-	if(retval==ERR_XML_PARSE) {
+	if(retval==ERR_FILE_MISSING) {
 		retval=read_output_file(result,buf);
 	}
 	/* edit: skip processing if file error */
