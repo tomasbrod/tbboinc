@@ -6,7 +6,7 @@ struct TInput {
 	unsigned short mino_k; //min odd k
 	unsigned short max_k;
 	unsigned short twin_k; //shortest twin sequence to record
-	unsigned short twin_min_k; //for symmetric twin prime tuples
+	unsigned short twin_min_k; //shortest symmetric twin sequence
 	bool exit_early;
 	bool out_last_primes;
 	bool out_all_primes;

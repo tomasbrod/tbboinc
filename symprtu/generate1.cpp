@@ -186,11 +186,11 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	uint64_t start= 180545200000000000;
-	uint64_t   end= 600000000000000000;
+	uint64_t start= 306305200000000000;
+	uint64_t   end= 500000000000000000;
 	uint64_t  step=      1965000000000;
-	unsigned maxcnt = 64000;
-	int batch = 69;
+	unsigned maxcnt = 99000;
+	int batch = 70;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
 		submit_wu_in(curr, next, batch);
 		count++;
 	}
-	post_batch_msg(batch,start,next,count,"spt-bi","Continue all in.");
+	post_batch_msg(batch,start,next,count,"spt-bi","Continue all in up to 5e17.");
 	cerr<<"Count: "<<count<<endl;
 	cerr<<"First: "<<start<<endl;
 	cerr<<"Next : "<<next<<endl;
