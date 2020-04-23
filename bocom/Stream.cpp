@@ -232,6 +232,7 @@ class CDynamicStream
 	~CDynamicStream()
 	{
 		free(storage);
+		storage=0;
 	}
 };
 

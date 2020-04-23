@@ -40,6 +40,7 @@ string script_name;
  * wu times
  * table dump function
  * init data access
+ * TODO: get_project_directory
  */
 
 void message(const std::string& str, int err, bool notice) {

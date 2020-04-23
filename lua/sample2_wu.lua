@@ -5,3 +5,8 @@ subtype = "xyz"
 
 param1="x"
 param2="y"
+
+
+function optional_hook()
+  print("sth")
+end
