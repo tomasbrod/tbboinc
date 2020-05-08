@@ -7,7 +7,7 @@ include_user_config()
 
 dep={}
 
-function dep.cpp11(name)
+function dep.template.CPPCompilerLikeGCC()
   r={
     cmd="g++",
     compileExe = function(self, out, inp)

@@ -438,7 +438,10 @@ void run_script() {
 		boinc_resolve_filename_s("driver.lua",fn2); //can't fail
 		script_name=std::move(fn2);
 		#else
-		script_name="driver.lua";
+		if(getenv("script")) {
+			script_name=string(getenv("script"));
+		}
+		else script_name="driver.lua";
 		#endif
 	}
 	message("Driver script: "+script_name,-1,0);
