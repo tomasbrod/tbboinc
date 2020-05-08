@@ -405,6 +405,7 @@ int handle_results() {
             if (config.dont_store_success_stderr) {
                 strcpy(srip->stderr_out, "");
             }
+				// BROD: modify here, add aborted result handling
         } else {
             if (config.debug_handle_results) {
                 log_messages.printf(MSG_NORMAL,

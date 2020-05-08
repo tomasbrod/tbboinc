@@ -185,6 +185,14 @@ function show_status_html($x) {
         ";
     }
     end_table();
+
+    start_table('table-striped');
+    table_header(
+        "Batch",
+        tra("Unsent"),
+        tra("In progress"),
+    );
+    end_table();
     
     global $server_version;
     if ( isset($server_version) ) {
@@ -441,6 +449,7 @@ function get_job_status() {
     $e = set_cached_data(STATUS_PAGE_TTL, serialize($s), "job_status");
     if ($e) echo "set_cached_data(): $e\n";
     return $s;
+		BoincDB::get()->enum_fields();
 }
 
 function main() {
