@@ -54,7 +54,7 @@
 // on some operating systems.
 //
 #ifndef MAX_WU_RESULTS
-#define MAX_WU_RESULTS      1024
+#define MAX_WU_RESULTS      100
 #endif
 
 // values of WU_RESULT.state
