@@ -346,12 +346,13 @@ void process_result(DB_RESULT& result) {
 	if(retval==ERR_FILE_MISSING) {
 		retval=read_output_file(result,buf);
 	}
+	if(ERR_FILE_MISSING==retval) throw EInvalid("Output file absent");
 	/* edit: skip processing if file error */
-	if(retval && 0) {
-		cerr<<"error: Can't read the output file. "<<result.name<<endl;
+	if(retval && 1) {
+		cerr<<"error: Can't read the output file. "<<result.name
+		<<" "<<retval<<endl;
 		return;
 	}
-	if(ERR_FILE_MISSING==retval) throw EInvalid("Output file absent");
 	if(retval) throw EDatabase("can't read the output file");
 	TOutput rstate;
 	try {
