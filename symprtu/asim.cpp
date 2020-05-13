@@ -274,12 +274,14 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 		}
 	}
 }
-static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples)
+static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min)
 {
 	std::stringstream qr;
 	for( const auto& tuple : tuples) {
 		spt_counters[2][tuple.k] += 1;
-		insert_spt_tuple(result, tuple, 2, 0);
+		if(tuple.k >= min) {
+			insert_spt_tuple(result, tuple, 2, 0);
+		}
 	}
 }
 
@@ -287,7 +289,7 @@ void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
 	#ifndef DONT_CHANGE_TUPLES
 	insert_spt_tuples(result, output.tuples, 11, 14); // 11, 14
-	insert_twin_tuples(result, output.twins);
+	insert_twin_tuples(result, output.twins, 6);
 	insert_spt_tuples(result, output.twin_tuples, 0, 10);
 	#endif
 
@@ -347,6 +349,7 @@ void process_result(DB_RESULT& result) {
 		retval=read_output_file(result,buf);
 	}
 	if(ERR_FILE_MISSING==retval) throw EInvalid("Output file absent");
+	if(ERR_XML_PARSE==retval) throw EInvalid("Output file ERR_XML_PARSE");
 	/* edit: skip processing if file error */
 	if(retval && 1) {
 		cerr<<"error: Can't read the output file. "<<result.name
