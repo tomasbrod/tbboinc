@@ -189,9 +189,9 @@ void write_output(const char* fn) {
 
 void mksample() {
 	auto& inp = input;
-	inp.start=    530051400000000000;
-	inp.end= inp.start  +65500000000;
-	inp.mine_k= 16;
+	inp.start=    3;
+	inp.end= inp.start  +655000000;
+	inp.mine_k=  16;
 	inp.mino_k=  9;
 	inp.max_k= 32;
 	inp.upload = 0;
@@ -199,8 +199,8 @@ void mksample() {
 	inp.out_last_primes= 1;
 	inp.out_all_primes= 0;
 	inp.primes_in.clear();
-	inp.twin_k=6;
-	inp.twin_min_k=8;
+	inp.twin_k=2;
+	inp.twin_min_k=4;
 	inp.twin_gap_k=6;
 	inp.twin_gap_min=88;
 	inp.twin_gap_kmin=496;
