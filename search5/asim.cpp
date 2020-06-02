@@ -281,6 +281,9 @@ void process_result(DB_RESULT& result) {
 	result.validate_state=VALIDATE_STATE_VALID;
 	result.file_delete_state=FILE_DELETE_READY;
 	grant_credit(host, result.sent_time, result.granted_credit);
+	if (config.credit_by_app) {
+		grant_credit_by_app(result, credit);
+	}
 	if(host.update()) throw EDatabase("Host update error");
 	//update result (?)
 	if(result.update()) throw EDatabase("Result update error");
