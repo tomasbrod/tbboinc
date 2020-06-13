@@ -141,7 +141,7 @@ void initz() {
   memset(spt_counters, 0, sizeof spt_counters);
 }
 
-const float credit_m= 2.3148E-12* 15;
+const float credit_m= 2.3148E-12* 16;
 //credit/200 = gigaflop (wrong)
 
 bool check_prime(const uint64_t n)
