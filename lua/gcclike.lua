@@ -6,6 +6,7 @@ wu={} -- info about the workunit
 bbl={} -- boinc t.brada library
 bbl.dep={} -- dependencies
 bbl.template={} -- templates for dependency management
+bbl.detect={} -- detection routines for dependencies
 
 wu.batch = 172
 wu.type = "CoT"
@@ -44,6 +45,28 @@ end
 -- Current failure handler. Actually called when command fails.
 bbl.Failure=bbl.DefaultFailure
 
+-- the bbl.dep metatable has unknown key lookup function
+-- calls bbl.detect.<name>
+-- templates are in dep.template.<name>
+-- most dependencies will be static in the dep table and not checked
+-- but some may be detected and checked using a compiler (which?)
+-- user can always override detection, by creating static dep entry.
+
+bbl.template.depmetatable={}
+function bbl.template.depmetatable.__index(tab, key)
+  -- undefined dependency
+  local detect = bbl.detect[key]
+  if type(detect) ~= function then
+    -- no detect method - error
+    bbl.Unsatisfied(key,nil)
+    return nil
+  else
+    -- use detect method
+    local d = detect()
+    bbl.dep[key] = d
+    return d
+  end
+end
 
 function bbl.template.CPPLikeGCC()
   r=bbl.template.CompilerBase()
@@ -85,32 +108,49 @@ function bbl.template.CPPLikeGCC()
     return self:runCompiler("-c ",out,inp)
   end
 
-  function r.commandFailed(self,cmd, r2, r3)
+  function r.commandFailed2(self,cmd, r2, r3)
     print("Compiler failed. "..r2.." "..r3)
     bbl.Failure("compile", cmd)
   end
+  r.commandFailed=r.commandFailed2
 
   function r.check(self)
     write_file("temp.cpp","#include <vector>\nint main() {return 0;}\n")
+    local good=true
+    r.commandFailed = function(self, cmd, r2, r3)
+      good= false
+    end
     self:compileObj("temp.o",{"temp.cpp"})
+    r.commandFailed=r.commandFailed2
+    return good
   end
 
   return r
 end
 
-cxx=dep.template.CPPLikeGCC()
+function bbl.detect.cxx()
+  -- instantiate and check
+  if bbl.template.CPPLikeGCC().check() then
+    return bbl.template.CPPLikeGCC -- return constructor
+  end
+  local function clang()
+    local r= bbl.template.CPPLikeGCC()
+    r.cmd="clang++ -std=c++11"
+    return r
+  end
+  if clang().check() then
+    return clang
+  end
+  bbl.Unsatisfied("cxx","C++ compiler")
+end
+
+cxx=bbl.template.CPPLikeGCC()
+-- cxx=bbl.dep.cxx()
 cxx.cmd="echo "..cxx.cmd
 cxx.define.A=1
 cxx.define.B=true
 cxx:compileObj("test.o",{"a.cpp","b.c"})
 cxx:compileExe("test.exe",{"test.o"})
-
--- the dep metatable has unknown key lookup function
--- calls dep.detect.<name>
--- templates are in dep.template.<name>
--- most dependencies will be static in the dep table and not checked
--- but some may be detected and checked using a compiler (which?)
--- user can always override detection, by creating static dep entry.
 
 -- error reporting: a) error() - lua-like, but needs global pcall wrapper
 -- kinds of errors: dependency not found, compile error
