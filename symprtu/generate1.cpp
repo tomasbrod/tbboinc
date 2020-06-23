@@ -141,7 +141,7 @@ void submit_wu_in(uint64_t start, uint64_t end, int batch)
 		inp.start= start;
 		inp.end= end;
 
-		inp.mine_k= 14;
+		inp.mine_k= 16;
 		inp.mino_k= 11;
 		inp.max_k= 64;
 		inp.upload = 0;
@@ -149,15 +149,15 @@ void submit_wu_in(uint64_t start, uint64_t end, int batch)
 		inp.out_last_primes= 0;
 		inp.out_all_primes= 0;
 		inp.primes_in.clear();
-		inp.twin_k=6;
+		inp.twin_k=7;
 		inp.twin_min_k=10;
 		inp.twin_gap_k=6;
-		inp.twin_gap_min=448;
-		inp.twin_gap_kmin=178;
+		inp.twin_gap_min=886;
+		inp.twin_gap_kmin=400;
 
 		wu.appid = spt_app.id;
 		//14e12 is one hour on mangan-pc
-		wu.rsc_fpops_est = (inp.end - inp.start) * 15;
+		wu.rsc_fpops_est = (inp.end - inp.start) * 16;
 		wu.rsc_fpops_bound = wu.rsc_fpops_est * 24;
 		wu.rsc_memory_bound = 399e6;
 		wu.rsc_disk_bound = 1e8; //todo 100m
@@ -186,11 +186,11 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	uint64_t start= 600001960000000000;
+	uint64_t start= 724801960000000000;
 	uint64_t   end= 900000000000000000;
 	uint64_t  step=      1950000000000;
-	unsigned maxcnt = 64000;
-	int batch = 72;
+	unsigned maxcnt = 128000;
+	int batch = 73;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
 		submit_wu_in(curr, next, batch);
 		count++;
 	}
-	post_batch_msg(batch,start,next,count,"spt-ut","From 6e17.");
+	post_batch_msg(batch,start,next,count,"spt-ut","From 6e17. Ignore spt-14 and tpt-6");
 	cerr<<"Count: "<<count<<endl;
 	cerr<<"First: "<<start<<endl;
 	cerr<<"Next : "<<next<<endl;
