@@ -25,13 +25,18 @@ function bbl.SupportLink()
   return "https://boinc.tbrada.eu/"
 end
 
+-- report of dependency usage
+function bbl.PrintUsedDep(name,d)
+  print("DEP: "..name)
+end
+
 -- unsatisfied dependency handler
 function bbl.Unsatisfied(name, extra)
   local msg
   if extra then
     msg="Missing "..name..". "..extra.." "..dep.template.GetSupportLink()
   else
-    "Unsatisfied dependency: "..name..". "..dep.template.GetSupportLink()
+    msg="Unsatisfied dependency: "..name..". "..dep.template.GetSupportLink()
   end
   boinc.temp_exit( 300, msg, 1)
 end
@@ -54,18 +59,55 @@ bbl.Failure=bbl.DefaultFailure
 
 bbl.template.depmetatable={}
 function bbl.template.depmetatable.__index(tab, key)
-  -- undefined dependency
+  -- new dependency
   local detect = bbl.detect[key]
-  if type(detect) ~= function then
+  if type(detect) == 'function' then
+    -- use detect method
+    local d = detect(key)
+    bbl.dep[key] = d
+    bbl.PrintUsedDep(key,d)
+    return d
+  elseif type(detect) == "table" then
+    -- use static instance
+    bbl.dep[key] = detect
+    bbl.PrintUsedDep(key,detect)
+    return detect
+  else
     -- no detect method - error
     bbl.Unsatisfied(key,nil)
     return nil
-  else
-    -- use detect method
-    local d = detect()
-    bbl.dep[key] = d
-    return d
   end
+end
+
+setmetatable( bbl.dep, bbl.template.depmetatable )
+
+function bbl.dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. bbl.dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
+function bbl.try_command(cmd)
+  print("try_command",cmd)
+  local r1, r2, r3 = os.execute(cmd)
+  if r1 == true then
+    print("success")
+  else
+    print("failure", r2, r3)
+  end
+end
+
+function bbl.write_to_file(name, content)
+  local fh = io.open(name, "w")
+  fh:write(content)
+  fh:close()
 end
 
 function bbl.template.CPPLikeGCC()
@@ -94,10 +136,12 @@ function bbl.template.CPPLikeGCC()
         cmd=cmd.." -D"..var
       end
     end
+
+    print(cmd)
     
     local r1, r2, r3 = os.execute(cmd)
-    if r1 == false then
-      commandFailed(cmd,r2,r3)
+    if not r1 then
+      self:commandFailed("CXX -o "..out,r2,r3)
     end
   end
 
@@ -108,29 +152,37 @@ function bbl.template.CPPLikeGCC()
     return self:runCompiler("-c ",out,inp)
   end
 
-  function r.commandFailed2(self,cmd, r2, r3)
+  function r.commandFailed2(self, cmd, r2, r3)
     print("Compiler failed. "..r2.." "..r3)
     bbl.Failure("compile", cmd)
   end
   r.commandFailed=r.commandFailed2
 
-  function r.check(self)
-    write_file("temp.cpp","#include <vector>\nint main() {return 0;}\n")
+  function r.check(s)
+    bbl.write_to_file("compile_test.cpp","#include <vector>\nint main() {return 0;}\n")
     local good=true
-    r.commandFailed = function(self, cmd, r2, r3)
+    s.commandFailed = function(self, cmd, r2, r3)
       good= false
     end
-    self:compileObj("temp.o",{"temp.cpp"})
-    r.commandFailed=r.commandFailed2
+    s:compileObj("compile_test.o",{"compile_test.cpp"})
+    s.commandFailed=s.commandFailed2
     return good
   end
 
   return r
 end
 
-function bbl.detect.cxx()
+function bbl.detect.cxx(key)
   -- instantiate and check
-  if bbl.template.CPPLikeGCC().check() then
+  local function watcom()
+    local r= bbl.template.CPPLikeGCC()
+    r.cmd="watcom++ -std=c++11"
+    return r
+  end
+  if watcom():check() then
+    return watcom
+  end
+  if bbl.template.CPPLikeGCC():check() then
     return bbl.template.CPPLikeGCC -- return constructor
   end
   local function clang()
@@ -138,19 +190,26 @@ function bbl.detect.cxx()
     r.cmd="clang++ -std=c++11"
     return r
   end
-  if clang().check() then
+  if clang():check() then
     return clang
   end
   bbl.Unsatisfied("cxx","C++ compiler")
 end
 
-cxx=bbl.template.CPPLikeGCC()
--- cxx=bbl.dep.cxx()
-cxx.cmd="echo "..cxx.cmd
+bbl.detect.m = { l="m" }
+bbl.detect.pthread = { l="pthread" }
+
+bbl.try_command("locale")
+cxx = bbl.dep.cxx()
+_=bbl.dep.m
+_=bbl.dep.pthread
 cxx.define.A=1
 cxx.define.B=true
-cxx:compileObj("test.o",{"a.cpp","b.c"})
-cxx:compileExe("test.exe",{"test.o"})
+cxx:compileObj("a.o",{"a.cpp"})
+cxx:compileObj("b.o",{"b.c"})
+print("using false compiler")
+cxx.cmd="false "..cxx.cmd
+cxx:compileExe("test.exe",{"a.o","b.o"})
 
 -- error reporting: a) error() - lua-like, but needs global pcall wrapper
 -- kinds of errors: dependency not found, compile error
@@ -161,3 +220,5 @@ cxx:compileExe("test.exe",{"test.o"})
 --   that will also include last n lines of stderr.txt
 -- eh, boinc supports only one line of exit notice
 -- the detect function can also invoke compiling of the dependency
+
+-- Print deps as they are first used!

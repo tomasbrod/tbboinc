@@ -359,6 +359,9 @@ void init() {
 			message("boinc_init_options failed",206/*EXIT_INIT_FAILURE*/,0);
 	boinc_get_init_data(binitdata);
 	#endif
+	setlocale(LC_ALL,"C");
+	setenv("LANG","C",1);
+	setenv("LC_ALL","C",1);
 	if(dup2(2, 1)<0)
 		message("Failed to dup2 standard error into standard output",1,0);
 	script_name.clear();
