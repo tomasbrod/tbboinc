@@ -1,14 +1,9 @@
 -- sample user override .lua
 
 -- example of overriding compiler
-compile_cpp11 = function(output, inputs)
-  local input_args = inputs.join(" ")
-  local cmd = "g++ --std=c++11 -O3 -o "..output.." "..input_args
-  xx=os.exec(cmd)
+bbl.dep.cxx= function()
+  local r= bbl.template.CPPLikeGCC()
+  r.cmd="watcom++ -std=c++11"
+  return r
 end
 
--- original
-function compile_cpp11 = function(output, inputs)
-  compiler_detect()
-  compile_xx(output, inputs)
-end
