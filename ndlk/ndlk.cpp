@@ -5,6 +5,10 @@
 #include <sstream>
 #include <map>
 #include <set>
+#include <list>
+#include <error.h>
+#include <thread>
+#include <mutex>
 using std::string;
 using std::endl;
 /* arbitrary-size DLK */
@@ -24,8 +28,10 @@ public:
 		{return mData.at(i * mCols + j);}
 	elem_t  operator()(size_t i, size_t j) const
 		{return mData[i * mCols + j];}
-	elem_t& operator()(size_t p)
+	elem_t& operator[](size_t p)
 		{return mData.at(p);}
+	elem_t operator[](size_t p) const
+		{return mData[p];}
 	/* Meta */
 	size_t width() const { return mCols; }
 	size_t size() const { return mCols*mCols; }
@@ -177,11 +183,19 @@ int main(int argc, char* argv[])
 {
 	Square sq;
 	sq.Read(std::cin);
-	std::cout<<"width: "<<sq.width()<<endl;
-	std::cout<<"isLK: "<<sq.isLK()<<endl;
-	std::cout<<"isDLK: "<<sq.isDLK()<<endl;
+	std::cerr<<"width: "<<sq.width()<<endl;
 	//sq= sq.Transpose().SwapYV();
 	sq.Normaliz();
 	std::cout<<sq;
+	std::cout<<"isLK: "<<sq.isLK()<<endl;
+	std::cout<<"isDLK: "<<sq.isDLK()<<endl;
+	Exact_cover_u dlx;
+	dlx.search_trans(sq);
+	std::cerr<<"num_trans: "<<dlx.num_trans<<endl;
+	std::cout<<"num_trans: "<<dlx.num_trans<<endl;
+	dlx.search_mates();
+	for(auto& m : dlx.mates)
+		std::cout<<m<<endl;
+	std::cerr<<"isODLK: "<<(dlx.mates.size())<<endl;
 	return 69;
 }
