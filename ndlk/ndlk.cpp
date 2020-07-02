@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <map>
 #include <set>
 #include <list>
@@ -13,189 +14,209 @@ using std::string;
 using std::endl;
 /* arbitrary-size DLK */
 
-/* Struct to store LK */
-class Square
-{
-public:
-	typedef unsigned short elem_t;
-	Square(size_t iCols)
-		:mCols(iCols)
-		,mData(iCols*iCols)
-		{}
-	Square() :mCols(0) {}
-	/* Access */
-	elem_t& operator()(size_t i, size_t j)
-		{return mData.at(i * mCols + j);}
-	elem_t  operator()(size_t i, size_t j) const
-		{return mData[i * mCols + j];}
-	elem_t& operator[](size_t p)
-		{return mData.at(p);}
-	elem_t operator[](size_t p) const
-		{return mData[p];}
-	/* Meta */
-	size_t width() const { return mCols; }
-	size_t size() const { return mCols*mCols; }
-	/* conversion */
-	friend std::ostream& operator<<(std::ostream& os, const Square& dt);
-	void Read(std::istream& is);
-	operator string() const;
-	/* Normalize */
-	Square& Translit(const std::map<elem_t,elem_t>& tr);
-	Square& Normaliz();
-	Square& DiagNorm();
-	/* Checks */
-	bool isLK();
-	bool isDLK();
-	/* Transforms */
-	Square Transpose() const;
-	Square SwapYV() const;
-private:
-	size_t mCols;
-	std::vector<elem_t> mData;
-};
-
-struct ESquareOp	: std::exception { const char * what () const noexcept {return "Invalid Square for Operation";} };
-
-/* Reading and Writing LK */
-std::ostream& operator<<(std::ostream& os, const Square& square)
-{
-	for(size_t i=0; i<square.width(); ++i) {
-		for(size_t j=0; j<square.width(); ++j) {
-			os<<square(i,j);
-			if((j+1)<square.size()) os<<" ";
-		}
-		if((i+1)<square.size()) os<<std::endl;
-	}
-	return os;
-}
-
-void Square::Read(std::istream& is)
-{
-	std::string line;
-	elem_t num;
-	mData.resize(0);
-	getline(is, line);
-	std::istringstream iss(line);
-	while(iss>>num) {
-		mData.push_back(num);
-	}
-	mCols = mData.size();
-	mData.resize(size());
-	for(size_t i=mCols; i<size(); ++i) {
-		is>>num;
-		mData[i]=num;
-	}
-}
-
-/* Normalize */
-Square& Square::Translit(const std::map<elem_t,elem_t>& tr)
-{
-	for(size_t i=0; i<size(); ++i) {
-		const auto& r= tr.find(mData[i]);
-		if(tr.end()==r) throw ESquareOp(); // number not on the first line
-		mData[i] = r->second;
-	}
-	return *this;
-}
-Square& Square::Normaliz()
-{
-	// Normalize on first line
-	std::map<elem_t,elem_t> m;
-	for(size_t i=0; i<width(); ++i) {
-		const auto r = m.emplace(mData[i],i);
-		if(!r.second)  throw ESquareOp();  // duplicate number on first line
-	}
-	return Translit(m);
-}
-Square& Square::DiagNorm()
-{
-	// Normalize on main diagonal
-	std::map<elem_t,elem_t> m;
-	for(size_t i=0, v=0; i<size(); i=i+width()+1, ++v) {
-		const auto r = m.emplace(mData[i],v);
-		if(!r.second)  throw ESquareOp();  // duplicate number on diagonal
-	}
-	return Translit(m);
-}
-
-/* Checking for LK, SN, DLK */
-bool Square::isLK()
-{
-	std::set<elem_t> s;
-	for(size_t i=0; i<width(); ++i) {
-		s.clear();
-		for(size_t j=0; j<width(); ++j) {
-			const auto r = s.emplace((*this)(i,j));
-			if(!r.second) return false;
-		}
-	}
-	for(size_t i=0; i<width(); ++i) {
-		s.clear();
-		for(size_t j=0; j<width(); ++j) {
-			const auto r = s.emplace((*this)(j,i));
-			if(!r.second) return false;
-		}
-	}
-	return true;
-}
-
-bool Square::isDLK()
-{
-	if(!isLK()) return false;
-	std::set<elem_t> s;
-	for(size_t i=0; i<size(); i=i+width()+1) {
-		const auto r = s.emplace(mData[i]);
-		if(!r.second) return false;
-	}
-	s.clear();
-	for(size_t i=width()-1; i<size()-width(); i=i+width()-1) {
-		const auto r = s.emplace(mData[i]);
-		if(!r.second) return false;
-	}
-	return true;
-}
-
-/* Some transformations */
-Square Square::Transpose() const
-{
-	Square r(width());
-	for(size_t i=0; i<width(); ++i)
-		for(size_t j=0; j<width(); ++j)
-			r(j,i) = (*this)(i,j);
-	return r;
-}
-Square Square::SwapYV() const
-{
-	// must be normalized!!
-	Square r(width());
-	for(size_t y=0; y<width(); ++y)
-		for(size_t x=0; x<width(); ++x)
-			r(x,(*this)(x,y)) = y;
-	return r;
-}
-
 /* enumerate transversals, dtrans, disjoint trans */
 /* ortogon_u can build ODLK of 12, maybe others? */
 
-#include "exact_cover_u.cpp"
+#include "dlk_util.cpp"
+#include "exact_cover_mt.cpp"
+
+
+void test_mul() {
+	std::vector<unsigned short> v;
+	v.push_back(0);
+	mulBc( 123, 1, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	mulBc( 2, 1, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	mulBc( 0, 2, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	mulBc( 4, 2, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	mulBc( 4, 0, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+}
+
+void test_div() {
+	std::vector<unsigned short> v;
+	v.push_back(0);
+	mulBc( 1234, 1, v, 10);
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	std::cout<< divB(2,v,10) <<endl;
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+	std::cout<< divB(11,v,10) <<endl;
+	for(const auto V : v) std::cout<<V; std::cout<<endl;
+}
+
+struct InputSpec {
+	std::string name;
+	std::istream* is;
+	std::unique_ptr<std::ifstream> ifstr;
+	bool enc, alnum;
+	char** init(char **arg)
+	{
+		enc=alnum=0;
+		name.clear(); is=0; ifstr.reset();
+		if(!arg[0]) throw std::runtime_error("Missing input specifier");
+		int source=0; // imm, stdin, file
+		for(unsigned i=0; arg[0][i]; ++i) {
+			char c = arg[0][i];
+			if(c=='e')
+				enc=1;
+			else if(c=='a')
+				alnum=1;
+			else if(c=='s')
+				source=1;
+			else if(c=='f')
+				source=2;
+			else throw std::runtime_error("Invalid input specifier: "+c);
+		}
+		arg++;
+		if(enc && alnum) throw std::runtime_error("Encoded (e) and Alphanumeric (a) input may not be combined");
+		if(!enc && !source) throw std::runtime_error("Alphanumeric (a) or Numeric () input requites Stdin (s) of File (f)");
+		if(2==source) {
+			name= std::string(*(arg++));
+			ifstr.reset( new std::ifstream(name) );
+			if(!*ifstr) throw std::runtime_error("Input open error");
+			is = ifstr.get();
+		} else
+		if(1==source) {
+			is = &std::cin;
+		} else {
+			is=0;
+			name=std::string(*(arg++));
+		}
+		return arg;
+	}
+	Square get() {
+		Square sq;
+		if(is && !(*is)) return sq;
+		if(enc) {
+			if(is) {
+				std::string line;
+				getline(*is,line);
+				sq.Decode(line);
+			} else {
+				if(name.empty()) return sq;
+				sq.Decode(name);
+				name.clear();
+		}}
+		else if(alnum) {
+			sq.ReadAlnum(*is);
+			sq.Normaliz();
+		} else {
+			sq.Read(*is);
+			sq.Normaliz();
+		}
+		return sq;
+	}
+};
+
+struct OutputSpec {
+	std::string name;
+	std::ostream* os;
+	std::unique_ptr<std::ofstream> ofstr;
+	bool enc, alnum, compact, diag;
+	char** init(char **arg)
+	{
+		enc=alnum=compact=diag=0;
+		name.clear(); os=&std::cout; ofstr.reset();
+		if(!arg[0]) return arg; // this is ok
+		int source=1; // imm, stdout, file
+		for(unsigned i=0; arg[0][i]; ++i) {
+			char c = arg[0][i];
+			if(c=='e')
+				enc=1;
+			else if(c=='a')
+				alnum=1;
+			else if(c=='c')
+				compact=1;
+			else if(c=='d')
+				diag=1;
+			else if(c=='s')
+				source=1;
+			else if(c=='f')
+				source=2;
+			else throw std::runtime_error("Invalid input specifier: "+c);
+		}
+		arg++;
+		if(enc && alnum) throw std::runtime_error("Encoded (e) and Alphanumeric (a) input may not be combined");
+		//... more checks assert(source);
+		if(2==source) {
+			name= std::string(*(arg++));
+			ofstr.reset( new std::ofstream(name) );
+			if(!*ofstr) throw std::runtime_error("Output open error");
+			os = ofstr.get();
+		}
+		return arg;
+	}
+	void put(Square sq) {
+		if(enc) {
+			(*os)<< sq.Encode() << endl;
+		}
+		else {
+			if(diag)
+				sq.DiagNorm();
+			else sq.Normaliz();
+			if(alnum) 
+				sq.WriteAlnum(*os);
+			else
+				(*os)<<sq;
+			if(!compact) (*os)<<endl;
+		}
+	}
+};
 
 int main(int argc, char* argv[])
 {
+	char** arg = argv+1;
+	InputSpec in;
+	OutputSpec out;
+	arg= in.init(arg);
+	arg= out.init(arg);
+	while(1) {
+		Square sq = in.get();
+		if(!sq.width()) break;
+		out.put(sq);
+	}
+	return 0;
+
+#if 0
 	Square sq;
-	sq.Read(std::cin);
+	sq.ReadAlnum(std::cin);
 	std::cerr<<"width: "<<sq.width()<<endl;
-	//sq= sq.Transpose().SwapYV();
 	sq.Normaliz();
-	std::cout<<sq;
+	std::cout<<sq<<endl;
+	return 8;
+
+	std::cerr<<sq<<endl;
+	std::string enc = sq.Encode();
+	std::cerr<<enc<<endl;
+	Square sq2; sq2.Decode(enc);
+	if(sq==sq2)
+		std::cerr<<"match"<<endl;
+	else
+		std::cerr<<sq2<<endl;
+	
+	std::cerr<<"something else"<<endl;
+	sq2.Decode("58");
+	std::cerr<<sq2<<endl;
+	
+	return 6;
+	//sq= sq.Transpose().SwapYV();
 	std::cout<<"isLK: "<<sq.isLK()<<endl;
 	std::cout<<"isDLK: "<<sq.isDLK()<<endl;
+	sq.Normaliz();
+	std::cout<<sq;
 	Exact_cover_u dlx;
-	dlx.search_trans(sq);
+	//dlx.search_trans(sq);
+	dlx.count_trans(sq);
 	std::cerr<<"num_trans: "<<dlx.num_trans<<endl;
 	std::cout<<"num_trans: "<<dlx.num_trans<<endl;
+	return 0;
 	dlx.search_mates();
 	for(auto& m : dlx.mates)
 		std::cout<<m<<endl;
-	std::cerr<<"isODLK: "<<(dlx.mates.size())<<endl;
+	std::cerr<<"num_mates: "<<(dlx.mates.size())<<endl;
 	return 69;
+#endif
 }
