@@ -12,13 +12,9 @@
 #include <mutex>
 using std::string;
 using std::endl;
+
 /* arbitrary-size DLK */
-
-/* enumerate transversals, dtrans, disjoint trans */
-/* ortogon_u can build ODLK of 12, maybe others? */
-
 #include "dlk_util.cpp"
-#include "exact_cover_mt.cpp"
 
 
 void test_mul() {
@@ -171,17 +167,18 @@ int main(int argc, char* argv[])
 	if(argc<=1) {
 		std::cerr<<
 			"dlkconv.exe: (input-spec) [input] [(output-spec) [output]]\n"
-			"Diagonal Latin Square converter and normalizer.\n"
+			"** Diagonal Latin Square converter and normalizer **\n"
 			"input-spec: Endoded/compressed (e), Alphanumeric (a), stdin (s) File (f).\n"
 			" Encoded input can be passed immediately on command line.\n"
 			" Othervise a NxN matrix of decimal numbers, or Alphanumeric (a) must be\n"
 			" passed via stdin or file. Multiple orders (N) may be mixed on input.\n"
-			" Empty lines and (one) trailing spaces are ignored."
+			" Empty lines and (one) trailing spaces are ignored.\n"
 			"output-spec: (e)(a)(f), stdout (s), Compact (c), Diagonal (d)\n"
 			" LS normalized on first row are written to stdout by default.\n"
 			" Space between output squares are ommited in Compact (c) mode.\n"
 			" With (d), output matrix is normalized on main diagonal.\n"
-			"Example dlkconv.exe e 7yPG4 dc -- decode 7yPG4 and normalize diagonal\n";
+			"Example dlkconv.exe e 7yPG4 dc -- decode 7yPG4 and normalize diagonal\n"
+			"Author: Tomas Brada (GPL)\n";
 		return 9;
 	}
 	try {
