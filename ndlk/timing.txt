@@ -1,0 +1,6 @@
+lk12 my x16
+real    0m55,593s
+user    14m17,046s
+lk12 ortogon
+real    11m45,613s
+user    11m45,020s

@@ -15,7 +15,7 @@ class Exact_cover_u {
 	void search_trans(const Square& dlk)
 	{
 		init_trans(dlk);
-		dance_mt(&Exact_cover_u::save_trans);
+		dance(&Exact_cover_u::save_trans);
 	}
 
 	size_t count_trans(const Square& dlk)
@@ -297,8 +297,9 @@ backtrack:
 
 void Exact_cover_u::init_disjoint(){
   stop_dance=false;
-	const int ch_trans = num_trans;
-	const int max_nodes = ch_trans * order;
+	const int max_cols = raz+1;
+	const int max_nodes = num_trans * order;
+  headsDyn.resize(max_cols);
 	nodesDyn.resize(max_cols+max_nodes);
 	nodesSt.resize(max_cols+max_nodes);
 	for(int i = 0; i <= raz; i++){
@@ -310,7 +311,7 @@ void Exact_cover_u::init_disjoint(){
 	headsDyn[0].left += max_cols;
 	headsDyn[raz].right = 0;
 	int i, count;
-	for(i = 0, count = raz+1; i < ch_trans; count += order, i++){
+	for(i = 0, count = raz+1; i < num_trans; count += order, i++){
 		for(int j = 0, k = 0, t; j < order; k += order, j++){
 			connect_node(count+j, get_trans(i)[j] + k + 1);
 			nodesSt[count + j].dr = i;
@@ -344,7 +345,8 @@ void Exact_cover_u::dance_mt_thr(bool show) {
 			size_t cnt = ++global_cnt;
 			std::cerr<<"\rl(1) "<< cnt <<" / "<<global_siz<<"   ";
 			std::cerr.flush();
-			continue;
+			//continue;
+			return;
 		}
 		cs_main.unlock();
 		return;
