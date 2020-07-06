@@ -15,7 +15,7 @@ class Exact_cover_u {
 	void search_trans(const Square& dlk)
 	{
 		init_trans(dlk);
-		dance(&Exact_cover_u::save_trans);
+		dance_mt(&Exact_cover_u::save_trans);
 	}
 
 	size_t count_trans(const Square& dlk)
@@ -28,7 +28,7 @@ class Exact_cover_u {
 	bool is_ortogon()
 	{
 		init_disjoint();
-		dance(&Exact_cover_u::save_one_mate);
+		dance_mt(&Exact_cover_u::save_one_mate);
 		return !mates.empty();
 	}
 
@@ -345,8 +345,7 @@ void Exact_cover_u::dance_mt_thr(bool show) {
 			size_t cnt = ++global_cnt;
 			std::cerr<<"\rl(1) "<< cnt <<" / "<<global_siz<<"   ";
 			std::cerr.flush();
-			//continue;
-			return;
+			continue;
 		}
 		cs_main.unlock();
 		return;

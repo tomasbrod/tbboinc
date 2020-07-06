@@ -60,7 +60,6 @@ int main(int argc, char* argv[])
 			std::cout<<"# in: "<<name<<endl;
 			std::cout<<"# num_dtrans: "<<dlx.num_trans<<endl;
 			std::cout<<"# num_mates: "<<(dlx.mates.size())<<endl;
-			std::cout<<"# incomplete!"<<endl;
 			for(auto& m : dlx.mates) {
 				if(orig_output)
 					std::cout<<m<<endl;

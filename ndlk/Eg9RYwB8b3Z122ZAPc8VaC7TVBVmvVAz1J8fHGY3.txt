@@ -1,0 +1,4 @@
+# in: Eg9RYwB8b3Z122ZAPc8VaC7TVBVmvVAz1J8fHGY3
+# num_dtrans: 9907
+# num_mates: 1
+EQPj3ELgR3gSKeFWkMopP6BeAJC7CPjMC4F4Sm9
