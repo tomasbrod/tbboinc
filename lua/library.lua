@@ -5,9 +5,9 @@
 wu={} -- info about the workunit
 bbl={} -- boinc t.brada library
 
-bbl.dep={} -- dependencies
+bbl.dep={} -- known dependencies
 bbl.template={} -- templates for dependency management
-bbl.detect={} -- detection routines for dependencies
+bbl.ddep={} -- dependency detection
 
 -- base class for all compilers
 function bbl.template.CompilerBase()
@@ -58,22 +58,20 @@ bbl.Failure=bbl.DefaultFailure
 bbl.template.depmetatable={}
 function bbl.template.depmetatable.__index(tab, key)
   -- new dependency
-  local detect = bbl.detect[key]
-  if type(detect) == 'function' then
-    -- use detect method
-    local d = detect(key)
-    bbl.dep[key] = d
-    bbl.PrintUsedDep(key,d)
-    return d
-  elseif type(detect) == "table" then
-    -- use static instance
-    bbl.dep[key] = detect
-    bbl.PrintUsedDep(key,detect)
-    return detect
-  else
-    -- no detect method - error
-    bbl.Unsatisfied(key,nil)
-    return nil
+  local ddep = bbl.ddep[key] or return bbl.Unsatisfied(key,nil)
+  local dep
+  if ddep.static then
+    dep= ddep.static
+  elseif ddep.detect then
+    dep= ddep.detect(key)
+  elseif ddep.build or ddep.stdbuild then
+    dep= bbl.template.GetBuildableDep(key)
+  end
+  dep or return bbl.Unsatisfied(key,nil)
+  bbl.dep[key] = dep
+  bbl.PrintUsedDep(key,dep)
+  if ddep.check then
+    ddep.check(key)
   end
 end
 
@@ -177,7 +175,7 @@ function bbl.template.CPPLikeGCC()
   return r
 end
 
-function bbl.detect.cxx(key)
+bbl.ddep = { detect = function(key)
   -- todo: more general solution to inst and check
 
   local function watcom()
@@ -203,6 +201,13 @@ function bbl.detect.cxx(key)
   end
 
   bbl.Unsatisfied("cxx","C++ compiler")
+end }
+
+function bbl.template.GetBuildableDep(key)
+  -- get artifact
+  -- get remote version
+  -- if outdated or check fails, build
+  -- ?
 end
 
 -- Some standard static dependencies
