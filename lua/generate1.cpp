@@ -194,7 +194,7 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 		"kanonizer_b.cpp",
 		"try.lua",
 		0};
-	build_xml_doc(wu, wuname.str()+".in", const_files, "script.lua");
+	build_xml_doc(wu, wuname.str()+".in", const_files, "script.lua", "input.txt");
 
 	wu.transitioner_flags = 2; //?
 	retval= create_work4(wu,"templates/lua8_simple_out",config);
