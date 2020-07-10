@@ -179,6 +179,7 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 		lines++;
 	}
 	if(!lines) return;
+	infileh.close();
 
 		//14e12 is one hour on mangan-pc
 		wu.rsc_fpops_est = 16e12 / 60.0 * lines;
@@ -193,7 +194,7 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 		"kanonizer_b.cpp",
 		"try.lua",
 		0};
-	build_xml_doc(wu, fninp.str(), const_files, "script.lua");
+	build_xml_doc(wu, wuname.str()+".in", const_files, "script.lua");
 
 	wu.transitioner_flags = 2; //?
 	retval= create_work4(wu,"templates/lua8_simple_out",config);
