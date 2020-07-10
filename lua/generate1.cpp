@@ -77,7 +77,7 @@ void initz() {
 
 void copy_file_if_not_exists(const char* src, const std::string& dest)
 {
-	int out = open(dest.c_str(), O_WRONLY | O_CREAT | O_EXCL);
+	int out = open(dest.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IRGRP | S_IROTH);
 	if(out<0 && errno!=EEXIST)
 		throw EDatabase("open(outfile) failed");
 	if(out<0 && errno==EEXIST)
