@@ -296,6 +296,7 @@ int helper_exec(lua_State* L) {
 	}
 	//save_init_data_xml();
 	//todo: reset signal handlers
+	message("execv",-1,0);
 	int rc = execv( path, argv );
 	lua_pushinteger(L, errno);
 	for(unsigned i=0; i<256; ++i) free(argv[i]);

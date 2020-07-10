@@ -32,9 +32,9 @@ end
 function bbl.Unsatisfied(name, extra)
   local msg
   if extra then
-    msg="Missing "..name..". "..extra.." "..dep.template.GetSupportLink()
+    msg="Missing "..name..". "..extra.." "..bbl.SupportLink()
   else
-    msg="Unsatisfied dependency: "..name..". "..dep.template.GetSupportLink()
+    msg="Unsatisfied dependency: "..name..". "..bbl.SupportLink()
   end
   boinc.temp_exit( 300, msg, 1)
 end
@@ -58,7 +58,8 @@ bbl.Failure=bbl.DefaultFailure
 bbl.template.depmetatable={}
 function bbl.template.depmetatable.__index(tab, key)
   -- new dependency
-  local ddep = bbl.ddep[key] or return bbl.Unsatisfied(key,nil)
+  local ddep = bbl.ddep[key]
+  if not ddep then return bbl.Unsatisfied(key,nil) end
   local dep
   if ddep.static then
     dep= ddep.static
@@ -67,12 +68,13 @@ function bbl.template.depmetatable.__index(tab, key)
   elseif ddep.build or ddep.stdbuild then
     dep= bbl.template.GetBuildableDep(key)
   end
-  dep or return bbl.Unsatisfied(key,nil)
+  if not dep then return bbl.Unsatisfied(key,nil) end
   bbl.dep[key] = dep
   bbl.PrintUsedDep(key,dep)
   if ddep.check then
     ddep.check(key)
   end
+  return dep
 end
 
 setmetatable( bbl.dep, bbl.template.depmetatable )
@@ -116,6 +118,8 @@ function bbl.template.CPPLikeGCC()
   r=bbl.template.CompilerBase()
 
   r.cmd="g++ -std=c++11"
+  r.lib=""
+  r.inc=""
 
   function r.runCompiler(self, pre, out, inp)
     local cmd= self.cmd.." -o "..out
@@ -128,6 +132,7 @@ function bbl.template.CPPLikeGCC()
     if pre then
       cmd=cmd.." "..pre
     end
+    cmd=cmd..self.lib..self.inc
     for _,sourcefile in pairs(inp) do
       cmd=cmd.." "..sourcefile
     end
@@ -147,6 +152,23 @@ function bbl.template.CPPLikeGCC()
       self:commandFailed("CXX -o "..out,r2,r3)
     end
   end
+
+  function r.use(self,dep)
+    if type(dep.l) == "string" then
+      self.lib = self.lib.." -l"..dep.l
+    elseif type(dep.l) == "table" then
+      for _,v in pairs(dep.l) do
+        self.lib = self.lib.." -l"..v
+      end
+    end
+    if type(dep.inc) == "string" then
+      self.inc = self.inc.." -I"..dep.inc
+    elseif type(dep.inc) == "table" then
+      for _,v in pairs(dep.inc) do
+        self.inc = self.inc.." -I"..v
+      end
+    end
+  end        
 
   function r.compileExe(self, out, inp)
     return self:runCompiler("",out,inp)
@@ -175,7 +197,7 @@ function bbl.template.CPPLikeGCC()
   return r
 end
 
-bbl.ddep = { detect = function(key)
+bbl.ddep.cxx = { detect = function(key)
   -- todo: more general solution to inst and check
 
   local function watcom()
@@ -211,6 +233,6 @@ function bbl.template.GetBuildableDep(key)
 end
 
 -- Some standard static dependencies
-bbl.detect.m = { l="m" }
-bbl.detect.pthread = { l="pthread" }
+bbl.ddep.m = { static={l="m"} }
+bbl.ddep.pthread = { static={l="pthread"} }
 
