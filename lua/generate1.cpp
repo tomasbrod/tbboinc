@@ -98,7 +98,7 @@ void copy_file_if_not_exists(const char* src, const std::string& dest)
 	close(inp);
 }
 
-void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const char **const_files, const char *rename_last)
+void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const char **const_files, const char *rename_last, const char* rename_input)
 {
 	std::stringstream xml;
 	std::vector<std::string> hashes;
@@ -136,7 +136,7 @@ void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const char **c
 		if(const_files[i]) {
 			xml<<rename_last;
 		} else {
-			xml<<input_name;
+			xml<<rename_input;
 		}
 		xml<<"</open_name>\n</file_ref>\n";
 	}
