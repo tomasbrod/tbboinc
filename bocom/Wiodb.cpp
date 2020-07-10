@@ -1,28 +1,12 @@
 
-int create_work3(
+int create_work4(
     DB_WORKUNIT& wu,
     const char* result_template_filename,
-        // relative to project root; stored in DB
-    SCHED_CONFIG& config_loc,
-    const CStream& input_data
+    SCHED_CONFIG& config_loc
 ) {
     int retval;
 
     wu.create_time = time(0);
-
-		unsigned long in_len = input_data.pos();
-		char in_md5[256];
-		md5_block((const unsigned char*)input_data.getbase(), in_len, in_md5);
-    snprintf(wu.xml_doc, sizeof(wu.xml_doc),
-    "<file_info>\n<name>%s.in</name>\n"
-    "<url>https://boinc.tbrada.eu/tbrada_cgi/fuh?%s.in</url>\n"
-    "<md5_cksum>%s</md5_cksum>\n<nbytes>%lu</nbytes>\n</file_info>\n"
-    "<workunit>\n<file_ref>\n<file_name>%s.in</file_name>\n"
-    "<open_name>input.dat</open_name>\n</file_ref>\n</workunit>\n"
-    , wu.name, wu.name
-    , in_md5, in_len
-    , wu.name
-    );
 
     // check for presence of result template.
     // we don't need to actually look at it.
@@ -98,33 +82,11 @@ int create_work3(
 		retval = wu.insert();
 		if (retval) {
 				fprintf(stderr,
-						"create_work: workunit.insert() %s\n", boincerror(retval)
+						"create_work4: workunit.insert() %s\n", boincerror(retval)
 				);
 				return retval;
 		}
 		wu.id = boinc_db.insert_id();
-
-		//insert input_file
-		MYSQL_STMT* insert_stmt = 0;
-		insert_stmt = mysql_stmt_init(boinc_db.mysql);
-		char stmt[] = "insert into input_file SET wu=?, data=?";
-		void* in_data= (void*)input_data.getbase();
-		MYSQL_BIND bind[] = {
-				{.buffer=&wu.id, .buffer_type=MYSQL_TYPE_LONG, 0},
-				{.length=&in_len, .buffer=in_data, .buffer_type=MYSQL_TYPE_BLOB, 0},
-		};
-		if(!insert_stmt
-				|| mysql_stmt_prepare(insert_stmt, stmt, sizeof stmt )
-				|| mysql_stmt_bind_param(insert_stmt, bind)
-				|| mysql_stmt_execute(insert_stmt)
-		) {
-				mysql_stmt_close(insert_stmt);
-				fprintf(stderr,
-						"create_work: insert of input_data failed %s\n", mysql_error(boinc_db.mysql) );
-				//wu.delete_from_db();
-				return -1;
-		}
-		mysql_stmt_close(insert_stmt);
 
 		/*
 		wu.transitioner_flags= prev_transitioner_flags;
@@ -137,6 +99,31 @@ int create_work3(
 		*/
 
     return 0;
+}
+
+int create_work3(
+    DB_WORKUNIT& wu,
+    const char* result_template_filename,
+        // relative to project root; stored in DB
+    SCHED_CONFIG& config_loc,
+    const CStream& input_data
+) {
+    int retval;
+
+    unsigned long in_len = input_data.pos();
+    char in_md5[256];
+    md5_block((const unsigned char*)input_data.getbase(), in_len, in_md5);
+    snprintf(wu.xml_doc, sizeof(wu.xml_doc),
+    "<file_info>\n<name>%s.in</name>\n"
+    "<url>https://boinc.tbrada.eu/tbrada_cgi/fuh?%s.in</url>\n"
+    "<md5_cksum>%s</md5_cksum>\n<nbytes>%lu</nbytes>\n</file_info>\n"
+    "<workunit>\n<file_ref>\n<file_name>%s.in</file_name>\n"
+    "<open_name>input.dat</open_name>\n</file_ref>\n</workunit>\n"
+    , wu.name, wu.name
+    , in_md5, in_len
+    , wu.name
+    );
+    return create_work4(wu, result_template_filename, config_loc);
 }
 
 int read_output_file(RESULT const& result, CDynamicStream& buf) {
