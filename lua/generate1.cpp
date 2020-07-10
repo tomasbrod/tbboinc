@@ -98,45 +98,46 @@ void copy_file_if_not_exists(const char* src, const std::string& dest)
 	close(inp);
 }
 
-void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const char **const_files, const char *rename_last, const char* rename_input)
+struct file_desc {
+	const char* name;
+	const char* open;
+	bool copy;
+};
+
+
+void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const struct file_desc const_files[])
 {
 	std::stringstream xml;
 	std::vector<std::string> hashes;
-	for(unsigned i=0; const_files[i]; ++i) {
+	int retval;
+	for(unsigned i=0; const_files[i].name || const_files[i].open; ++i) {
 		char in_md5[256];
 		double nbytes = 0;
-		int retval = md5_file(const_files[i], in_md5, nbytes,0);
-		copy_file_if_not_exists(const_files[i], std::string(config.download_dir)+"/"+std::string(in_md5));
+		if(const_files[i].name) {
+			retval = md5_file(const_files[i].name, in_md5, nbytes,0);
+			copy_file_if_not_exists(const_files[i].name, std::string(config.download_dir)+"/"+std::string(in_md5));
+			hashes.push_back(in_md5);
+		} else {
+			std::string fn = (std::string(config.download_dir)+"/"+input_name);
+			retval = md5_file(fn.c_str(), in_md5, nbytes,0);
+			hashes.push_back(input_name);
+		}
 		if(retval) throw EDatabase("md5_file failed");
 		xml<<"<file_info>\n<name>"<<in_md5
 		<<"</name>\n<url>https://boinc.tbrada.eu/download/"
 		<<in_md5<<"</url>\n<md5_cksum>"<<in_md5<<"</md5_cksum>\n<nbytes>"<<nbytes
 		<<"</nbytes>\n</file_info>\n";
-		hashes.push_back(in_md5);
-		
-	}
-	if(input_name.size()) {
-		char in_md5[256];
-		double nbytes = 0;
-		std::string fn = (std::string(config.download_dir)+"/"+input_name);
-		int retval = md5_file(fn.c_str(), in_md5, nbytes, 0);
-		if(retval) throw EDatabase("md5_file failed");
-		xml<<"<file_info>\n<name>"<<input_name
-		<<"</name>\n<url>https://boinc.tbrada.eu/download/"
-		<<input_name<<"</url>\n<md5_cksum>"<<in_md5<<"</md5_cksum>\n<nbytes>"<<nbytes
-		<<"</nbytes>\n</file_info>\n";
-		hashes.push_back(input_name);
 	}
 	xml<<"<workunit>\n";
 	for(unsigned i=0; i<hashes.size(); ++i) {
 		xml<<"<file_ref>\n<file_name>"<<hashes[i]<<"</file_name>\n<open_name>";
-		if(const_files[i] && (const_files[i+1] || !rename_last)) {
-			xml<<const_files[i];
-		} else
-		if(const_files[i]) {
-			xml<<rename_last;
+		if(const_files[i].open) {
+			xml<<const_files[i].open;
 		} else {
-			xml<<rename_input;
+			xml<<const_files[i].name;
+		}
+		if(const_files[i].copy) {
+			xml<<"<copy_file/>\n";
 		}
 		xml<<"</open_name>\n</file_ref>\n";
 	}
@@ -187,14 +188,15 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 
 	strcpy(wu.name, wuname.str().c_str());
 
-	const char *const_files[]= {
-		"library.lua",
-		"kanon_app.cpp",
-		"dlk_util.cpp",
-		"kanonizer_b.cpp",
-		"try.lua",
-		0};
-	build_xml_doc(wu, wuname.str()+".in", const_files, "driver.lua", "input.txt");
+	const struct file_desc const_files[]= {
+		"library.lua",0,0,
+		"try.lua","driver.lua",0,
+		"kanon_app.cpp",0,1,
+		"dlk_util.cpp",0,1,
+		"kanonizer_b.cpp",0,1,
+		0,"input.txt",1
+		};
+	build_xml_doc(wu, wuname.str()+".in", const_files);
 
 	wu.transitioner_flags = 2; //?
 	retval= create_work4(wu,"templates/lua8_simple_out",config);
