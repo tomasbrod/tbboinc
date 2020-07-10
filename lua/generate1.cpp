@@ -117,17 +117,18 @@ void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const struct f
 			retval = md5_file(const_files[i].name, in_md5, nbytes,0);
 			copy_file_if_not_exists(const_files[i].name, std::string(config.download_dir)+"/"+std::string(in_md5));
 			hashes.push_back(in_md5);
-			xml<<"<file_info>\n<name>"<<in_md5;
+			xml<<"<file_info>\n<name>"<<in_md5
+			<<"</name>\n<url>https://boinc.tbrada.eu/download/"<<in_md5;
 		} else {
 			std::string fn = (std::string(config.download_dir)+"/"+input_name);
 			retval = md5_file(fn.c_str(), in_md5, nbytes,0);
 			hashes.push_back(input_name);
-			xml<<"<file_info>\n<name>"<<input_name;
+			xml<<"<file_info>\n<name>"<<input_name
+			<<"</name>\n<url>https://boinc.tbrada.eu/download/"<<in_md5;
 		}
 		if(retval) throw EDatabase("md5_file failed");
 		xml
-		<<"</name>\n<url>https://boinc.tbrada.eu/download/"
-		<<in_md5<<"</url>\n<md5_cksum>"<<in_md5<<"</md5_cksum>\n<nbytes>"<<nbytes
+		<<"</url>\n<md5_cksum>"<<in_md5<<"</md5_cksum>\n<nbytes>"<<nbytes
 		<<"</nbytes>\n</file_info>\n";
 		if(!const_files[i].name) break;
 	}
