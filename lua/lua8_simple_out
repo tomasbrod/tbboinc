@@ -1,0 +1,15 @@
+<output_template>
+    <file_info>
+        <name><OUTFILE_0/></name>
+        <generated_locally/>
+        <upload_when_present/>
+        <max_nbytes>128000000</max_nbytes>
+        <upload_url>https://boinc.tbrada.eu/tbrada_cgi/fuh</upload_url>
+    </file_info>
+    <result>
+        <file_ref>
+            <file_name><OUTFILE_0/></file_name>
+            <open_name>output.txt</open_name>
+        </file_ref>
+    </result>
+</output_template>
