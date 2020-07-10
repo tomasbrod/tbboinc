@@ -531,7 +531,7 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
         if(retval)
             return return_error(ERR_TRANSIENT, "file_upload_handler: result lookup failed");
         //TODO check result state
-        if(result.server_state!=RESULT_SERVER_STATE_IN_PROGRESS)
+        if(false && result.server_state!=RESULT_SERVER_STATE_IN_PROGRESS)
             return return_error(ERR_PERMANENT, "file_upload_handler: result %s is not in state to accept uploads (%d)", name, result.server_state);
         //insert
         MYSQL_STMT* insert_stmt = 0;
