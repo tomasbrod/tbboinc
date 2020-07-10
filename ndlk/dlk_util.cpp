@@ -16,7 +16,7 @@ public:
 	elem_t  operator()(size_t i, size_t j) const
 		{return mData[i * mCols + j];}
 	elem_t& operator[](size_t p)
-		{return mData.at(p);}
+		{return mData[p];}
 	elem_t operator[](size_t p) const
 		{return mData[p];}
 	/* Meta */
@@ -43,6 +43,7 @@ public:
 	/* Compare */
 	friend bool operator== (const Square &c1, const Square &c2);
 	friend bool operator!= (const Square &c1, const Square &c2);
+	friend bool operator< (const Square &c1, const Square &c2);
 private:
 	size_t mCols;
 	std::vector<elem_t> mData;
@@ -57,6 +58,10 @@ bool operator== (const Square &c1, const Square &c2)
     return (c1.mData== c2.mData);
 }
 bool operator!= (const Square &c1, const Square &c2){return !(c1== c2);}
+bool operator<  (const Square &c1, const Square &c2)
+{
+    return (c1.mData< c2.mData);
+}
 
 /* Reading and Writing LK */
 std::ostream& operator<<(std::ostream& os, const Square& square)
@@ -109,7 +114,6 @@ std::ostream& Square::WriteAlnum(std::ostream& os) const
 
 void Square::ReadAlnum(std::istream& is)
 {
-	const Square& square = *this;
 	mData.resize(0);
 	char c;
 	unsigned n=250;
@@ -291,7 +295,6 @@ std::string Square::Encode()
 	v.push_back(0);
 
 	size_t i = av.size()-1;
-	unsigned acc = out[i];
 	do {
 		mulBc(out[i],av[i],v,58);
 		i--;

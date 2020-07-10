@@ -216,7 +216,9 @@ void Exact_cover_u::init_trans(const Square& dlk){
 		nodesSt[count + j - 1].right -= j;
 		count += j;
 	}
+	#ifndef DLX_QUIET
 	std::cerr<<"init_trans("<<dlk.width()<<") used "<<count<<" nodes\n";
+	#endif
 }
 
 Exact_cover_u::elem_t* Exact_cover_u::add_trans()
@@ -319,7 +321,9 @@ void Exact_cover_u::init_disjoint(){
 		nodesSt[count].left += order;
 		nodesSt[count + order - 1].right -= order;
 	}
+	#ifndef DLX_QUIET
 	std::cerr<<"init_disjoint("<<order<<") used "<<(raz+1)<<" heads and "<<count<<" nodes\n";
+	#endif
 }
 
 void Exact_cover_u::dance_mt_thr(bool show) {
@@ -343,8 +347,10 @@ void Exact_cover_u::dance_mt_thr(bool show) {
 
 			cs_main.lock();
 			size_t cnt = ++global_cnt;
+			#ifndef DLX_QUIET
 			std::cerr<<"\rl(1) "<< cnt <<" / "<<global_siz<<"   ";
 			std::cerr.flush();
+			#endif
 			continue;
 		}
 		cs_main.unlock();
@@ -364,15 +370,19 @@ void Exact_cover_u::dance_mt(save_func_t save)
 	if(!global_siz) return;
 	std::vector<std::thread> threads;
 	size_t nthreads = std::min(size_t(std::thread::hardware_concurrency()), global_siz);
+	#ifndef DLX_QUIET
 	std::cerr<<"dance_mt: using "<<nthreads<<" threads for "<<(headsDyn[c].size)<<" rows in column "<<c<<endl<<"...";
 	std::cerr.flush();
+	#endif
 	for(size_t tid=0; tid< nthreads-1; ++tid) {
 		threads.emplace_back( &Exact_cover_u::dance_mt_thr, this, 0 );
 	}
 	dance_mt_thr(1);
 	for( auto& thr : threads )
 		thr.join();
+	#ifndef DLX_QUIET
 	std::cerr<<endl;
+	#endif
 }
 
 void Exact_cover_u::dance_lim(save_func_t save)

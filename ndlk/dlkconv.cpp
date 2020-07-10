@@ -17,7 +17,7 @@ using std::endl;
 #include "dlk_util.cpp"
 
 
-void test_mul() {
+static void test_mul() {
 	std::vector<unsigned short> v;
 	v.push_back(0);
 	mulBc( 123, 1, v, 10);
@@ -32,7 +32,7 @@ void test_mul() {
 	for(const auto V : v) std::cout<<V; std::cout<<endl;
 }
 
-void test_div() {
+static void test_div() {
 	std::vector<unsigned short> v;
 	v.push_back(0);
 	mulBc( 1234, 1, v, 10);
@@ -47,7 +47,8 @@ struct InputSpec {
 	std::string name;
 	std::istream* is;
 	std::unique_ptr<std::ifstream> ifstr;
-	bool enc, alnum;
+	bool alnum;
+	int enc;
 	char** init(char **arg)
 	{
 		enc=alnum=0;
@@ -58,6 +59,8 @@ struct InputSpec {
 			char c = arg[0][i];
 			if(c=='e')
 				enc=1;
+			else if(c=='E')
+				enc=2;
 			else if(c=='a')
 				alnum=1;
 			else if(c=='s')
