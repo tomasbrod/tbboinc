@@ -137,10 +137,11 @@ void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const struct f
 		} else {
 			xml<<const_files[i].name;
 		}
+		xml<<"</open_name>\n";
 		if(const_files[i].copy) {
 			xml<<"<copy_file/>\n";
 		}
-		xml<<"</open_name>\n</file_ref>\n";
+		xml<<"</file_ref>\n";
 	}
 	xml<<"</workunit>";
 	size_t len = xml.str().size();
