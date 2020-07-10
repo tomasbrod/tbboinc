@@ -124,7 +124,7 @@ void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const struct f
 			retval = md5_file(fn.c_str(), in_md5, nbytes,0);
 			hashes.push_back(input_name);
 			xml<<"<file_info>\n<name>"<<input_name
-			<<"</name>\n<url>https://boinc.tbrada.eu/download/"<<in_md5;
+			<<"</name>\n<url>https://boinc.tbrada.eu/download/"<<input_name;
 		}
 		if(retval) throw EDatabase("md5_file failed");
 		xml
