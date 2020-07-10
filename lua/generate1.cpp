@@ -127,6 +127,7 @@ void build_xml_doc(DB_WORKUNIT &wu, const std::string input_name, const struct f
 		<<"</name>\n<url>https://boinc.tbrada.eu/download/"
 		<<in_md5<<"</url>\n<md5_cksum>"<<in_md5<<"</md5_cksum>\n<nbytes>"<<nbytes
 		<<"</nbytes>\n</file_info>\n";
+		if(!const_files[i].name) break;
 	}
 	xml<<"<workunit>\n";
 	for(unsigned i=0; i<hashes.size(); ++i) {
