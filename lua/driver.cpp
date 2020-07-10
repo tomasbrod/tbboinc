@@ -98,6 +98,7 @@ int boinc_lua_resolve(lua_State* L) {
 	#ifdef WITH_BOINC
 	string path2;
 	boinc_resolve_filename_s(name, path2);
+	lua_pop(L,1);
 	lua_pushstring(L,path2.c_str());
 	#endif
 	return 1;
