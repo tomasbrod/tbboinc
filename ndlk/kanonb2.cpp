@@ -39,14 +39,14 @@ void Kanon_last(Square& min, Square& sq)
 			rot3(i,j) = sq(j, N-i);
 			anti(i,j) = sq(N-j, N-i);
 	}
-	Kanon_test(min,trsp.Normaliz());
-	Kanon_test(min,rot1.Normaliz());
-	Kanon_test(min,rot2.Normaliz());
-	Kanon_test(min,rot3.Normaliz());
-	Kanon_test(min,vert.Normaliz());
-	Kanon_test(min,horz.Normaliz());
-	Kanon_test(min,anti.Normaliz());
-	Kanon_test(min,sq.Normaliz());
+	Kanon_test(min,trsp.DiagNorm());
+	Kanon_test(min,rot1.DiagNorm());
+	Kanon_test(min,rot2.DiagNorm());
+	Kanon_test(min,rot3.DiagNorm());
+	Kanon_test(min,vert.DiagNorm());
+	Kanon_test(min,horz.DiagNorm());
+	Kanon_test(min,anti.DiagNorm());
+	Kanon_test(min,sq.DiagNorm());
 }
 
 void Kanon_M1(Square& sq, unsigned I)
@@ -96,10 +96,10 @@ Square Kanon(Square sq)
 		optX.push_back(std::pair<int,int>{i,j});
 		opts.push_back(0);
 	}
-	Square min(sq);
+	Square min(sq.DiagNorm());
 	unsigned i = 0, p = 0;
 	stack.resize(optX.size()+1);
-	std::cerr<<"optX.size(): "<<optX.size()<<endl;
+	//std::cerr<<"optX.size(): "<<optX.size()<<endl;
 
 	while(1) {
 		for(; i<optX.size() && opts[i]; ++i) {}
@@ -125,13 +125,13 @@ Square Kanon(Square sq)
 void Kanonize(Square sq)
 {
 	Exact_cover_u dlx;
-	std::cout<<"orig"<<endl<<sq;
-	dlx.count_trans(sq);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
+	//std::cout<<"orig"<<endl<<sq;
+	//dlx.count_trans(sq);
+	//std::cout<<"dtrans: "<<dlx.num_trans<<endl;
 	Square min = Kanon(sq);
-	std::cout<<"min"<<endl<<min;
-	dlx.count_trans(min);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
+	//std::cout<<"min"<<endl<<min;
+	//dlx.count_trans(min);
+	//std::cout<<"dtrans: "<<dlx.num_trans<<endl;
 	std::cout<<min.Encode()<<endl;
 }
 
