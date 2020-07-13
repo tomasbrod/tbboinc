@@ -1,0 +1,23 @@
+<app_info>
+<app>
+    <name>tot5</name>
+    <user_friendly_name>PADLS Total</user_friendly_name>
+    <non_cpu_intensive>0</non_cpu_intensive>
+</app>
+<file_info>
+    <name>search</name>
+    <executable/>
+</file_info>
+<app_version>
+    <app_name>tot5</app_name>
+    <version_num>599</version_num>
+    <platform>x86_64-pc-linux-gnu</platform>
+    <avg_ncpus>1.000000</avg_ncpus>
+    <api_version>7.15.0</api_version>
+    <file_ref>
+        <file_name>search</file_name>
+        <main_program/>
+    </file_ref>
+</app_version>
+
+</app_info>
