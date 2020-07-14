@@ -3,41 +3,47 @@ struct Kanonizer {
 	std::vector<std::pair<int,int>> optX;
 	unsigned order=0;
 	
-	void Last(Square& min, Square& sq)
+	bool Last(Square& min, Square& sq, std::set<Square> *SOS)
 	{
 		const unsigned n = sq.width();
 		const unsigned N = sq.width()-1;
+		bool dupe = false;
 		Square *lsq = last_sq;
 		unsigned i=0;
 		for(unsigned j=0; j<n; ++j) {
-				lsq[0][sq(i, N-j)] = j;
+				lsq[7][sq(i, N-j)] = j;
 				lsq[1][sq(N-i, j)] = j;
 				lsq[2][sq(N-i, N-j)] = j;
 				lsq[3][sq(j,i)] = j;
 				lsq[4][sq(j, N-i)] = j;
 				lsq[5][sq(N-j, i)] = j;
 				lsq[6][sq(N-j, N-i)] = j;
-				lsq[7][sq(i,j)] = j;
+				lsq[0][sq(i,j)] = j;
 		}
 		for(unsigned i=1, o=n; i<n; ++i) {
 			for(unsigned j=0; j<n; ++j, ++o) {
-				lsq[0][o] = lsq[0][sq(i, N-j)];
+				lsq[7][o] = lsq[7][sq(i, N-j)];
 				lsq[1][o] = lsq[1][sq(N-i, j)];
 				lsq[2][o] = lsq[2][sq(N-i, N-j)];
 				lsq[3][o] = lsq[3][sq(j,i)];
 				lsq[4][o] = lsq[4][sq(j, N-i)];
 				lsq[5][o] = lsq[5][sq(N-j, i)];
 				lsq[6][o] = lsq[6][sq(N-j, N-i)];
-				lsq[7][o] = lsq[7][sq(i,j)];
+				lsq[0][o] = lsq[0][sq(i,j)];
 			}
 		}
 		for(unsigned k=0; k<8; ++k) {
 			for(unsigned j=0; j<n; ++j)
 				lsq[k][j]=j;
 			//std::cout<<"T"<<endl<<lsq[k];
+			if(SOS && !dupe && !k) {
+				auto it = SOS->insert(lsq[k]);
+				if(!it.second) dupe=true;
+			}
 			if(lsq[k]<min)
 				min= lsq[k];
 		}
+		return !dupe;
 	}
 
 	void ApplyM(Square& sq, std::pair<int,int> p)
@@ -64,7 +70,7 @@ struct Kanonizer {
 		}
 	}
 
-	Square Kanon(Square sq)
+	Square Kanon(Square sq, std::set<Square> *SOS = nullptr)
 	{
 		std::vector<bool> opts;
 		std::vector<unsigned> stack;
@@ -86,7 +92,7 @@ struct Kanonizer {
 		stack.resize(optX.size()+1);
 		opts.resize(optX.size(),0);
 
-		Last(min, sq);
+		Last(min, sq, SOS);
 
 		while(1) {
 			for(; i<optX.size() && opts[i]; ++i) {}
@@ -100,12 +106,18 @@ struct Kanonizer {
 			} else {
 				//std::cerr<<"A "<<i<<endl;
 				ApplyM(sq, optX[i]);
-				Last(min, sq);
-				opts[i]=1;
+				Last(min, sq, SOS);
 				stack[p++] = i;
+				opts[i]=1;
 			}
 		}
 
 		return min;
+	}
+
+	unsigned KanonCnt(Square& min, const Square& in) {
+		std::set<Square> SOS;
+		min=Kanon(in, &SOS);
+		return SOS.size();
 	}
 };

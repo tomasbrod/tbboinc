@@ -32,9 +32,11 @@ void Kanonize(Square sq)
 	dlx.count_trans(min);
 	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
 	std::cout<<min.Encode()<<endl;*/
-	Square min = kanonizer.Kanon(sq);
+	//Square min = kanonizer.Kanon(sq);
+	Square min;
+	unsigned izo = kanonizer.KanonCnt(min, sq);
 	//std::cout<<"min"<<endl<<min;
-	std::cout<<min.Encode()<<endl;
+	std::cout<<"#cnt_izo: "<<izo<<endl<<min.Encode()<<endl;
 }
 
 int main(int argc, char* argv[])
