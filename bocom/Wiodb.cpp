@@ -123,7 +123,33 @@ int create_work3(
     , in_md5, in_len
     , wu.name
     );
-    return create_work4(wu, result_template_filename, config_loc);
+
+    retval = create_work4(wu, result_template_filename, config_loc);
+    if(retval) return retval;
+
+    //insert input_file
+    MYSQL_STMT* insert_stmt = 0;
+    insert_stmt = mysql_stmt_init(boinc_db.mysql);
+    char stmt[] = "insert into input_file SET wu=?, data=?";
+    void* in_data= (void*)input_data.getbase();
+    MYSQL_BIND bind[] = {
+		    {.buffer=&wu.id, .buffer_type=MYSQL_TYPE_LONG, 0},
+		    {.length=&in_len, .buffer=in_data, .buffer_type=MYSQL_TYPE_BLOB, 0},
+    };
+    if(!insert_stmt
+		    || mysql_stmt_prepare(insert_stmt, stmt, sizeof stmt )
+		    || mysql_stmt_bind_param(insert_stmt, bind)
+		    || mysql_stmt_execute(insert_stmt)
+    ) {
+		    mysql_stmt_close(insert_stmt);
+		    fprintf(stderr,
+				    "create_work: insert of input_data failed %s\n", mysql_error(boinc_db.mysql) );
+		    //wu.delete_from_db();
+		    return -1;
+    }
+    mysql_stmt_close(insert_stmt);
+
+    return 0;
 }
 
 int read_output_file(RESULT const& result, CDynamicStream& buf) {

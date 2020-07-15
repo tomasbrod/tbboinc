@@ -12,10 +12,10 @@ mksample: mksample.cpp ../bocom/Stream.cpp wio.cpp Makefile
 gensegments: gensegments.cpp ../bocom/Stream.cpp wio.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc gensegments.cpp ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a -lmysqlclient -lpthread
 
-genwu: genwu.cpp ../bocom/Stream.cpp wio.cpp create_wu.cpp Makefile
+genwu: genwu.cpp ../bocom/Stream.cpp ../bocom/Wiodb.cpp wio.cpp create_wu.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc genwu.cpp ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a ../boinc/lib/libboinc_crypt.a -lmysqlclient -lpthread -lssl -lcrypto
 
-asim: asim.cpp ../bocom/Stream.cpp wio.cpp create_wu.cpp Makefile
+asim: asim.cpp ../bocom/Stream.cpp ../bocom/Wiodb.cpp wio.cpp create_wu.cpp Makefile
 	g++ -o $@ -g -O0 -I .. -I .. -I ../boinc/api -I ../boinc/lib -I ../boinc/tools -I ../boinc/sched -I ../boinc/db -I /usr/include/mysql -I ../boinc asim.cpp ../boinc/sched/validate_util.o ../boinc/sched/libsched.a ../boinc/api/libboinc_api.a ../boinc/lib/libboinc.a ../boinc/lib/libboinc_crypt.a -lmysqlclient -lpthread -lssl -lcrypto
 
 cleaner: cleaner.cpp Makefile
