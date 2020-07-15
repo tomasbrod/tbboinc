@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
 	uint64_t   end= 9000000000000000000;
 	uint64_t  step=      1950000000000;
 	unsigned maxcnt = 128000;
-	int batch = 75;
+	int batch = 76;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
