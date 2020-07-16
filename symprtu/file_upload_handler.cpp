@@ -576,11 +576,13 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
 
         //result.client_state= RESULT_FILES_DOWNLOADED;
         //result.validate_state= VALIDATE_STATE_UPLOADED;
+        #if 0
         sprintf(sql, "update result set validate_state= 9 where id=%lu", result.id);
         retval = boinc_db.do_query(sql);
         if(retval) log_messages.printf(MSG_WARNING,
                       "Result R#%lu validate_state update failed (%d)\n",
                       result.id, retval );
+        #endif
 
         log_messages.printf(MSG_NORMAL,
             "Uploaded %s R#%lu to DB size=%lu from %s\n",
