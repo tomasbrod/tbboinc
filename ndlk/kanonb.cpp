@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 			"Author: Tomas Brada (GPL)\n";
 		return 9;
 	}
-	//try {
+	try {
 		while(std::cin) {
 			std::string line;
 			std::getline(std::cin,line);
@@ -59,10 +59,10 @@ int main(int argc, char* argv[])
 				Kanonize(sq);
 			}
 		}
-	/*}
+	}
 	catch( const std::exception& e ) {
 		std::cerr<<"Exception: "<<e.what()<<endl;
 		return 1;
-	}*/
+	}
 	return 0;
 }

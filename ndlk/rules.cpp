@@ -20,22 +20,6 @@ using std::endl;
 
 Kanonizer kanonizer;
 
-void Kanonize(Square sq)
-{
-	/*Exact_cover_u dlx;
-	std::cout<<"orig"<<endl<<sq;
-	dlx.count_trans(sq);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
-	Square min = Kanon(sq);
-	std::cout<<"min"<<endl<<min;
-	dlx.count_trans(min);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
-	std::cout<<min.Encode()<<endl;*/
-	Square min = kanonizer.Kanon(sq);
-	//std::cout<<"min"<<endl<<min;
-	std::cout<<min.Encode()<<endl;
-}
-
 int main(int argc, char* argv[])
 {
 	if(argc!=1) {
@@ -47,7 +31,6 @@ int main(int argc, char* argv[])
 	}
 	try {
 		std::set<std::vector<unsigned>> ruleset;
-		unsigned order=0;
 		while(std::cin) {
 			std::string line;
 			std::getline(std::cin,line);
@@ -55,12 +38,21 @@ int main(int argc, char* argv[])
 				Square sq;
 				sq.Decode(line);
 				if(!sq.width()) throw std::runtime_error("Zero-width square");
-				//sq = kanonizer.Kanon(sq).DiagNorm();
-				sq.DiagNorm();
-				std::vector<unsigned> rule (sq.width());
-				const unsigned N = sq.width() - 1;
-				for(unsigned i=0; i<=N; ++i)
-					rule[i]=sq(i,N-i);
+
+				std::set<Square> isotopes;
+				kanonizer.Kanon(sq, &isotopes);
+				std::vector<unsigned> map ( sq.width() );
+				std::vector<unsigned> rule; rule.resize(sq.width(), sq.width());
+				std::vector<unsigned> anti( sq.width() );
+				const unsigned N = sq.width()-1;
+				for(Square izo : isotopes) {
+					for(unsigned i=0; i<sq.width(); ++i)
+						map[izo(i,i)] = i;
+					for(unsigned i=0; i<sq.width(); ++i)
+						anti[i] = map[ izo(i, N-i) ];
+					if(anti<rule)
+						rule=anti;
+				}
 				auto it = ruleset.insert(rule);
 				if(it.second) {
 					for(unsigned i=0; i<N; ++i)

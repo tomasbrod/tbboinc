@@ -35,8 +35,7 @@ struct Kanonizer {
 		for(unsigned k=0; k<8; ++k) {
 			for(unsigned j=0; j<n; ++j)
 				lsq[k][j]=j;
-			//std::cout<<"T"<<endl<<lsq[k];
-			if(SOS && !dupe && !k) {
+			if(SOS) {
 				auto it = SOS->insert(lsq[k]);
 				if(!it.second) dupe=true;
 			}

@@ -19,6 +19,8 @@ public:
 		{return mData[p];}
 	elem_t operator[](size_t p) const
 		{return mData[p];}
+	elem_t diag(size_t i)
+		{return mData.at(i * mCols + (mCols-i+1));}
 	/* Meta */
 	size_t width() const { return mCols; }
 	size_t size() const { return mCols*mCols; }

@@ -15,7 +15,7 @@ using std::endl;
 
 #include "dlk_util.cpp"
 #include "exact_cover_mt.cpp"
-#include "kanonizer_b.cpp"
+#include "kanonizer_v.cpp"
 
 
 /*
@@ -23,7 +23,7 @@ using std::endl;
 	.orto : all squares processed with DLX
 */
 
-Kanonizer kanonizer;
+KanonizerV kanonizer;
 
 int main(int argc, char* argv[])
 {
