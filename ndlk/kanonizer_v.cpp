@@ -1,7 +1,7 @@
 struct KanonizerV {
 	unsigned order=0;
 	std::vector<std::pair<int,int>> im_mtrans;
-	std::vector<uint32_t> im_tindex;
+	std::vector<uint32_t> im_isotopes;
 	std::vector<uint8_t> im_diagonals;
 
 	void ApplyM(Square& sq, std::pair<int,int> p)
@@ -66,7 +66,7 @@ struct KanonizerV {
 		unsigned nmap[order];
 		unsigned rule[order];
 		for(unsigned i=0; i<order; ++i) rule[i]=order;
-		for(unsigned m=0; m < im_tindex.size(); ++m) {
+		for(unsigned m=0; m < im_isotopes.size(); ++m) {
 			for(unsigned i=0; i<(order*2); ++i) {
 				unsigned d = im_diagonals[m*order*2+i];
 				tdiag[i] = sq [ d ];
@@ -132,7 +132,7 @@ struct KanonizerV {
 		for( const auto& mt : mt_trans_set) {
 			Square sq(input_square);
 			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
-				if( (1<<i) & im_tindex[mt.first] ) {
+				if( (1<<i) & im_isotopes[mt.first] ) {
 					ApplyM(sq, im_mtrans[i]);
 			}}
 			sq=transform_sq(sq, mt.second).DiagNorm();
@@ -143,6 +143,7 @@ struct KanonizerV {
 
 	void init_order(unsigned order)
 	{
+		clock_t t0 = clock();
 		const unsigned N = order-1;
 		this->order= order;
 		im_mtrans.clear();
@@ -166,6 +167,8 @@ struct KanonizerV {
 		std::vector<unsigned> stack(im_mtrans.size()+1);
 		unsigned transformation_index = 0;
 
+		std::cerr<<"# KanonizerV("<<order<<"): transformations: "<<im_mtrans.size()<<" + 8, initializing..."<<endl;
+
 		//transformation 0 appears to have no effect, maybe we do not have to test without it?
 		for(transformation_index=0; transformation_index < (1<<im_mtrans.size()); transformation_index+=1) {
 			Square sq(natural);
@@ -187,16 +190,19 @@ struct KanonizerV {
 				uniq= uniq && it.second;
 			}
 			if(uniq) {
-				im_tindex.push_back( transformation_index );
+				im_isotopes.push_back( transformation_index );
 				im_diagonals.insert( im_diagonals.end(), cur_iso, cur_iso+(order*2) );
 			}
 		}
+		std::cerr<<"# KanonizerV("<<order<<"): m-isotopes: "<<im_isotopes.size()<<" *8 ("<<
+		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s)"<<endl;
+
 	}
 
-// order 11 - 262144 (2^15*8) total transformations, 15360 unique ones (17x)
-// order 12 - (2^21), unique 23040*8
-// order 13 - (2^21*8), 184320 unique, 24 bit tr
-// order 14 - (2^28), 322560
+// order 11 - (2^15),   1920 uniq,	262144 (2^15*8) total transformations, 15360 unique ones (17x)
+// order 12 - (2^21),  23040 uniq
+// order 13 - (2^21),  23040 uniq
+// order 14 - (2^28), 322560 uniq
 // order 15 - (2^  *8), 
 // only the x is important
 // store both diagonals and transorm(18 bits)
