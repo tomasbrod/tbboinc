@@ -310,6 +310,7 @@ std::string Square::Encode()
 
 void Square::Decode(const std::string& enc_str)
 {
+	if(enc_str.empty()) throw ESquareDecode();
 	std::vector<unsigned short> enc(enc_str.size());
 	for( size_t i=0; i<enc_str.size(); ++i ) {
 		enc[i] = debase58[enc_str[i]&127];

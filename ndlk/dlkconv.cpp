@@ -93,6 +93,7 @@ struct InputSpec {
 			if(is) {
 				std::string line;
 				getline(*is,line);
+				if(line.empty()) return sq;
 				sq.Decode(line);
 			} else {
 				if(name.empty()) return sq;
