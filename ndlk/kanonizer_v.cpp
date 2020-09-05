@@ -1,3 +1,4 @@
+#include <cassert>
 struct KanonizerV {
 	unsigned order=0;
 	std::vector<std::pair<int,int>> im_mtrans;
@@ -60,11 +61,10 @@ struct KanonizerV {
 		}
 	}
 
-	void im_find_can(std::set<std::pair<unsigned,unsigned char>>& outset, const Square& sq)
+	void im_find_can(std::set<std::pair<unsigned,unsigned char>>* outset, unsigned* rule, const Square& sq)
 	{
 		unsigned tdiag[order*2*8];
 		unsigned nmap[order];
-		unsigned rule[order];
 		for(unsigned i=0; i<order; ++i) rule[i]=order;
 		for(unsigned m=0; m < im_isotopes.size(); ++m) {
 			for(unsigned i=0; i<(order*2); ++i) {
@@ -76,15 +76,28 @@ struct KanonizerV {
 				unsigned* diag = &tdiag[order*2*t];
 				for(unsigned i=0; i<order; ++i)
 					nmap[diag[i]] = i;
-				for(unsigned i=order; i<(order*2); ++i)
+				if(nmap[diag[order]]==0) {
+					std::cerr<<"im_find_can: invalid anti-diagonal, m="<<m<<" t="<<t<<endl<<"t=0:";
+					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<tdiag[i];
+					std::cerr<<endl<<"t="<<t<<":";
+					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<diag[i];
+					std::cerr<<endl<<"mt:";
+					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<unsigned(im_diagonals[m*order*2+i]);
+					std::cerr<<endl;
+					throw ESquareOp();
+				}
+				for(unsigned i=0; i<(order*2); ++i)
 					diag[i] = nmap[ diag[i] ];
+				//somehow the normalization was not applied here ???
 				if(std::lexicographical_compare(diag+order,diag+(2*order),rule,rule+order)) {
 					std::copy(diag+order, diag+order+order, rule);
-					outset.clear();
-					outset.emplace(m,t);
+					if(outset) {
+						outset->clear();
+						outset->emplace(m,t);
+					}
 				}
-				else if(std::equal(rule,rule+order,diag+order)) {
-					outset.emplace(m,t);
+				else if(outset && std::equal(rule,rule+order,diag+order)) {
+					outset->emplace(m,t);
 				}
 			}
 		}
@@ -127,8 +140,9 @@ struct KanonizerV {
 			init_order(order);
 		}
 		std::set<std::pair<unsigned,unsigned char>> mt_trans_set;
+		unsigned mt_rule[order];
 		std::set<Square> outset;
-		im_find_can(mt_trans_set, input_square);
+		im_find_can(&mt_trans_set, mt_rule, input_square);
 		for( const auto& mt : mt_trans_set) {
 			Square sq(input_square);
 			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
