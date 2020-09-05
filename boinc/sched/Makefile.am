@@ -321,6 +321,39 @@ fcgi_file_upload_handler_SOURCES = \
 fcgi_file_upload_handler_CPPFLAGS = -D_USING_FCGI_ $(AM_CPPFLAGS)
 fcgi_file_upload_handler_LDADD = $(SERVERLIBS_FCGI)
 
+schedcgi_PROGRAMS += schedq
+schedq_SOURCES = \
+	credit.cpp \
+    edf_sim.cpp \
+    handle_request.cpp \
+    hr.cpp \
+    hr_info.cpp \
+    plan_class_spec.cpp \
+    sched_array.cpp \
+    sched_assign.cpp \
+    sched_check.cpp \
+    sched_customize.cpp \
+    sched_files.cpp \
+    sched_hr.cpp \
+    sched_keyword.cpp \
+    sched_limit.cpp \
+    sched_locality.cpp \
+    schedq_main.cpp \
+    schedq_handle.cpp \
+    sched_nci.cpp \
+    sched_resend.cpp \
+    sched_result.cpp \
+    sched_score.cpp \
+    sched_send.cpp \
+    sched_timezone.cpp \
+	../vda/sched_vda.cpp \
+    sched_version.cpp \
+    sched_types.cpp \
+    time_stats_log.cpp
+
+schedq_CPPFLAGS = -D_USING_FCGI_ $(AM_CPPFLAGS)
+schedq_LDADD = $(SERVERLIBS_FCGI)
+
 endif
 # end of "if ENABLE_FCGI"
 endif

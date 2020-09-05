@@ -227,7 +227,8 @@ struct COPROC {
         }
         device_num = 0;
         memset(&opencl_prop, 0, sizeof(opencl_prop));
-        memset(&pci_info, 0, sizeof(pci_info));
+				pci_info=PCI_INFO();
+        //memset(&pci_info, 0, sizeof(pci_info));
         last_print_time = 0;
     }
     inline void clear_usage() {

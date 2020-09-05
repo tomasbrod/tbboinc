@@ -896,3 +896,7 @@ int GLOBAL_PREFS::write_subset(MIOFILE& f, GLOBAL_PREFS_MASK& mask) {
     return 0;
 }
 
+
+void WEEK_PREFS::clear() {
+		memset(this, 0, sizeof(WEEK_PREFS));
+}

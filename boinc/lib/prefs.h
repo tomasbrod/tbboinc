@@ -104,9 +104,7 @@ struct TIME_SPAN {
 struct WEEK_PREFS {
     TIME_SPAN days[7];
 
-    void clear() {
-        memset(this, 0, sizeof(WEEK_PREFS));
-    }
+    void clear();
     WEEK_PREFS() {
         clear();
     }

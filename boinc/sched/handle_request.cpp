@@ -1465,7 +1465,7 @@ leave:
     }
 }
 
-static void log_incomplete_request() {
+void log_incomplete_request() {
     // BOINC scheduler requests use method POST.
     // So method GET means that someone is trying a browser.
     //
@@ -1483,7 +1483,7 @@ static void log_incomplete_request() {
     );
 }
 
-static void log_user_messages() {
+void log_user_messages() {
     for (unsigned int i=0; i<g_reply->messages.size(); i++) {
         USER_MESSAGE um = g_reply->messages[i];
         log_messages.printf(MSG_NORMAL,
