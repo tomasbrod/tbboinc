@@ -496,11 +496,7 @@ FILE* boinc_fopen(const char* path, const char* mode) {
             return 0;
         }
     }
-#ifndef _USING_FCGI_
     FILE *f = fopen(path, mode);
-#else
-    FCGI_FILE *f = FCGI::fopen(path,mode);
-#endif
 
 #ifdef _WIN32
     // on Windows: if fopen fails, try again for 5 seconds
@@ -522,11 +518,7 @@ FILE* boinc_fopen(const char* path, const char* mode) {
         for (int i=0; i<5; i++) {
             boinc_sleep(drand());
             if (errno != EINTR) break;
-#ifndef _USING_FCGI_
             f = fopen(path, mode);
-#else
-            f = FCGI::fopen(path, mode);
-#endif
             if (f) break;
         }
     }
@@ -579,11 +571,7 @@ int boinc_touch_file(const char *path) {
     if (boinc_file_exists(path)) {
         return 0;
     }
-#ifndef _USING_FCGI_
     FILE *fp = fopen(path, "w");
-#else
-    FCGI_FILE *fp = FCGI::fopen(path, "w");
-#endif
     if (fp) {
         fclose(fp);
         return 0;

@@ -112,11 +112,7 @@ static void get_chunk_url(DB_VDA_FILE& vf, const char* chunk_name, char* url) {
 static int get_chunk_md5(char* chunk_dir, char* md5_buf) {
     char md5_path[1024];
     sprintf(md5_path, "%s/md5.txt", chunk_dir);
-#ifndef _USING_FCGI_
     FILE* f = fopen(md5_path, "r");
-#else
-    FCGI_FILE* f = FCGI::fopen(md5_path, "r");
-#endif
     if (!f) return ERR_FOPEN;
     char* p = fgets(md5_buf, 64, f);
     fclose(f);

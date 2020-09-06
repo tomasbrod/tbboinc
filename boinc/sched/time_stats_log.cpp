@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 
 #include "filesys.h"
+#include "miofile.h"
 #include "parse.h"
 
 #include "sched_msgs.h"
@@ -38,8 +39,10 @@ static char* stats_buf = 0;
 // don't write them to disk yet, since we haven't authenticated the host
 //
 
-int handle_time_stats_log(FILE* fin) {
-    return dup_element_contents(fin, "</time_stats_log>", &stats_buf);
+int handle_time_stats_log(MIOFILE* fin) {
+		std::string buf;
+		int retval = copy_element_contents(*fin, "</time_stats_log>", buf);
+		stats_buf = strdup(buf.c_str());
 }
 
 // The host has been authenticated, so write the stats.
@@ -64,11 +67,7 @@ void write_time_stats_log() {
         }
     }
     sprintf(filename, "%s/%d", dirname, hostid);
-#ifndef _USING_FCGI_
     FILE* f = fopen(filename, "w");
-#else
-    FCGI_FILE *f = FCGI::fopen(filename, "w");
-#endif
     if (!f) {
         log_messages.printf(MSG_CRITICAL,
             "Can't create time stats file %s\n", filename

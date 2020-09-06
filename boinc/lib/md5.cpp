@@ -42,7 +42,7 @@
 #include <string.h>
 
 #ifdef _USING_FCGI_
-#include "fcgi_stdio.h"
+#include "boinc_fcgi.h"
 #endif
 
 /*

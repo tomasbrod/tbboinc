@@ -25,6 +25,7 @@
 #include <cstring>
 
 #include "parse.h"
+#include "miofile.h"
 #include "error_numbers.h"
 #include "str_util.h"
 #include "util.h"
@@ -432,7 +433,7 @@ const char* SCHEDULER_REQUEST::parse(XML_PARSER& xp) {
             continue;
         }
         if (xp.match_tag("time_stats_log")) {
-            if (handle_time_stats_log(xp.f->f)) {
+            if (handle_time_stats_log(xp.f)) {
                 log_messages.printf(MSG_NORMAL,
                     "SCHEDULER_REQUEST::parse(): Couldn't parse contents of <time_stats_log>. Ignoring it.");
             } else {
@@ -475,7 +476,7 @@ const char* SCHEDULER_REQUEST::parse(XML_PARSER& xp) {
             continue;
         }
         if (xp.match_tag("code_sign_key")) {
-            copy_element_contents(xp.f->f, "</code_sign_key>", code_sign_key, sizeof(code_sign_key));
+            copy_element_contents(*xp.f, "</code_sign_key>", code_sign_key, sizeof(code_sign_key));
             strip_whitespace(code_sign_key);
             continue;
         }
@@ -1338,7 +1339,7 @@ int SCHED_DB_RESULT::parse_from_client(XML_PARSER& xp) {
             continue;
         }
         if (xp.match_tag("stderr_out" )) {
-            copy_element_contents(xp.f->f, "</stderr_out>", stderr_out, sizeof(stderr_out));
+            copy_element_contents(*xp.f, "</stderr_out>", stderr_out, sizeof(stderr_out));
             continue;
         }
         if (xp.parse_string("platform", stemp)) continue;

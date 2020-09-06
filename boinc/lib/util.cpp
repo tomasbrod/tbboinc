@@ -328,6 +328,7 @@ void boinc_crash() {
 //
 #ifdef _USING_FCGI_
 int read_file_malloc(const char* path, char*& buf, size_t, bool) {
+	using namespace FCGI;
 #else
 int read_file_malloc(const char* path, char*& buf, size_t max_len, bool tail) {
 #endif

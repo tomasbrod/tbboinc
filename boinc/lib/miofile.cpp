@@ -37,7 +37,10 @@ MIOFILE::MIOFILE() {
     mf = 0;
     wbuf = 0;
     len = 0;
-    f = 0;
+    stdio_stream = 0;
+		#ifdef _USING_FCGI_
+		fcgx_stream = 0;
+		#endif
     buf = 0;
 }
 
@@ -49,7 +52,8 @@ void MIOFILE::init_mfile(MFILE* _mf) {
 }
 
 void MIOFILE::init_file(FILE* _f) {
-    f = _f;
+    mf = 0;
+    stdio_stream = _f;
 }
 
 void MIOFILE::init_buf_read(const char* _buf) {
@@ -63,11 +67,18 @@ void MIOFILE::init_buf_write(char* _buf, int _len) {
 }
 
 bool MIOFILE::eof() {
-    if (f) {
-        if (!feof(f)) {
+    if (stdio_stream) {
+        if (!::feof(stdio_stream)) {
             return false;
         }
     }
+		#ifdef _USING_FCGI_
+    if (fcgx_stream) {
+        if (!FCGX_HasSeenEOF(fcgx_stream)) {
+            return false;
+        }
+    }
+		#endif
     return true;
 }
 
@@ -77,14 +88,18 @@ int MIOFILE::printf(const char* format, ...) {
 
     va_list ap;
     va_start(ap, format);
-#ifndef _USING_FCGI_
     if (mf) {
         retval = mf->vprintf(format, ap);
     } else
-#endif
-    if (f) {
-        retval = vfprintf(f, format, ap);
-    } else {
+    if (stdio_stream) {
+        retval = ::vfprintf(stdio_stream, format, ap);
+    } else
+		#ifdef _USING_FCGI_
+    if (fcgx_stream) {
+        retval = FCGX_VFPrintF(fcgx_stream, format, ap);
+    } else
+		#endif
+		{
         size_t cursize = strlen(wbuf);
         size_t remaining_len = len - cursize;
         retval = vsnprintf(wbuf+cursize, remaining_len, format, ap);
@@ -94,13 +109,14 @@ int MIOFILE::printf(const char* format, ...) {
 }
 
 char* MIOFILE::fgets(char* dst, int dst_len) {
-    if (f) {
-#ifndef _USING_FCGI_
-        return ::fgets(dst, dst_len, f);
-#else
-        return FCGI::fgets(dst, dst_len, f);
+    if (stdio_stream) {
+        return ::fgets(dst, dst_len, stdio_stream);
+		}
+#ifdef _USING_FCGI_
+		else if(fcgx_stream) {
+			return FCGX_GetLine(dst,dst_len,fcgx_stream);
+		}
 #endif
-    }
     const char* q = strchr(buf, '\n');
     if (!q) return 0;
 
@@ -115,13 +131,15 @@ char* MIOFILE::fgets(char* dst, int dst_len) {
 }
 
 int MIOFILE::_ungetc(int c) {
-    if (f) {
+    if (stdio_stream) {
+        return ::ungetc(c, stdio_stream);
+		} else
 #ifdef _USING_FCGI_
-        return FCGI_ungetc(c, f);
-#else
-        return ungetc(c, f);
+		if(fcgx_stream) {
+			return FCGX_UnGetChar(c, fcgx_stream);
+		} else
 #endif
-    } else {
+		{
         buf--;
         // NOTE: we assume that the char being pushed
         // is what's already there

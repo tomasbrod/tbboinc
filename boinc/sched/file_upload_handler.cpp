@@ -602,17 +602,9 @@ int get_key(R_RSA_PUBLIC_KEY& key) {
     int retval;
     char buf[256];
     sprintf(buf, "%s/upload_public", config.key_dir);
-#ifndef _USING_FCGI_
     FILE *f = fopen(buf, "r");
-#else
-    FCGI_FILE *f = FCGI::fopen(buf, "r");
-#endif
     if (!f) return -1;
-#ifdef _USING_FCGI_
-    retval = scan_key_hex(FCGI_ToFILE(f), (KEY*)&key, sizeof(key));
-#else
     retval = scan_key_hex(f, (KEY*)&key, sizeof(key));
-#endif
     fclose(f);
     if (retval) return retval;
     return 0;
@@ -664,7 +656,7 @@ void boinc_reopen_logfile(int signal_num) {
         exit(1);
     }
 #else
-    FCGI_FILE *f = FCGI::fopen(log_path, "a");
+    FILE *f = fopen(log_path, "a");
     if (f) {
        log_messages.redirect(f);
     } else {

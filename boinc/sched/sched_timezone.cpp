@@ -111,11 +111,7 @@ URLTYPE* read_download_list() {
     if (cached) return cached;
 
     const char *download_servers = config.project_path("download_servers");
-#ifndef _USING_FCGI_
     FILE *fp=fopen(download_servers, "r");
-#else
-    FCGI_FILE *fp=FCGI::fopen(download_servers, "r");
-#endif
 
     if (!fp) {
         log_messages.printf(MSG_CRITICAL,

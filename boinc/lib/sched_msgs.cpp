@@ -49,18 +49,14 @@ void SCHED_MSG_LOG::close() {
     }
 }
 
-#ifndef _USING_FCGI_
 void SCHED_MSG_LOG::redirect(FILE* f) {
-#else
-void SCHED_MSG_LOG::redirect(FCGI_FILE* f) {
-#endif
     close();
     output = f;
 }
 
 void SCHED_MSG_LOG::flush() {
     if (output) {
-        fflush(output->stdio_stream);
+        fflush(output);
     }
 }
 #endif

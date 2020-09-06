@@ -28,10 +28,6 @@
 // (touch) the file 'debug_sched' in the project root directory.
 //
 
-#ifndef _USING_FCGI_
-#error "FCGI required"
-#endif
-
 #include "boinc_fcgi.h"
 #include "config.h"
 #include <cassert>
@@ -103,7 +99,7 @@ static void usage( char* p )
 void debug_sched( const char* trigger )
 {
 	char tmpfilename[256];
-	FCGI_FILE* fp;
+	FILE* fp;
 
 	if( !boinc_file_exists( config.project_path( "%s", trigger ) ) ) {
 		return;
@@ -113,7 +109,7 @@ void debug_sched( const char* trigger )
 	// use _XXXXXX if you want random filenames rather than
 	// deterministic mkstemp(tmpfilename);
 
-	fp= FCGI::fopen( tmpfilename, "w" );
+	fp= fopen( tmpfilename, "w" );
 
 	if( !fp ) {
 		log_messages.printf( MSG_CRITICAL, "Found %s, but can't open %s\n", trigger, tmpfilename );
@@ -126,7 +122,7 @@ void debug_sched( const char* trigger )
 	fclose( fp );
 
 	sprintf( tmpfilename, "sched_request_%06ld_%06d", g_request->hostid, g_request->rpc_seqno );
-	fp= FCGI::fopen( tmpfilename, "w" );
+	fp= fopen( tmpfilename, "w" );
 
 	if( !fp ) {
 		log_messages.printf( MSG_CRITICAL, "Found %s, but can't open %s\n", trigger, tmpfilename );
@@ -188,7 +184,7 @@ void sigterm_handler( int /*signo*/ )
 		boinc_db.close();
 	}
 	log_messages.printf( MSG_CRITICAL, "Caught SIGTERM (sent by Apache); exiting\n" );
-	unlock_sched();
+	//unlock_sched();
 	fflush( (FILE*)NULL );
 	exit( 1 );
 	return;
@@ -265,14 +261,40 @@ void schedq_handle(SCHEDULER_REPLY& sreply);
 //static SCHED_MSG_LOG log_messages; //main thread log, TODO rename?
 char* schedq_code_sign_key;
 
-bool schedq_parse_file(SCHEDULER_REQUEST& srequest,FILE* clientin,FILE* clientout) {
+bool schedq_parse_file(SCHEDULER_REQUEST& srequest,FILE* clientin,FILE* clientout)
+{
 	//clientout is there for toclient-errors
+	MIOFILE mf;
+	XML_PARSER xp(&mf);
+	mf.init_file(clientin);
+	const char* p = srequest.parse(xp);
+	/*if (!p){
+	process_schedq_request(code_sign_key);
+
+	if ((config.locality_scheduling || config.locality_scheduler_fraction) && !sreply.nucleus_only) {
+	send_file_deletes();
+	}
+	} else {*/
+	if(p) {
+    char buf[1024];
+		sprintf(buf, "Error in request message: %s", p);
+		//log_incomplete_request();
+		send_message(buf,120);
+		return false;
+	}
+	else return true;
+	/*if (config.debug_user_messages) {
+	log_user_messages();
+	}*/
 }
 
 void* schedq_thread(void*) {
 		//fork, loop, accept, parse, handle, write, flush
 		//log goes to main stderr by default
 		//if(debug), redirect log to dir, go via i/o files then maybe rename them
+	//FCGX_Request frequest = {0};
+	//while( FCGX_Accept_r(&frequest) >= 0 ) {
+	//}
 	return 0;
 }
 
@@ -306,7 +328,6 @@ void schedq_init() {
 
 int main( int argc, char** argv )
 {
-	FCGI_FILE *fin, *fout;
 	int retval;
 	char req_path[MAXPATHLEN], reply_path[MAXPATHLEN];
 	char log_path[MAXPATHLEN];
@@ -373,7 +394,7 @@ int main( int argc, char** argv )
 		sreply.db= &boinc_db; //TODO
 		if(schedq_parse_file(srequest,stdin,stdout)) {
 			schedq_handle(sreply);
-			sreply.write(fout);
+			sreply.write(stdout);
 			exit(0);
 		}
 		else exit(1);
@@ -570,7 +591,7 @@ void JOB_LIMITS::print_log()
 	project_limits.print_log();
 	for( unsigned int i= 0; i < app_limits.size(); i++ ) {
 		if( app_limits[i].any_limit() ) {
-			APP* app= ssp->lookup_app_name( app_limits[i].app_name );
+			APP* app= 0; //ssp->lookup_app_name( app_limits[i].app_name );
 			if( !app )
 				continue;
 			log_messages.printf( MSG_NORMAL, "[quota] Limits for %s:\n", app->name );

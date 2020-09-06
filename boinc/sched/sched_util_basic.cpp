@@ -48,11 +48,7 @@ const int STOP_SIGNAL = SIGHUP;
     // NOTE: this must be same as in the "start" script
 
 void write_pid_file(const char* filename) {
-#ifndef _USING_FCGI_
     FILE* fpid = fopen(filename, "w");
-#else
-    FCGI_FILE* fpid = FCGI::fopen(filename,"w");
-#endif
 
     if (!fpid) {
         log_messages.printf(MSG_CRITICAL, "Couldn't write pid file\n");

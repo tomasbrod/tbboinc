@@ -18,13 +18,13 @@
 #ifndef BOINC_MIOFILE_H
 #define BOINC_MIOFILE_H
 
+#include "mfile.h"
+
 #ifdef _USING_FCGI_
 #include "boinc_fcgi.h"
 #endif
 
 #include <string>
-
-#include "mfile.h"
 
 
 // MIOFILE lets you do formatted I/O to either a FILE or a memory buffer,
@@ -48,16 +48,18 @@ class MIOFILE {
     int len;
     const char* buf;
 public:
-    FILE* f;
+	#ifdef _USING_FCGI_
+	FCGX_Stream *fcgx_stream;
+	#endif
+	FILE* stdio_stream;
 
     MIOFILE();
     ~MIOFILE();
     void init_mfile(MFILE*);
-#ifndef _USING_FCGI_
     void init_file(FILE*);
-#else
-    void init_file(FCGI_FILE *);
-#endif
+		#ifdef _USING_FCGI_
+    void init_file(FCGI_FILE*);
+		#endif
     void init_buf_read(const char*);
     void init_buf_write(char*, int len);
     int printf(const char* format, ...);
@@ -65,9 +67,12 @@ public:
     int _ungetc(int);
     bool eof();
     inline int _getc() {
-        if (f) {
-            return fgetc(f);
-        }
+			#ifdef _USING_FCGI_
+				if (fcgx_stream)
+					return FCGX_GetChar(fcgx_stream);
+			#endif
+        if (stdio_stream)
+            return fgetc(stdio_stream);
         return (*buf)?(*buf++):EOF;
     }
 };

@@ -34,11 +34,7 @@
 int HR_INFO::write_file() {
     int i, j;
 
-#ifndef _USING_FCGI_
     FILE* f = fopen(HR_INFO_FILENAME, "w");
-#else 
-    FCGI_FILE* f = FCGI::fopen(HR_INFO_FILENAME, "w");
-#endif
     if (!f) return ERR_FOPEN;
     for (i=1; i<HR_NTYPES; i++) {
         fprintf(f, "--------- %s ----------\n", hr_names[i]);
@@ -52,11 +48,7 @@ int HR_INFO::write_file() {
 
 int HR_INFO::read_file() {
     char buf[256];
-#ifndef _USING_FCGI_
     FILE* f = fopen(HR_INFO_FILENAME, "r");
-#else 
-    FCGI_FILE* f = FCGI::fopen(HR_INFO_FILENAME, "r");
-#endif
     if (!f) return ERR_FOPEN;
     int i, j, jj;
     double x;

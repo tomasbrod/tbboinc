@@ -39,7 +39,7 @@ public:
 
 #ifdef _USING_FCGI_
     ~SCHED_MSG_LOG();
-    void redirect(FCGI_FILE* f);
+    void redirect(FILE* f);
     void close();
     void flush();
 #endif

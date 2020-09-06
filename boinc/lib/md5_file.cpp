@@ -52,18 +52,10 @@ int md5_file(const char* path, char* output, double& nbytes, bool is_gzip) {
     int i, n;
 
     nbytes = 0;
-#ifndef _USING_FCGI_
     FILE *f = fopen(path, "rb");
-#else
-    FILE *f = FCGI::fopen(path, "rb");
-#endif
     if (!f) {
         fprintf(stderr, "md5_file: can't open %s\n", path);
-#ifndef _USING_FCGI_
         std::perror("md5_file");
-#else
-        FCGI::perror("md5_file");
-#endif
 
         return ERR_FOPEN;
     }
@@ -148,11 +140,7 @@ int make_random_string(char* out) {
     int i = rand();
     snprintf(buf, sizeof(buf), "%d", i);
 #else
-#ifndef _USING_FCGI_
     FILE* f = fopen("/dev/random", "r");
-#else
-    FILE* f = FCGI::fopen("/dev/random", "r");
-#endif
     if (!f) {
         return -1;
     }

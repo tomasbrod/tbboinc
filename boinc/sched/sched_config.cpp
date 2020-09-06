@@ -370,21 +370,13 @@ int SCHED_CONFIG::parse_file(const char* dir) {
         safe_strcpy(path, project_path(CONFIG_FILE));
         safe_strcpy(path_aux, project_path(CONFIG_FILE_AUX));
     }
-#ifndef _USING_FCGI_
     FILE* f = fopen(path, "r");
-#else
-    FCGI_FILE *f = FCGI::fopen(path, "r");
-#endif
     if (!f) return ERR_FOPEN;
     retval = parse(f);
     fclose(f);
     if (retval) return retval;
 
-#ifndef _USING_FCGI_
     FILE* f_aux = fopen(path_aux, "r");
-#else
-    FCGI_FILE *f_aux = FCGI::fopen(path_aux, "r");
-#endif
     if (!f_aux) return 0;
     retval = parse_aux(f_aux);
     fclose(f_aux);

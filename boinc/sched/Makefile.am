@@ -325,7 +325,6 @@ schedcgi_PROGRAMS += schedq
 schedq_SOURCES = \
 	credit.cpp \
     edf_sim.cpp \
-    handle_request.cpp \
     hr.cpp \
     hr_info.cpp \
     plan_class_spec.cpp \
@@ -337,7 +336,6 @@ schedq_SOURCES = \
     sched_hr.cpp \
     sched_keyword.cpp \
     sched_limit.cpp \
-    sched_locality.cpp \
     schedq_main.cpp \
     schedq_handle.cpp \
     sched_nci.cpp \
@@ -351,7 +349,7 @@ schedq_SOURCES = \
     sched_types.cpp \
     time_stats_log.cpp
 
-schedq_CPPFLAGS = -D_USING_FCGI_ $(AM_CPPFLAGS)
+schedq_CPPFLAGS = $(AM_CPPFLAGS)
 schedq_LDADD = $(SERVERLIBS_FCGI)
 
 endif

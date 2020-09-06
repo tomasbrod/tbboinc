@@ -70,11 +70,7 @@ int read_file(FILE* f, char* buf, int len) {
 
 int read_filename(const char* path, char* buf, int len) {
     int retval;
-#ifndef _USING_FCGI_
     FILE* f = fopen(path, "r");
-#else
-    FCGI_FILE *f=FCGI::fopen(path, "r");
-#endif
     if (!f) return -1;
     retval = read_file(f, buf, len);
     fclose(f);

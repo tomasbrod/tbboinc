@@ -16,6 +16,7 @@
 // along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _USING_FCGI_
+#define NO_FCGI_DEFINES
 #include <fcgi_stdio.h>
 // Undefine the macros that can be replaced with appropriate overloads
 #undef fread
@@ -86,7 +87,7 @@ void perror(const char *s);
 
 } // end of namespace FCGI
  
-using namespace FCGI;
+//using namespace FCGI;
 #endif // __cplusplus
 
 #endif // _USING_FCGI_

@@ -39,11 +39,7 @@ vector<string> file_delete_regex_string;
 
 int init_file_delete_regex() {
     char buf[256];
-#ifndef _USING_FCGI_
     FILE* f = fopen("../file_delete_regex", "r");
-#else
-    FCGI_FILE* f = FCGI::fopen("../file_delete_regex", "r");
-#endif
 
     if (!f) return 0;
     while (fgets(buf, sizeof(buf), f)) {

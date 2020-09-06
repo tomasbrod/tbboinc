@@ -70,11 +70,7 @@ static bool got_md5_info(
     }
     
     // if cached md5 newer, then open it
-#ifndef _USING_FCGI_
     FILE *fp=fopen(md5name, "r");
-#else
-    FCGI_FILE *fp=FCGI::fopen(md5name, "r");
-#endif
     if (!fp) {
         return false;
     }
@@ -121,11 +117,7 @@ static void write_md5_info(
         return;
     }
 
-#ifndef _USING_FCGI_
     FILE *fp=fopen(md5name, "w");
-#else
-    FCGI_FILE *fp=FCGI::fopen(md5name, "w");
-#endif
 
     // if can't open the file, give up
     //

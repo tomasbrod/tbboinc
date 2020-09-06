@@ -123,11 +123,7 @@ static bool wu_is_infeasible_for_plan_class(const PLAN_CLASS_SPEC* pc, const WOR
 }
 
 int PLAN_CLASS_SPECS::parse_file(const char* path) {
-#ifndef _USING_FCGI_
     FILE* f = fopen(path, "r");
-#else
-    FCGI_FILE *f = FCGI::fopen(path, "r");
-#endif
     if (!f) return ERR_FOPEN;
     int retval = parse_specs(f);
     fclose(f);

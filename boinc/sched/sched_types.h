@@ -558,7 +558,7 @@ struct SCHEDULER_REPLY {
     SCHEDULER_REPLY();
     ~SCHEDULER_REPLY(){};
     int write(FILE*, SCHEDULER_REQUEST&);
-    int write(FILE*);
+    int write(FILE*f) {return write(f,*request);}
     void insert_app_unique(APP&);
     void insert_app_version_unique(APP_VERSION&);
     void insert_workunit_unique(WORKUNIT&);

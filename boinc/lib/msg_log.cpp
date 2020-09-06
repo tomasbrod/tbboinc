@@ -148,11 +148,7 @@ void MSG_LOG::vprintf_file(
     const char* now_timestamp = precision_time_to_string(dtime());
     const char* skind = v_format_kind(kind);
 
-#ifndef _USING_FCGI_
     FILE* f = fopen(filename, "r");
-#else
-    FILE* f = FCGI::fopen(filename, "r");
-#endif
     if (!f) return;
     char buf[256];
 

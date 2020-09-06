@@ -105,11 +105,7 @@ static void usage(char* p) {
 
 void debug_sched(const char *trigger) {
     char tmpfilename[256];
-#ifndef _USING_FCGI_
     FILE *fp;
-#else
-    FCGI_FILE *fp;
-#endif
 
     if (!boinc_file_exists(config.project_path("%s", trigger))) {
         return;
@@ -121,11 +117,7 @@ void debug_sched(const char *trigger) {
     // use _XXXXXX if you want random filenames rather than
     // deterministic mkstemp(tmpfilename);
 
-#ifndef _USING_FCGI_
     fp=fopen(tmpfilename, "w");
-#else
-    fp=FCGI::fopen(tmpfilename,"w");
-#endif
 
     if (!fp) {
         log_messages.printf(MSG_CRITICAL,
@@ -144,11 +136,7 @@ void debug_sched(const char *trigger) {
     sprintf(tmpfilename,
         "sched_request_%06ld_%06d", g_request->hostid, g_request->rpc_seqno
     );
-#ifndef _USING_FCGI_
     fp=fopen(tmpfilename, "w");
-#else
-    fp=FCGI::fopen(tmpfilename,"w");
-#endif
 
     if (!fp) {
         log_messages.printf(MSG_CRITICAL,
@@ -374,11 +362,7 @@ int main(int, char**) {
 #if !defined(PLAN_CLASS_TEST)
 
 int main(int argc, char** argv) {
-#ifndef _USING_FCGI_
     FILE* fin, *fout;
-#else
-    FCGI_FILE *fin, *fout;
-#endif
     int i, retval;
     char req_path[MAXPATHLEN], reply_path[MAXPATHLEN];
     char log_path[MAXPATHLEN], path[MAXPATHLEN];
@@ -442,7 +426,7 @@ int main(int argc, char** argv) {
             exit(1);
         }
 #else
-        FCGI_FILE* f = FCGI::fopen(path, "a");
+        FILE* f = fopen(path, "a");
         if (f) {
             log_messages.redirect(f);
         } else {
@@ -464,16 +448,9 @@ int main(int argc, char** argv) {
                     "Unable to allocate stderr buffer\n"
                 );
             } else {
-#ifdef _USING_FCGI_
-                retval = setvbuf(
-                    f->stdio_stream, stderr_buffer, _IOFBF,
-                    config.scheduler_log_buffer
-                );
-#else
                 retval = setvbuf(
                     stderr, stderr_buffer, _IOFBF, config.scheduler_log_buffer
                 );
-#endif
                 if (retval) {
                     log_messages.printf(MSG_CRITICAL,
                         "Unable to change stderr buffering\n"
@@ -565,11 +542,7 @@ int main(int argc, char** argv) {
         // this allows to associate at least the scheduler request with the client
         // IP address (as shown in httpd error log) in case of a crash
         sprintf(log_path, "%s/%d_%u_sched.log", config.debug_req_reply_dir, g_pid, counter);
-#ifndef _USING_FCGI_
         fout = fopen(log_path, "a");
-#else
-        fout = FCGI::fopen(log_path,"a");
-#endif
         if (!fout) {
             log_messages.printf(MSG_CRITICAL,
                 "can't write client log file %s\n", log_path
@@ -583,11 +556,7 @@ int main(int argc, char** argv) {
             "keeping sched_request in %s, sched_reply in %s, custom log in %s\n",
             req_path, reply_path, log_path
         );
-#ifndef _USING_FCGI_
         fout = fopen(req_path, "w");
-#else
-        fout = FCGI::fopen(req_path,"w");
-#endif
         if (!fout) {
             log_messages.printf(MSG_CRITICAL,
                 "can't write request file\n"
@@ -604,22 +573,14 @@ int main(int argc, char** argv) {
             );
         }
 
-#ifndef _USING_FCGI_
         fin = fopen(req_path, "r");
-#else
-        fin = FCGI::fopen(req_path,"r");
-#endif
         if (!fin) {
             log_messages.printf(MSG_CRITICAL,
                 "can't read request file\n"
             );
             exit(1);
         }
-#ifndef _USING_FCGI_
         fout = fopen(reply_path, "w");
-#else
-        fout = FCGI::fopen(reply_path, "w");
-#endif
         if (!fout) {
             log_messages.printf(MSG_CRITICAL,
                 "can't write reply file\n"
@@ -630,11 +591,7 @@ int main(int argc, char** argv) {
         handle_request(fin, fout, code_sign_key);
         fclose(fin);
         fclose(fout);
-#ifndef _USING_FCGI_
         fin = fopen(reply_path, "r");
-#else
-        fin = FCGI::fopen(reply_path, "r");
-#endif
         if (!fin) {
             log_messages.printf(MSG_CRITICAL,
                 "can't read reply file\n"
