@@ -26,6 +26,7 @@
 #include "md5_file.h"
 #include "coproc.h"
 #include "keyword.h"
+#include "sched_msgs.h"
 
 #include "edf_sim.h"
 
@@ -550,10 +551,14 @@ struct SCHEDULER_REPLY {
     std::vector<APP_VERSION>old_app_versions;
         // superceded app versions that we consider using because of
         // homogeneous app version.
+		SCHEDULER_REQUEST* request;
+		SCHED_MSG_LOG* log;
+		DB_CONN* db;
 
     SCHEDULER_REPLY();
     ~SCHEDULER_REPLY(){};
     int write(FILE*, SCHEDULER_REQUEST&);
+    int write(FILE*);
     void insert_app_unique(APP&);
     void insert_app_version_unique(APP_VERSION&);
     void insert_workunit_unique(WORKUNIT&);

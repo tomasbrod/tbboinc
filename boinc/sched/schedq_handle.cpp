@@ -73,6 +73,11 @@ void process_schedq_request(char* code_sign_key) {
 }
 //STUB
 
+void schedq_handle(SCHEDULER_REPLY& sreply)
+{
+	return; //STUB
+}
+
 void handle_schedq_request(FILE* fin, FILE* fout, char* code_sign_key) {
     SCHEDULER_REQUEST sreq;
     SCHEDULER_REPLY sreply;
