@@ -54,7 +54,24 @@ void MIOFILE::init_mfile(MFILE* _mf) {
 void MIOFILE::init_file(FILE* _f) {
     mf = 0;
     stdio_stream = _f;
+		#ifdef _USING_FCGI_
+		fcgx_stream= 0;
+		#endif
 }
+
+#ifdef _USING_FCGI_
+void MIOFILE::init_file(FCGI_FILE* _f) {
+    mf = 0;
+    stdio_stream = _f->stdio_stream;
+		fcgx_stream = _f->fcgx_stream;
+}
+
+void MIOFILE::init_file(FCGX_Stream* _f) {
+    mf = 0;
+    stdio_stream = 0;
+		fcgx_stream = _f;
+}
+#endif
 
 void MIOFILE::init_buf_read(const char* _buf) {
     buf = _buf;

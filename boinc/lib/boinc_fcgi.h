@@ -18,6 +18,7 @@
 #ifdef _USING_FCGI_
 #define NO_FCGI_DEFINES
 #include <fcgi_stdio.h>
+#include <fcgiapp.h>
 // Undefine the macros that can be replaced with appropriate overloads
 #undef fread
 #undef fwrite

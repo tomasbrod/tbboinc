@@ -30,12 +30,12 @@
 
 #include "boinc_fcgi.h"
 #include "config.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
-
 #include <cerrno>
 #include <csignal>
 #include <sys/resource.h>
@@ -43,6 +43,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcgiapp.h>
 
 #include "boinc_db.h"
 #include "error_numbers.h"
@@ -53,7 +54,6 @@
 #include "svn_version.h"
 #include "synch.h"
 #include "util.h"
-
 #include "handle_request.h"
 #include "sched_config.h"
 #include "sched_files.h"
@@ -96,52 +96,11 @@ static void usage( char* p )
 	         p );
 }
 
-void debug_sched( const char* trigger )
-{
-	char tmpfilename[256];
-	FILE* fp;
-
-	if( !boinc_file_exists( config.project_path( "%s", trigger ) ) ) {
-		return;
-	}
-
-	sprintf( tmpfilename, "sched_reply_%06ld_%06d", g_request->hostid, g_request->rpc_seqno );
-	// use _XXXXXX if you want random filenames rather than
-	// deterministic mkstemp(tmpfilename);
-
-	fp= fopen( tmpfilename, "w" );
-
-	if( !fp ) {
-		log_messages.printf( MSG_CRITICAL, "Found %s, but can't open %s\n", trigger, tmpfilename );
-		return;
-	}
-
-	log_messages.printf( MSG_DEBUG, "Found %s, so writing %s\n", trigger, tmpfilename );
-
-	g_reply->write( fp, *g_request );
-	fclose( fp );
-
-	sprintf( tmpfilename, "sched_request_%06ld_%06d", g_request->hostid, g_request->rpc_seqno );
-	fp= fopen( tmpfilename, "w" );
-
-	if( !fp ) {
-		log_messages.printf( MSG_CRITICAL, "Found %s, but can't open %s\n", trigger, tmpfilename );
-		return;
-	}
-
-	log_messages.printf( MSG_DEBUG, "Found %s, so writing %s\n", trigger, tmpfilename );
-
-	g_request->write( fp );
-	fclose( fp );
-
-	return;
-}
-
 // call this only if we're not going to call handle_request()
 //
-static void send_message( const char* msg, int delay )
+static void send_message( MIOFILE& out, const char* msg, int delay )
 {
-	fprintf( stdout,
+	out.printf(
 	         "Content-type: text/plain\n\n"
 	         "<scheduler_reply>\n"
 	         "    <message priority=\"low\">%s</message>\n"
@@ -261,12 +220,10 @@ void schedq_handle(SCHEDULER_REPLY& sreply);
 //static SCHED_MSG_LOG log_messages; //main thread log, TODO rename?
 char* schedq_code_sign_key;
 
-bool schedq_parse_file(SCHEDULER_REQUEST& srequest,FILE* clientin,FILE* clientout)
+bool schedq_parse_file(SCHEDULER_REQUEST& srequest,MIOFILE& clientin,MIOFILE& clientout)
 {
 	//clientout is there for toclient-errors
-	MIOFILE mf;
-	XML_PARSER xp(&mf);
-	mf.init_file(clientin);
+	XML_PARSER xp(&clientin);
 	const char* p = srequest.parse(xp);
 	/*if (!p){
 	process_schedq_request(code_sign_key);
@@ -279,7 +236,7 @@ bool schedq_parse_file(SCHEDULER_REQUEST& srequest,FILE* clientin,FILE* clientou
     char buf[1024];
 		sprintf(buf, "Error in request message: %s", p);
 		//log_incomplete_request();
-		send_message(buf,120);
+		send_message(clientout,buf,120);
 		return false;
 	}
 	else return true;
@@ -292,9 +249,24 @@ void* schedq_thread(void*) {
 		//fork, loop, accept, parse, handle, write, flush
 		//log goes to main stderr by default
 		//if(debug), redirect log to dir, go via i/o files then maybe rename them
-	//FCGX_Request frequest = {0};
-	//while( FCGX_Accept_r(&frequest) >= 0 ) {
-	//}
+	FCGX_Request frequest;
+	MIOFILE clinp, clout;
+	SCHEDULER_REPLY sreply;
+	SCHEDULER_REQUEST srequest;
+	sreply.request= &srequest;
+	FCGX_Init();
+	FCGX_InitRequest( &frequest, 0, 0 );
+	while( FCGX_Accept_r(&frequest) >= 0 ) {
+		clinp.init_file(frequest.in );
+		clout.init_file(frequest.out);
+		if(schedq_parse_file(srequest,clinp,clout)) {
+			sreply.log= &log_messages; //TODO
+			sreply.db= &boinc_db; //TODO
+			schedq_handle(sreply);
+			sreply.write(stdout);
+		}
+		FCGX_Finish_r(&frequest);
+	}
 	return 0;
 }
 
@@ -311,9 +283,9 @@ void schedq_init() {
 		g_print_queries= true;
 
 	open_database();
-	gui_urls.init();
-	project_files.init();
-	init_file_delete_regex();
+	//gui_urls.init(); TODO!
+	//project_files.init();
+	//init_file_delete_regex();
 
 	char path[MAXPATHLEN];
 	sprintf( path, "%s/code_sign_public", config.key_dir );
@@ -387,12 +359,15 @@ int main( int argc, char** argv )
 
 	if(sched_stdio) {
 		// run scheduler in stdio mode
+		MIOFILE clientin, clientout;
 		SCHEDULER_REPLY sreply;
 		SCHEDULER_REQUEST srequest;
 		sreply.request= &srequest;
 		sreply.log= &log_messages;
 		sreply.db= &boinc_db; //TODO
-		if(schedq_parse_file(srequest,stdin,stdout)) {
+		clientin.init_file(stdin);
+		clientout.init_file(stdout);
+		if(schedq_parse_file(srequest,clientin,clientout)) {
 			schedq_handle(sreply);
 			sreply.write(stdout);
 			exit(0);

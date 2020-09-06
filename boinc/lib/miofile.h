@@ -59,6 +59,7 @@ public:
     void init_file(FILE*);
 		#ifdef _USING_FCGI_
     void init_file(FCGI_FILE*);
+    void init_file(FCGX_Stream*);
 		#endif
     void init_buf_read(const char*);
     void init_buf_write(char*, int len);
