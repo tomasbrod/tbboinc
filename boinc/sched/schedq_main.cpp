@@ -269,6 +269,13 @@ bool schedq_parse_file(SCHEDULER_REQUEST& srequest,FILE* clientin,FILE* clientou
 	//clientout is there for toclient-errors
 }
 
+void* schedq_thread(void*) {
+		//fork, loop, accept, parse, handle, write, flush
+		//log goes to main stderr by default
+		//if(debug), redirect log to dir, go via i/o files then maybe rename them
+	return 0;
+}
+
 void schedq_init() {
 	// Read Conig File
 	int retval= config.parse_file();
@@ -372,10 +379,8 @@ int main( int argc, char** argv )
 		else exit(1);
 	} else {
 		//actuall multithreaded FCGI goes here
-		//fork, loop, accept, parse, handle, write, flush
-		//log goes to main stderr by default
-		//if(debug), redirect log to dir, go via i/o files then maybe rename them
 		return 69;
+		schedq_thread(0);
 	}
 
 #if 0
