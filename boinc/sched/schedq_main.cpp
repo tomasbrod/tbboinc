@@ -63,6 +63,7 @@
 #include "sched_util.h"
 
 #include "sched_main.h"
+#include "serialize.h"
 
 // Useful for debugging, if your cgi script keeps crashing.  This
 // makes it dump a core file that you can load into a debugger to see
@@ -71,6 +72,32 @@
 
 #define DEBUG_LEVEL 999
 #define MAX_FCGI_COUNT 20
+
+
+
+#define SFIELD(name,type) { #name, SER_ ## type, sizeof(this_type::name), offsetof(this_type, name), 0, 0 }
+
+struct SAMPLE_S {
+    char variety[256];
+    std::string msg_text;
+		typedef SAMPLE_S this_type;
+		static const SerializeFieldDesc ser_table[];
+		template<clsss Ser> serialize_func(Ser& s) {
+			SFIELD(variety);
+			SFIELD(msg_text);
+		}
+		void parse_xml(MIOFILE*m) {
+			SerXMLReader xr(m);
+			serialize_func<SerXMLReader>(xr);
+		}
+};
+
+const SerializeFieldDesc SAMPLE_S::table[] = {
+	SFIELD(variety,CHARARR),
+	SFIELD(msg_text,STRING),
+};
+
+// nope, this is BS.  Use templates.
 
 GUI_URLS gui_urls;
 PROJECT_FILES project_files;
