@@ -303,7 +303,7 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	delete_old("tot5", gen_limit, 1209600, 0, 1, 1);
+	delete_old("tot5", gen_limit, 1209600, 1, 1, 1);
 
 	if(f_write) {
 		if(boinc_db.commit_transaction()) {
