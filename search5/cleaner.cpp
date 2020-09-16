@@ -52,7 +52,6 @@ void initz() {
 }
 
 bool f_write;
-bool f_allapps;
 
 int delete_workunit_files(DB_WORKUNIT& wu)
 {
@@ -193,16 +192,21 @@ int delete_result_files (RESULT& result)
 unsigned count_deleted_w;
 unsigned count_deleted_r;
 
-
-void delete_old(DB_APP& app, long cnt_limit)
+void delete_old(const char* app_name, long cnt_limit, long delay, bool del_files, bool inp_blobs, bool out_blobs )
 {
+	cerr<<"delete_old("<<app_name<<") f_write="<<f_write<<" limit="<<cnt_limit<<" del_files="<<del_files<<" inp_blobs="<<inp_blobs<<" out_blobs="<<out_blobs<<endl;
+	DB_APP app;
+	{
+		std::stringstream qr;
+		qr<<"where name='"<<app_name<<"'";
+		if (app.lookup(qr.str().c_str()))
+			throw EDatabase("can't find app");
+	}
 	time_t cutoff_time;
-	cutoff_time= time(0) - 1209600;
+	cutoff_time= time(0) - delay; //1209600
 	std::stringstream qr;
 	qr<<"where ";
-	if(!f_allapps) {
-		qr<<"appid="<<app.id<<" and ";
-	}
+	qr<<"appid="<<app.id<<" and ";
 	qr<<"file_delete_state=1 and UNIX_TIMESTAMP(mod_time)<"<<cutoff_time<<" limit "<<cnt_limit<<";";
 	DB_WORKUNIT wu;
 	while(1) {
@@ -214,8 +218,8 @@ void delete_old(DB_APP& app, long cnt_limit)
 		}
 
 		//del wu files
-		bool wu_deleted= delete_workunit_files(wu);
 		bool all_results_deleted=true;
+		bool wu_deleted= true;
 		//del result files, if ok, del result
 		DB_RESULT result;
 		std::stringstream qr2;
@@ -227,7 +231,19 @@ void delete_old(DB_APP& app, long cnt_limit)
 					throw EDatabase("enumerate results");
 				break;
 			}
-			bool result_deleted= delete_result_files(result);
+			bool result_deleted= true;
+			if(del_files) {
+				result_deleted &= delete_result_files(result);
+			}
+			if(out_blobs) {
+				std::stringstream qr;
+				qr << "delete from result_file where app="<<app.id<<" and res="<<result.id<<";";
+				retval=boinc_db.do_query(qr.str().c_str());
+				if( retval ) {
+					log_messages.printf(MSG_CRITICAL,"[RESULT#%lu] result_file delete error\n", result.id);
+					result_deleted = false;
+				}
+			}
 			if (result_deleted) {
 				if( retval=result.delete_from_db() ) {
 					log_messages.printf(MSG_CRITICAL,
@@ -240,6 +256,18 @@ void delete_old(DB_APP& app, long cnt_limit)
 				count_deleted_r++;
 			} else
 				all_results_deleted= false;
+		}
+		if(all_results_deleted && del_files) {
+			wu_deleted &= delete_workunit_files(wu);
+		}
+		if(all_results_deleted && inp_blobs) {
+			std::stringstream qr;
+			qr << "delete from input_file where wu="<<wu.id<<";";
+			retval=boinc_db.do_query(qr.str().c_str());
+			if( retval ) {
+				log_messages.printf(MSG_CRITICAL,"[WU#%lu] input_file delete error\n", wu.id);
+				wu_deleted= false;
+			}
 		}
 		//if wu files deleted, delete wu
 		if(all_results_deleted && wu_deleted) {
@@ -258,31 +286,23 @@ int main(int argc, char** argv) {
 	long gen_limit;
 	int batchno;
 	char *check1, *check2;
-	DB_APP app;
 	count_deleted_w= count_deleted_r= 0;
 	if(argc!=3) {
 			cerr<<"Expect 2 command line argument: f_write limit"<<endl;
 			exit(2);
 	}
 	f_write = (argv[1][0]=='y');
-	f_allapps = (argv[1][0]=='m');
-	f_write |= f_allapps;
 	gen_limit = strtol(argv[2],&check2,10);
 	if((argv[1][0]!='n' && !f_write) || *check2) {
 			cerr<<"Invalid argument format"<<endl;
 			exit(2);
 	}
-	cerr<<"f_write="<<f_write<<" f_allapps="<<f_allapps<<" limit="<<gen_limit<<endl;
 	//connect db if requested
 	initz();
-	if (app.lookup("where name='tot5'")) {
-		cerr<<"can't find app tot5\n";
-		exit(4);
-	}
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	delete_old(app, gen_limit);
+	delete_old("tot5", gen_limit, 1209600, 0, 1, 1);
 
 	if(f_write) {
 		if(boinc_db.commit_transaction()) {
