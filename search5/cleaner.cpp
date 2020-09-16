@@ -207,6 +207,7 @@ void delete_old(const char* app_name, long cnt_limit, long delay, bool del_files
 	std::stringstream qr;
 	qr<<"where ";
 	qr<<"appid="<<app.id<<" and ";
+	qr<<"canonical_resultid!=0 and ";
 	qr<<"file_delete_state=1 and UNIX_TIMESTAMP(mod_time)<"<<cutoff_time<<" limit "<<cnt_limit<<";";
 	DB_WORKUNIT wu;
 	while(1) {
