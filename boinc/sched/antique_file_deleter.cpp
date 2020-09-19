@@ -330,7 +330,8 @@ int main(int argc, char** argv) {
         config.replica_db_name,
         config.replica_db_host,
         config.replica_db_user,
-        config.replica_db_passwd
+        config.replica_db_passwd,
+        config.db_socket
     );
     if (retval) {
         log_messages.printf(MSG_CRITICAL, "can't open DB\n");

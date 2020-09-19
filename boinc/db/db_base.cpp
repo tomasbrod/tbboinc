@@ -38,9 +38,10 @@ DB_CONN::DB_CONN() {
 }
 
 int DB_CONN::open(
-    char* db_name, char* db_host, char* db_user, char* dbpassword
+    char* db_name, char* db_host, char* db_user, char* dbpassword, char* db_socket
 ) {
     mysql = mysql_init(0);
+    MYSQL* mysql2 = mysql;
     if (!mysql) return ERR_DB_CANT_INIT;
 
     // MySQL's support for the reconnect option has changed over time:
@@ -86,9 +87,12 @@ int DB_CONN::open(
     // is the # matched by the where, rather than the # actually changed
     //
     mysql = mysql_real_connect(
-        mysql, host, db_user, dbpassword, db_name, port, 0, CLIENT_FOUND_ROWS
+        mysql, host, db_user, dbpassword, db_name, port, db_socket, CLIENT_FOUND_ROWS
     );
-    if (mysql == 0) return ERR_DB_CANT_CONNECT;
+    if (mysql == 0) {
+        fprintf(stderr, "mysql_real_connect: %s\n",mysql_error(mysql));
+        return ERR_DB_CANT_CONNECT;
+    }
 
     if (set_opt_after) {
         bool mbReconnect = 1;

@@ -588,7 +588,7 @@ int main(int argc, char** argv) {
 
     log_messages.printf(MSG_NORMAL, "Starting\n");
 
-    retval = boinc_db.open(config.db_name, config.db_host, config.db_user, config.db_passwd);
+    retval = boinc_db.open(config.db_name, config.db_host, config.db_user, config.db_passwd, config.db_socket);
     if (retval) {
         log_messages.printf(MSG_CRITICAL, "can't open DB\n");
         exit(1);

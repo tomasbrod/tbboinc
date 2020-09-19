@@ -47,6 +47,7 @@ struct SCHED_CONFIG {
     char db_user[256];
     char db_passwd[256];
     char db_host[256];
+    char db_socket[256];
     char replica_db_name[256];
     char replica_db_user[256];
     char replica_db_passwd[256];

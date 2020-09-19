@@ -1269,7 +1269,8 @@ int main(int argc, char** argv) {
         config.replica_db_name,
         db_host?db_host:config.replica_db_host,
         config.replica_db_user,
-        config.replica_db_passwd
+        config.replica_db_passwd,
+        config.db_socket
     ))) {
         log_messages.printf(MSG_CRITICAL, "Can't open DB: %d\n", retval);
         if (retry_period == 0) exit(1);

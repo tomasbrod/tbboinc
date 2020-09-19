@@ -86,6 +86,10 @@ bool batch = false;
 bool mark_jobs_done = false;
 bool all_apps_use_hr;
 
+SCHEDULER_REQUEST* g_request;
+SCHEDULER_REPLY* g_reply;
+WORK_REQ* g_wreq;
+
 static void usage(char* p) {
     fprintf(stderr,
         "Usage: %s [OPTION]...\n\n"
@@ -185,7 +189,7 @@ int open_database() {
     }
 
     retval = boinc_db.open(
-        config.db_name, config.db_host, config.db_user, config.db_passwd
+        config.db_name, config.db_host, config.db_user, config.db_passwd, config.db_socket
     );
     if (retval) {
         log_messages.printf(MSG_CRITICAL, "can't open database\n");

@@ -66,7 +66,7 @@ typedef long DB_ID_TYPE;
 class DB_CONN {
 public:
     DB_CONN();
-    int open(char* name, char* host, char* user, char* passwd);
+    int open(char* name, char* host, char* user, char* passwd, char* socket);
     int set_isolation_level(ISOLATION_LEVEL);
     int do_query(const char*);
     int affected_rows();

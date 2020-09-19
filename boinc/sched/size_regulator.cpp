@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
     }
 
     retval = boinc_db.open(
-        config.db_name, config.db_host, config.db_user, config.db_passwd
+        config.db_name, config.db_host, config.db_user, config.db_passwd, config.db_socket
     );
     if (retval) {
         log_messages.printf(MSG_CRITICAL,

@@ -132,6 +132,7 @@ int SCHED_CONFIG::parse(FILE* f) {
         if (xp.parse_str("db_user", db_user, sizeof(db_user))) continue;
         if (xp.parse_str("db_passwd", db_passwd, sizeof(db_passwd))) continue;
         if (xp.parse_str("db_host", db_host, sizeof(db_host))) continue;
+        if (xp.parse_str("db_socket", db_socket, sizeof(db_socket))) continue;
         if (xp.parse_str("replica_db_name", replica_db_name, sizeof(replica_db_name))) continue;
         if (xp.parse_str("replica_db_user", replica_db_user, sizeof(replica_db_user))) continue;
         if (xp.parse_str("replica_db_passwd", replica_db_passwd, sizeof(replica_db_passwd))) continue;

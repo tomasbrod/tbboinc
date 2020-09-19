@@ -735,7 +735,7 @@ bool do_pass() {
 void main_loop() {
     int retval;
 
-    retval = boinc_db.open(config.db_name, config.db_host, config.db_user, config.db_passwd);
+    retval = boinc_db.open(config.db_name, config.db_host, config.db_user, config.db_passwd, config.db_socket);
     if (retval) {
         log_messages.printf(MSG_CRITICAL,
             "boinc_db.open: %s\n", boincerror(retval)
