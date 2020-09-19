@@ -68,7 +68,7 @@ void process_request(char* code_sign_key);
 void log_incomplete_request();
 void log_user_messages();
 
-void process_schedq_request(char* code_sign_key) {
+static void process_schedq_request(char* code_sign_key) {
 	process_request(code_sign_key);
 }
 //STUB

@@ -106,7 +106,6 @@ schedshare_PROGRAMS = \
     census \
     credit_test \
     db_dump \
-    db_purge \
     feeder \
     file_deleter \
     message_handler \
@@ -327,8 +326,7 @@ schedq_SOURCES = \
     edf_sim.cpp \
     hr.cpp \
     hr_info.cpp \
-    sched_hr.cpp \
-		sched_types.cpp \
+    schedq_types.cpp \
     schedq_main.cpp \
     schedq_handle.cpp
 
