@@ -1,5 +1,6 @@
 #!/bin/bash
-set -x -e
+set -e
+echo "Preparing test enviroment"
 rm -rf test.wd
 mkdir -p test.wd test.wd/upload test.db test.wd/cgi-bin
 cat >test.wd/config.xml <<DELIM
@@ -48,6 +49,7 @@ cat >test.wd/config.xml <<DELIM
 </boinc>
 DELIM
 if [ ! -f test.db/my.cnf ]; then
+echo "Creating database config"
 cat >test.db/my.cnf <<DELIM
 [client]
 user = root
@@ -84,20 +86,35 @@ innodb_doublewrite = 0
 DELIM
 mariadb-install-db --defaults-file=test.db/my.cnf --auth-root-authentication-method=normal
 else
-echo Using mariadb in test.db directory
+echo "Using mariadb in test.db directory"
 fi
 mariadbd=1
 function finish {
+	echo "Stopping mariadb"
   kill $mariadbd
   wait $mariadbd
 }
 trap finish EXIT
+echo "Starting mariadb"
 /usr/bin/mariadbd --defaults-file=test.db/my.cnf 2>test.db/mysqld.log &
 sleep 2
 mariadbd=$!
 
+echo "Reloading database contents"
 mysql --defaults-file=test.db/my.cnf -B <testq/database.sql
 
 cd test.wd
 
-../schedq --stdio <../testq/sample.inp >sample.out
+function do_test {
+	set +e
+	echo "Running test $1"
+	if ! valgrind ../schedq --stdio <../testq/$1.inp >$1.out; then
+		echo "schedq exited with $?"
+	fi
+	if ! diff -u ../testq/$1.out $1.out; then
+		echo "Response mismatch from test $1"
+	fi
+}
+
+do_test sample
+

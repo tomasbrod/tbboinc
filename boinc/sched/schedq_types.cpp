@@ -1136,14 +1136,15 @@ void SCHEDULER_REPLY::insert_message(USER_MESSAGE& um) {
 }
 
 USER_MESSAGE::USER_MESSAGE(const char* m, const char* p) {
-    if (g_request->core_client_version < 61200) {
+    /*if (g_request->core_client_version < 61200) {
         char buf[1024];
         safe_strcpy(buf, m);
         strip_translation(buf);
         message = buf;
-    } else {
-        message = m;
-    }
+    } else {*/
+    //FIXME: do this in write or just drop support
+
+    message = m;
     priority = p;
 }
 

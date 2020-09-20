@@ -101,6 +101,8 @@ schedbin_PROGRAMS = \
     show_shmem \
     wu_check
 
+schedbin_PROGRAMS = 
+
 schedshare_PROGRAMS = \
     antique_file_deleter \
     census \
@@ -125,9 +127,13 @@ schedshare_PROGRAMS = \
     trickle_echo \
     update_stats
 
+schedshare_PROGRAMS = 
+
 schedcgi_PROGRAMS= \
     cgi \
     file_upload_handler
+
+schedcgi_PROGRAMS = 
 
 schedshare_DATA = \
     db_dump_spec.xml \
@@ -148,6 +154,7 @@ noinst_HEADERS = \
     sched_send.h \
     sched_shmem.h \
     sched_version.h \
+    schedq_handle.h \
     sched_types.h
 
 EXTRA_DIST = \
@@ -308,7 +315,7 @@ sched_driver_LDADD = $(SERVERLIBS)
 
 if ENABLE_FCGI
 
-schedcgi_PROGRAMS += fcgi fcgi_file_upload_handler
+# schedcgi_PROGRAMS += fcgi fcgi_file_upload_handler
 
 fcgi_SOURCES = $(cgi_sources)
 fcgi_CPPFLAGS = -D_USING_FCGI_ $(AM_CPPFLAGS)
@@ -322,12 +329,14 @@ fcgi_file_upload_handler_LDADD = $(SERVERLIBS_FCGI)
 
 schedcgi_PROGRAMS += schedq
 schedq_SOURCES = \
-		credit.cpp \
+    credit.cpp \
     edf_sim.cpp \
     hr.cpp \
     hr_info.cpp \
     schedq_types.cpp \
     schedq_main.cpp \
+    schedq_auth.cpp \
+    schedq_result.cpp \
     schedq_handle.cpp
 
 schedq_CPPFLAGS = -D_USING_FCGI_ -D_WITHOUT_SSP_ $(AM_CPPFLAGS)

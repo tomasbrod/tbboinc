@@ -549,11 +549,12 @@ struct SCHEDULER_REPLY {
     bool send_msg_ack;
     bool project_is_down;
     std::vector<APP_VERSION>old_app_versions;
-        // superceded app versions that we consider using because of
-        // homogeneous app version.
-		SCHEDULER_REQUEST* request;
-		SCHED_MSG_LOG* log;
-		DB_CONN* db;
+    // superceded app versions that we consider using because of
+    // homogeneous app version.
+
+    SCHEDULER_REQUEST* request;
+    SCHED_MSG_LOG* log;
+    DB_CONN* db;
 
     SCHEDULER_REPLY();
     ~SCHEDULER_REPLY(){};
