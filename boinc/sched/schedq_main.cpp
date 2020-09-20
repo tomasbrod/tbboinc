@@ -252,8 +252,7 @@ void* schedq_thread(void*) {
 	FCGX_Request frequest;
 	MIOFILE clinp, clout;
 	SCHEDULER_REPLY sreply;
-	SCHEDULER_REQUEST srequest;
-	sreply.request= &srequest;
+	SCHEDULER_REQUEST& srequest =	sreply.request;
 	FCGX_Init();
 	FCGX_InitRequest( &frequest, 0, 0 );
 	while( FCGX_Accept_r(&frequest) >= 0 ) {
@@ -362,7 +361,7 @@ int main( int argc, char** argv )
 		MIOFILE clientin, clientout;
 		SCHEDULER_REPLY sreply;
 		SCHEDULER_REQUEST srequest;
-		sreply.request= &srequest;
+		sreply.request= srequest;
 		sreply.log= &log_messages;
 		sreply.db= &boinc_db; //TODO
 		clientin.init_file(stdin);

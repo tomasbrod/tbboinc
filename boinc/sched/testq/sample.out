@@ -2,7 +2,6 @@ Content-type: text/xml
 
 <scheduler_reply>
 <scheduler_version>715</scheduler_version>
-<dont_use_dcf/>
 <master_url>https://boinc.tbrada.eu/</master_url>
 <request_delay>31.000000</request_delay>
 <project_name>T.Brada Experiment Grid</project_name>

@@ -78,7 +78,7 @@ innodb_buffer_pool_size = 128M
 skip-log-bin
 character-set-server=utf8
 collation-server=utf8_general_ci
-#innodb-file-per-table=OFF
+innodb-file-per-table=OFF
 log_warnings=0
 innodb_flush_log_at_trx_commit = 2
 innodb_flush_log_at_timeout = 60

@@ -1128,7 +1128,16 @@ void SCHEDULER_REPLY::insert_result(SCHED_DB_RESULT& result) {
 }
 
 void SCHEDULER_REPLY::insert_message(const char* msg, const char* prio) {
-    messages.push_back(USER_MESSAGE(msg, prio));
+    if(prio) {
+        messages.push_back(USER_MESSAGE(msg, prio));
+        log->printf(MSG_NORMAL,"[U%lu.H%lu] %s [%s priority]\n",
+            user.id, host.id, msg, prio
+        );
+    }
+    else log->printf(MSG_NORMAL,
+        "[U%lu.H%lu] %s\n",
+        user.id, host.id, msg
+    );
 }
 
 void SCHEDULER_REPLY::insert_message(USER_MESSAGE& um) {

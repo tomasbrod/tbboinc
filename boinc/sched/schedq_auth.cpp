@@ -20,9 +20,36 @@
 
 #include "schedq_handle.h"
 
+static bool schedq_auth_user(SCHEDULER_REPLY& sreply)
+{
+	char* authstr = strchr(sreply.request.authenticator, '_');
+	//todo:check
+	*(authstr++)=0;
+	int userid = atoi(sreply.request.authenticator);
+	//retval = user.lookup_id(userid);
+	//todo:check
+	// authenticator_v2 = userid + hash ( userid, server_key1 )
+	// ^ only for scheduler RPC, unchanging for user, allows auth at stateless server
+	//note: client handles missing fields (username/teamname) gracefully (for stateless)
+	return false;
+}
+
+static void schedq_auth_host(SCHEDULER_REPLY& sreply)
+{
+	// lookup host, if something wrong, create a new one
+	// always succeed or throw
+	// also find_host_by_cpid
+	//retval = h;
+}
+
 bool schedq_handle_auth(SCHEDULER_REPLY& sreply)
 {
 	//this deserves to be in separate file
 	sreply.insert_message("Can't find host record", "low");
 	return false;
+	// step 1: lookup user based on id, and authenticate it with authenticator
+	if(!schedq_auth_user(sreply))
+		return false;
+	// step 2: lookup host, check it, maybe create a new one
+	schedq_auth_host(sreply);
 }

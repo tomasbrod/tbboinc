@@ -552,14 +552,14 @@ struct SCHEDULER_REPLY {
     // superceded app versions that we consider using because of
     // homogeneous app version.
 
-    SCHEDULER_REQUEST* request;
+    SCHEDULER_REQUEST request;
     SCHED_MSG_LOG* log;
     DB_CONN* db;
 
     SCHEDULER_REPLY();
     ~SCHEDULER_REPLY(){};
     int write(FILE*, SCHEDULER_REQUEST&);
-    int write(FILE*f) {return write(f,*request);}
+    int write(FILE*f) {return write(f,request);}
     void insert_app_unique(APP&);
     void insert_app_version_unique(APP_VERSION&);
     void insert_workunit_unique(WORKUNIT&);
