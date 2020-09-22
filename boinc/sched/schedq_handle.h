@@ -17,7 +17,10 @@
 // along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "sched_types.h"
+#include <stdexcept>
 
 void schedq_handle(SCHEDULER_REPLY& sreply);
 bool schedq_handle_auth(SCHEDULER_REPLY& sreply);
 void schedq_handle_results(SCHEDULER_REPLY& sreply);
+
+struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };

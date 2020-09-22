@@ -63,14 +63,13 @@ void schedq_invoke_feeders(SCHEDULER_REPLY& sreply) {}
 
 void schedq_handle(SCHEDULER_REPLY& sreply)
 {
-	sreply.nucleus_only = true;
 
 	bool auth_ok = schedq_handle_auth(sreply);
 	if(!auth_ok) return;
 
 	schedq_handle_results(sreply);
 
-	//custom (shit like sticky files, in-progress wus, global_prefs, code_sign, msgs)
+	//custom (shit like cpid, sticky files, in-progress wus, global_prefs, code_sign, msgs)
 
 	schedq_invoke_feeders(sreply);
 

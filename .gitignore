@@ -1,2 +1,14 @@
 /CMakeFiles/
+/CMakeCache.txt
+/Makefile
+/.ninja_*
+/build.ninja
+/cmake_install.cmake
+
+
 lua/lua-5.3.5/src/*.o
+
+/boinc/sched/test.db
+/boinc/sched/test.wd
+/freebasic
+/ncurses

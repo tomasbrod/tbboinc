@@ -734,9 +734,9 @@ SCHEDULER_REPLY::SCHEDULER_REPLY() {
     send_global_prefs = false;
     strcpy(code_sign_key, "");
     strcpy(code_sign_key_signature, "");
-    memset(&user, 0, sizeof(user));
-    memset(&host, 0, sizeof(host));
-    memset(&team, 0, sizeof(team));
+    user.clear();
+    host.clear();
+    team.clear();
     nucleus_only = false;
     project_is_down = false;
     send_msg_ack = false;
@@ -786,9 +786,9 @@ int SCHEDULER_REPLY::write(FILE* fout, SCHEDULER_REQUEST& sreq) {
         }
         fprintf(fout, "<request_delay>%f</request_delay>\n", request_delay);
     }
-    log_messages.printf(MSG_NORMAL,
-        "Sending reply to [HOST#%lu]: %d results, delay req %.2f\n",
-        host.id, wreq.njobs_sent, request_delay
+    log->printf(MSG_NORMAL,
+        "Sending reply to [u%lu.h%lu]: %d results, delay req %.2f\n",
+        user.id, host.id, wreq.njobs_sent, request_delay
     );
 
     if (sreq.core_client_version <= 41900) {
@@ -1130,12 +1130,12 @@ void SCHEDULER_REPLY::insert_result(SCHED_DB_RESULT& result) {
 void SCHEDULER_REPLY::insert_message(const char* msg, const char* prio) {
     if(prio) {
         messages.push_back(USER_MESSAGE(msg, prio));
-        log->printf(MSG_NORMAL,"[U%lu.H%lu] %s [%s priority]\n",
+        log->printf(MSG_NORMAL,"[u%lu.h%lu] %s [%s priority]\n",
             user.id, host.id, msg, prio
         );
     }
     else log->printf(MSG_NORMAL,
-        "[U%lu.H%lu] %s\n",
+        "[u%lu.h%lu] %s\n",
         user.id, host.id, msg
     );
 }

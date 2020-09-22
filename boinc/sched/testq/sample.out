@@ -2,7 +2,34 @@ Content-type: text/xml
 
 <scheduler_reply>
 <scheduler_version>715</scheduler_version>
+<dont_use_dcf/>
 <master_url>https://boinc.tbrada.eu/</master_url>
 <request_delay>31.000000</request_delay>
 <project_name>T.Brada Experiment Grid</project_name>
+<next_rpc_delay>86400.000000</next_rpc_delay>
+<userid>1</userid>
+<user_name>Tom&#195;&#161;&#197;&#161; Brada</user_name>
+<user_total_credit>417174.659691</user_total_credit>
+<user_expavg_credit>0.361412</user_expavg_credit>
+<user_create_time>1549227110</user_create_time>
+<email_hash>e7101ebe7fcf6d8f494f7cac7cb26c1e</email_hash>
+<cross_project_id>9befcbbd02d7aef09c2da422ab3f687e</cross_project_id>
+<external_cpid>8c0e817f22c857c7e503dbe87b14bde2</external_cpid>
+<project_preferences>
+<resource_share>6000</resource_share>
+<no_cpu>0</no_cpu>
+<allow_beta_work>1</allow_beta_work>
+<project_specific>
+<apps_selected>
+<app_id>8</app_id>
+<app_id>10</app_id>
+</apps_selected>
+</project_specific>
+</project_preferences>
+<host_total_credit>352512.713224</host_total_credit>
+<host_expavg_credit>0.094277</host_expavg_credit>
+<host_venue></host_venue>
+<host_create_time>1549303684</host_create_time>
+<teamid>3938</teamid>
+<team_name>Appreciation Club</team_name>
 </scheduler_reply>

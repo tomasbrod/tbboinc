@@ -530,10 +530,10 @@ struct SCHEDULER_REPLY {
     int lockfile_fd; // file descriptor of lockfile, or -1 if no lock.
     bool send_global_prefs;
     bool nucleus_only;          // send only message
-    USER user;
+    DB_USER user;
     char email_hash[MD5_LEN];
-    HOST host;                  // after validation, contains full host rec
-    TEAM team;
+    DB_HOST host;                  // after validation, contains full host rec
+    DB_TEAM team;
     std::vector<APP> apps;
     std::vector<APP_VERSION> app_versions;
     std::vector<WORKUNIT>wus;
