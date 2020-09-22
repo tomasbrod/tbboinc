@@ -330,7 +330,6 @@ fcgi_file_upload_handler_LDADD = $(SERVERLIBS_FCGI)
 schedcgi_PROGRAMS += schedq
 schedq_SOURCES = \
     credit.cpp \
-    edf_sim.cpp \
     hr.cpp \
     hr_info.cpp \
     schedq_types.cpp \

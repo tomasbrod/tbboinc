@@ -582,5 +582,60 @@ struct DB_CONSENT_TYPE : public DB_BASE, public CONSENT_TYPE {
     void db_parse(MYSQL_ROW &row);
 };
 
+class DB_QUEUE : public DB_BASE {
+    public:
+    DB_ID_TYPE id;
+    char name[32];
+    enum State { disable, optin, optout } state;
+    int priority;
+    bool disable_on_error;
+    int quota_user, quota_host;
+    char feeder[32];
+    char args[BLOB_SIZE];
+    DB_ID_TYPE forum_post;
+    public:
+    DB_QUEUE(DB_CONN* p=0);
+    DB_ID_TYPE get_id();
+    void db_print(char *);
+    const char* db_field_list();
+    void db_parse(MYSQL_ROW &row);
+};
+
+class DB_QUEUE_PREF : public DB_BASE {
+    public:
+    DB_ID_TYPE queue;
+    DB_ID_TYPE owner;
+    enum OwnerType { host, user, team } owner_type;
+    int priority;
+    bool disabled_scheduler, disabled_validator, optout;
+    int quota;
+    public:
+    DB_QUEUE_PREF(DB_CONN* p=0);
+    void db_print(char *);
+    const char* db_field_list();
+    void db_parse(MYSQL_ROW &row);
+    public:
+    int dec_quota();
+        /// decrement quota of this record
+    static int sched_disable( DB_CONN* db, const HOST& host, DB_ID_TYPE queue);
+        /// disable a queue from schedq_handle_results()
+    static int validator_bump( DB_CONN* db, const HOST& host, DB_ID_TYPE queue);
+        /// re-enable a sched-disabled queue from validator
+        /// and bump it's quota (of both user and host)
+};
+
+class DB_SCHED_QUEUE_ITEM : public DB_BASE_SPECIAL {
+    public:
+    DB_ID_TYPE id;
+    int priority;
+    DB_QUEUE_PREF user;
+    DB_QUEUE_PREF host;
+    public:
+    DB_SCHED_QUEUE_ITEM(DB_CONN* p=0);
+    void db_parse(MYSQL_ROW &row);
+    // Used to enumerate applicable QUEUEs together with host- and user- prefs and ordered by adjusted priority 
+    int enumerate_host(const HOST& host);
+};
+
 
 #endif

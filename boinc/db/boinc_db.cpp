@@ -2903,3 +2903,101 @@ void DB_CONSENT_TYPE::db_parse(MYSQL_ROW &r) {
     project_specific = atoi(r[i++]);
     privacypref = atoi(r[i++]);
 }
+
+
+DB_QUEUE::DB_QUEUE(DB_CONN* dc) :
+    DB_BASE("queue", dc?dc:&boinc_db){}
+DB_ID_TYPE DB_QUEUE::get_id() {return id;}
+const char* DB_QUEUE::db_field_list() {
+    return "id, name, CONVERT(state,INT), priority, disable_on_error, quota_user, quota_host, forum_post, feeder, args";
+}
+
+void DB_QUEUE::db_print(char *buf) {
+    const char* states[] = {"disable", "optin", "optout"};
+    sprintf(buf,
+	"id=%lu, "
+	"name='%s', "
+	"state='%s', "
+	"priority=%d, "
+    "disable_on_error=%d, "
+    "quota_user=%d, quota_host=%d, "
+    "forum_post=%d, "
+    "feeder='%s', args='%s' ",
+	id,
+    name,
+    states[state],
+    priority,
+    disable_on_error,
+    quota_user, quota_host,
+    forum_post,
+    feeder, args
+    );
+}
+
+void DB_QUEUE::db_parse(MYSQL_ROW &r) {
+    int i=0;
+    id = atol(r[i++]);
+    strcpy2(name, r[i++]);
+    state = static_cast<State>( atol(r[i++]) );
+    priority = atol(r[i++]);
+    disable_on_error = atol(r[i++]);
+    quota_user = atol(r[i++]);
+    quota_host = atol(r[i++]);
+    forum_post = atol(r[i++]);
+    strcpy2(feeder, r[i++]);
+    strcpy2(args, r[i++]);
+}
+
+DB_QUEUE_PREF::DB_QUEUE_PREF(DB_CONN* dc) :
+    DB_BASE("queue_pref", dc?dc:&boinc_db){}
+
+const char* DB_QUEUE_PREF::db_field_list() {
+    return "queue, CONVERT(owner_type,INT), owner, priority, disable, quota";
+}
+
+void DB_QUEUE_PREF::db_print(char *buf) {
+    const char* owners[] = {"host", "user", "team"};
+    sprintf(buf,
+	"queue=%lu, "
+	"owner_type='%s', "
+	"owner=%lu, "
+	"priority=%d, "
+    "disable=%d, "
+    "quota=%d ",
+    queue,
+    owners[owner_type],
+    owner,
+    priority,
+    (((!!optout)<<2) | ((!!disabled_validator)<<1) | (!!disabled_scheduler)),
+    quota
+    );
+}
+
+void DB_QUEUE_PREF::db_parse(MYSQL_ROW &r) {
+    int i=0;
+    queue = atol(r[i++]);
+    owner_type = static_cast<OwnerType>( atol(r[i++]) );
+    owner = atol(r[i++]);
+    priority = atol(r[i++]);
+    int disable = atol(r[i++]);
+    optout = disable>>2;
+    disabled_validator= (disable>>1)&1;
+    disabled_scheduler= disable&1;
+    quota = atol(r[i++]);
+}
+
+/*
+SELECT
+	q.id,
+    q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj
+    up.priority,up.disable,up.quota,
+    hp.priority,hp.disable,hp.quota,
+FROM `queue` q
+left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=1
+left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=1
+WHERE q.state!='disable'
+and COALESCE(up.disable,0)=0 and COALESCE(hp.disable,0)=0
+and (q.state='optout' or up.disable=0 or hp.disable=0)
+and (q.quota_user<0 or COALESCE(up.quota,1)>0) and (q.quota_host<0 or COALESCE(hp.quota,1)>0)
+order by prio_adj desc
+*/

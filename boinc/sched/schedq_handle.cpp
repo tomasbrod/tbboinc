@@ -61,6 +61,10 @@ void log_user_messages();
 
 void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
 {
+	//This is going to eventually enumerate queues, check user preferences,
+	// load and instantiate feeders that are not loaded, or outdated
+	// and invoke them. Porting the vanilla send_work is too much work.
+	//So after the above is done, write a simple wu feeder.
 }
 
 void schedq_handle(SCHEDULER_REPLY& sreply)
