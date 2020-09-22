@@ -107,6 +107,33 @@ static void schedq_auth_new_host(SCHEDULER_REPLY& sreply)
 	return;
 }
 
+
+void schedq_handle_cpid(SCHEDULER_REPLY& sreply)
+{
+	// compute email hash
+	//
+	md5_block(
+		(unsigned char*)sreply.user.email_addr,
+		strlen(sreply.user.email_addr),
+		sreply.email_hash
+	);
+	//what if it does not match, and why cant we use sreply.user.email_hash?
+
+	// if new user CPID, update user record
+	if (!sreply.request.using_weak_auth && sreply.request.cross_project_id[0]) {
+		if (strcmp(sreply.request.cross_project_id, sreply.user.cross_project_id)) {
+			safe_strcpy(sreply.user.cross_project_id, sreply.request.cross_project_id);
+			// why mess with the DB here ??
+			char buf[1024];
+			char cross_project_id[1024];
+			safe_strcpy(cross_project_id, sreply.request.cross_project_id);
+			escape_string(cross_project_id, sizeof(cross_project_id));
+			sprintf(buf, "cross_project_id='%.1004s'", cross_project_id);
+			sreply.user.update_field(buf);
+		}
+	}
+}
+
 bool schedq_handle_auth(SCHEDULER_REPLY& sreply)
 {
 	// step 1: lookup user based on id, and authenticate it with authenticator
@@ -115,5 +142,6 @@ bool schedq_handle_auth(SCHEDULER_REPLY& sreply)
 	// step 2: lookup host, check it, maybe create a new one
 	if(!schedq_auth_host(sreply))
 		schedq_auth_new_host(sreply);
+	schedq_handle_cpid(sreply);
 	return true;
 }
