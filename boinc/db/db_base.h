@@ -113,8 +113,9 @@ public:
     const char *table_name;
     CURSOR cursor;
     virtual DB_ID_TYPE get_id();
-    virtual void db_print(char*);
-    virtual void db_parse(MYSQL_ROW&);
+    virtual void db_print(char*) =0;
+    virtual void db_parse(MYSQL_ROW&) =0;
+    virtual const char* db_field_list();
 };
 
 // Base for derived classes that can get special-purpose data,

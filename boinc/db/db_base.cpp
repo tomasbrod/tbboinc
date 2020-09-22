@@ -225,7 +225,7 @@ int DB_BASE::lookup_id(DB_ID_TYPE id) {
     MYSQL_ROW row;
     MYSQL_RES* rp;
 
-    sprintf(query, "select * from %s where id=%lu", table_name, id);
+    sprintf(query, "select %s from %s where id=%lu", db_field_list(), table_name, id);
 
     retval = db->do_query(query);
     if (retval) return retval;
@@ -343,7 +343,7 @@ int DB_BASE::lookup(const char* clause) {
     MYSQL_ROW row;
     MYSQL_RES* rp;
 
-    sprintf(query, "select * from %s %s", table_name, clause);
+    sprintf(query, "select %s from %s %s", db_field_list(), table_name, clause);
 
     retval = db->do_query(query);
     if (retval) return retval;
@@ -467,6 +467,10 @@ int DB_BASE::sum(double& x, const char* field, const char* clause) {
     sprintf(query, "select sum(%s) from %s %s", field, table_name, clause);
 
     return db->get_double(query, x);
+}
+
+const char* DB_BASE::db_field_list() {
+    return "*";
 }
 
 DB_BASE_SPECIAL::DB_BASE_SPECIAL(DB_CONN* p) : db(p) {
