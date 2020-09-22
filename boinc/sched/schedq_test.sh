@@ -108,7 +108,7 @@ cd test.wd
 function do_test {
 	set +e
 	echo "Running test $1"
-	if ! valgrind ../schedq --stdio <../testq/$1.inp >$1.out; then
+	if ! valgrind --quiet ../schedq --stdio <../testq/$1.inp >$1.out; then
 		echo "schedq exited with $?"
 	fi
 	if ! diff -u ../testq/$1.out $1.out; then

@@ -775,6 +775,7 @@ int SCHEDULER_REPLY::write(FILE* fout, SCHEDULER_REQUEST& sreq) {
     // the scheduler with a minimum time between RPCs, send a delay request.
     // Make it 1% larger than the min required to take care of time skew.
     // If this is less than one second bigger, bump up by one sec.
+    // TODO: do modify the reply here, this is just serializer
     //
     if (request_delay || config.min_sendwork_interval) {
         double min_delay_needed = 1.01*config.min_sendwork_interval;
@@ -786,10 +787,6 @@ int SCHEDULER_REPLY::write(FILE* fout, SCHEDULER_REQUEST& sreq) {
         }
         fprintf(fout, "<request_delay>%f</request_delay>\n", request_delay);
     }
-    log->printf(MSG_NORMAL,
-        "Sending reply to [u%lu.h%lu]: %d results, delay req %.2f\n",
-        user.id, host.id, wreq.njobs_sent, request_delay
-    );
 
     if (sreq.core_client_version <= 41900) {
         string msg;

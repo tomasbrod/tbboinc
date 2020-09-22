@@ -171,11 +171,11 @@ ALTER TABLE `result`
   ADD KEY `res_hostid_id` (`hostid`,`id`),
   ADD KEY `res_wu_user` (`workunitid`,`userid`),
   ADD KEY `res_host_state` (`hostid`,`server_state`),
-  ADD KEY `recent_valid_apps` (`validate_state`,`appid`,`received_time`) USING BTREE,
-  ADD KEY `ind_res_batch_state` (`batch`,`server_state`,`outcome`,`client_state`,`validate_state`) USING BTREE,
-  ADD KEY `res_app_state` (`appid`,`server_state`,`outcome`,`validate_state`) USING BTREE,
-  ADD KEY `appid_xyz` (`app_version_id`,`server_state`,`received_time`) USING BTREE,
-  ADD KEY `ind_res_st_u` (`server_state`,`priority`,`appid`) USING BTREE,
+  ADD KEY `recent_valid_apps` (`validate_state`,`appid`,`received_time`),
+  ADD KEY `ind_res_batch_state` (`batch`,`server_state`,`outcome`,`client_state`,`validate_state`),
+  ADD KEY `res_app_state` (`appid`,`server_state`,`outcome`,`validate_state`),
+  ADD KEY `appid_xyz` (`app_version_id`,`server_state`,`received_time`),
+  ADD KEY `ind_res_st_u` (`server_state`,`priority`,`appid`),
   ADD KEY `ind_res_st` (`appid`,`server_state`,`priority`);
 
 -- --------------------------------------------------------
@@ -225,7 +225,7 @@ ALTER TABLE `workunit`
   ADD KEY `wu_val` (`appid`,`need_validate`),
   ADD KEY `wu_timeout` (`transition_time`),
   ADD KEY `wu_assim` (`appid`,`assimilate_state`),
-  ADD KEY `wu_filedel_plus` (`file_delete_state`,`appid`,`mod_time`) USING BTREE;
+  ADD KEY `wu_filedel_plus` (`file_delete_state`,`appid`,`mod_time`);
 
 -- --------------------------------------------------------
 
@@ -257,8 +257,8 @@ ALTER TABLE `team`
   ADD UNIQUE KEY `name` (`name`),
   ADD KEY `team_avg` (`expavg_credit`),
   ADD KEY `team_tot` (`total_credit`),
-  ADD KEY `team_userid` (`userid`);
-ALTER TABLE `team` ADD FULLTEXT KEY `team_name` (`name`);
+  ADD KEY `team_userid` (`userid`),
+	ADD FULLTEXT KEY `team_name` (`name`);
 
 -- --------------------------------------------------------
 
