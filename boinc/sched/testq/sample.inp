@@ -134,6 +134,34 @@ af022c883486bcad97aba77db301bc4952d676e0b777016b6e20b98cb65d29e4
         <d_project_share>52308360810.574547</d_project_share>
     </disk_usage>
 
+<result>
+    <name>tot5_51c_SrW9chTcyBXXsiF4GR31T5hXh_1</name>
+    <final_cpu_time>240.539100</final_cpu_time>
+    <final_elapsed_time>258.588941</final_elapsed_time>
+    <exit_status>203</exit_status>
+    <state>6</state>
+    <platform>x86_64-pc-linux-gnu</platform>
+    <version_num>510</version_num>
+    <final_peak_working_set_size>2539520</final_peak_working_set_size>
+    <final_peak_swap_size>6643712</final_peak_swap_size>
+    <final_peak_disk_usage>15969</final_peak_disk_usage>
+    <app_version_num>510</app_version_num>
+<stderr_out>
+<core_client_version>7.16.9</core_client_version>
+<![CDATA[
+<message>
+aborted by user</message>
+<stderr_txt>
+12:53:45 (272535): Start from Input
+12:53:45 (272535): time limits 1601372388 15212
+12:57:55 (272535): Checkpoint, SN=77090146
+12:58:03 (272535): EXIT_ABORTED_BY_CLIENT
+12:58:03 (272535): called boinc_finish(0)
+
+</stderr_txt>
+]]>
+</stderr_out>
+</result>
 
 <other_results>
 </other_results>

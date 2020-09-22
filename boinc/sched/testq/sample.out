@@ -32,4 +32,7 @@ Content-type: text/xml
 <host_create_time>1549303684</host_create_time>
 <teamid>3938</teamid>
 <team_name>Appreciation Club</team_name>
+<result_ack>
+    <name>tot5_51c_SrW9chTcyBXXsiF4GR31T5hXh_1</name>
+</result_ack>
 </scheduler_reply>
