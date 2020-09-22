@@ -23,4 +23,9 @@ void schedq_handle(SCHEDULER_REPLY& sreply);
 bool schedq_handle_auth(SCHEDULER_REPLY& sreply);
 void schedq_handle_results(SCHEDULER_REPLY& sreply);
 
+
+void schedq_handle_cpid(SCHEDULER_REPLY& sreply);
+void schedq_handle_team(SCHEDULER_REPLY& sreply);
+void schedq_handle_urls(SCHEDULER_REPLY& sreply);
+
 struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };

@@ -336,6 +336,7 @@ schedq_SOURCES = \
     schedq_types.cpp \
     schedq_main.cpp \
     schedq_auth.cpp \
+    schedq_misc.cpp \
     schedq_result.cpp \
     schedq_handle.cpp
 

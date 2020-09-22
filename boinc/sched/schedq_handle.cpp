@@ -59,13 +59,19 @@ void process_request(char* code_sign_key);
 void log_incomplete_request();
 void log_user_messages();
 
-void schedq_invoke_feeders(SCHEDULER_REPLY& sreply) {}
+void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
+{
+}
 
 void schedq_handle(SCHEDULER_REPLY& sreply)
 {
 
 	bool auth_ok = schedq_handle_auth(sreply);
 	if(!auth_ok) return;
+
+	schedq_handle_cpid(sreply);
+	schedq_handle_team(sreply);
+	schedq_handle_urls(sreply);
 
 	schedq_handle_results(sreply);
 
