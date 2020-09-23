@@ -59,12 +59,54 @@ void process_request(char* code_sign_key);
 void log_incomplete_request();
 void log_user_messages();
 
+struct SCHED_QUEUE : DB_QUEUE {
+	virtual void feed(SCHEDULER_REPLY& sreply)=0;
+	explicit SCHED_QUEUE(const DB_QUEUE&);
+	virtual ~SCHED_QUEUE();
+};
+
+SCHED_QUEUE* schedq_get_queue(SCHEDULER_REPLY& sreply, DB_ID_TYPE queueid)
+{
+	//TODO: cache the queue descriptions, feeder instances and feeder plugins.
+	DB_QUEUE descr(sreply.db);
+	if(descr.lookup_id(queueid)) {
+		sreply.log->printf(MSG_WARNING,"Queue %lu lookup failed\n",queueid);
+		return 0;
+	}
+	//supposed to instantiate the feeder here, but unimplemented
+	char buf[1024];
+	snprintf(buf, sizeof(buf), "Error loading '%s' feeder for queue '%s' #%lu",
+	descr.feeder, descr.name, descr.id );
+	sreply.insert_message(buf, "low");
+	return 0;
+}
+
+bool schedq_reply_full(SCHEDULER_REPLY& sreply)
+{
+	(void)sreply;
+	return false; //TODO
+}
+
 void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
 {
 	//This is going to eventually enumerate queues, check user preferences,
 	// load and instantiate feeders that are not loaded, or outdated
 	// and invoke them. Porting the vanilla send_work is too much work.
 	//So after the above is done, write a simple wu feeder.
+	DB_SCHED_QUEUE_ITEM qpref (sreply.db);
+	int retval;
+	int count = 0;
+	while( 0==(retval=qpref.enumerate_host(sreply.host, false)) ) {
+		SCHED_QUEUE* queue = schedq_get_queue(sreply,qpref.id);
+		if(!queue) continue;
+		count++;
+		queue->feed(sreply);
+		if(schedq_reply_full(sreply)) break;
+	}
+	if(retval!=ERR_DB_NOT_FOUND)
+		throw EDatabase("DB_SCHED_QUEUE_ITEM.enumerate failed");
+	if(!count)
+		sreply.insert_message("No useable queues", "low");
 }
 
 void schedq_handle(SCHEDULER_REPLY& sreply)
