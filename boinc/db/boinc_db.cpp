@@ -2921,7 +2921,7 @@ void DB_QUEUE::db_print(char *buf) {
 	"priority=%d, "
     "disable_on_error=%d, "
     "quota_user=%d, quota_host=%d, "
-    "forum_post=%d, "
+    "forum_post=%lu, "
     "feeder='%s', args='%s' ",
 	id,
     name,
@@ -2987,17 +2987,107 @@ void DB_QUEUE_PREF::db_parse(MYSQL_ROW &r) {
 }
 
 /*
-SELECT
-	q.id,
-    q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj
-    up.priority,up.disable,up.quota,
-    hp.priority,hp.disable,hp.quota,
-FROM `queue` q
-left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=1
-left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=1
-WHERE q.state!='disable'
-and COALESCE(up.disable,0)=0 and COALESCE(hp.disable,0)=0
-and (q.state='optout' or up.disable=0 or hp.disable=0)
-and (q.quota_user<0 or COALESCE(up.quota,1)>0) and (q.quota_host<0 or COALESCE(hp.quota,1)>0)
-order by prio_adj desc
+DELIMITER $$
+create procedure GET_HOST_QUEUES_ENABLED (in userid int, in hostid int)
+BEGIN SELECT
+  q.id,
+  q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj,
+  up.priority,up.disable,up.quota, userid,
+  hp.priority,hp.disable,hp.quota, hostid
+  FROM `queue` q
+  left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=userid
+  left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=hostid
+  WHERE q.state!='disable'
+  and COALESCE(up.disable,0)=0 and COALESCE(hp.disable,0)=0
+  and (q.state='optout' or up.disable=0 or hp.disable=0)
+  and (q.quota_user<0 or COALESCE(up.quota,1)>0)
+  and (q.quota_host<0 or COALESCE(hp.quota,1)>0)
+  order by prio_adj desc;
+END$$
+DELIMITER $$
+create procedure GET_HOST_QUEUES_ALL (in userid int, in hostid int)
+BEGIN SELECT
+  q.id,
+  q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj,
+  up.priority,up.disable,up.quota, userid,
+  hp.priority,hp.disable,hp.quota, hostid
+  FROM `queue` q
+  left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=userid
+  left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=hostid
+  WHERE q.state!='disable'
+  and (q.state='optout' or up.disable=0 or hp.disable=0)
+  order by prio_adj desc;
+END$$
 */
+
+DB_SCHED_QUEUE_ITEM::DB_SCHED_QUEUE_ITEM(DB_CONN* p)
+    : DB_BASE_SPECIAL(p)
+    {}
+DB_SCHED_QUEUE_ITEM::~DB_SCHED_QUEUE_ITEM()
+{
+    if (cursor.active)
+        mysql_free_result(cursor.rp);
+}
+
+void DB_SCHED_QUEUE_ITEM::db_parse(MYSQL_ROW &r)
+{
+    int i=0;
+    id = atol(r[i++]);
+    priority = atol(r[i++]);
+
+    user.priority = atol(r[i++]);
+    int disable = atol(r[i++]);
+    user.quota = atol(r[i++]);
+    user.owner = atol(r[i++]);
+    user.optout = disable>>2;
+    user.disabled_validator= (disable>>1)&1;
+    user.disabled_scheduler= disable&1;
+    user.queue = id;
+    user.owner_type = DB_QUEUE_PREF::user;
+
+    host.priority = atol(r[i++]);
+    disable = atol(r[i++]);
+    host.quota = atol(r[i++]);
+    host.owner = atol(r[i++]);
+    host.optout = disable>>2;
+    host.disabled_validator= (disable>>1)&1;
+    host.disabled_scheduler= disable&1;
+    host.queue = id;
+    host.owner_type = DB_QUEUE_PREF::host;
+}
+
+int DB_SCHED_QUEUE_ITEM::enumerate_host(const HOST& host, bool filter)
+{
+    int retval;
+    char query[MAX_QUERY_LEN];
+    MYSQL_ROW row;
+
+    if (!cursor.active) {
+        sprintf(query,
+            "CALL GET_HOST_QUEUES_%s ( %lu, %lu )",
+            filter?"ALL":"ENABLED",
+            host.userid, host.id
+        );
+
+        retval = db->do_query(query);
+        if (retval) return mysql_errno(db->mysql);
+
+        // the following stores the entire result set in memory
+        //
+        cursor.rp = mysql_store_result(db->mysql);
+        if (!cursor.rp) return mysql_errno(db->mysql);
+        cursor.active = true;
+        mysql_next_result(db->mysql);
+    }
+
+    row = mysql_fetch_row(cursor.rp);
+    if (!row) {
+        mysql_free_result(cursor.rp);
+        cursor.active = false;
+        retval = mysql_errno(db->mysql);
+        if (retval) return ERR_DB_CONN_LOST;
+        return ERR_DB_NOT_FOUND;
+    }
+    db_parse(row);
+    return 0;
+}

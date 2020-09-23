@@ -632,9 +632,10 @@ class DB_SCHED_QUEUE_ITEM : public DB_BASE_SPECIAL {
     DB_QUEUE_PREF host;
     public:
     DB_SCHED_QUEUE_ITEM(DB_CONN* p=0);
+    ~DB_SCHED_QUEUE_ITEM();
     void db_parse(MYSQL_ROW &row);
     // Used to enumerate applicable QUEUEs together with host- and user- prefs and ordered by adjusted priority 
-    int enumerate_host(const HOST& host);
+    int enumerate_host(const HOST& host, bool filter);
 };
 
 

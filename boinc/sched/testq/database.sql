@@ -262,6 +262,69 @@ ALTER TABLE `team`
 
 -- --------------------------------------------------------
 
+CREATE TABLE `queue` (
+  `id` smallint(11) NOT NULL,
+  `descr` text NOT NULL,
+  `name` varchar(31) DEFAULT NULL,
+  `state` enum('disable','optin','optout') NOT NULL,
+  `priority` smallint(4) NOT NULL,
+  `disable_on_error` tinyint(1) NOT NULL,
+  `quota_user` int(11) NOT NULL,
+  `quota_host` int(11) NOT NULL,
+  `feeder` varchar(31) NOT NULL,
+  `args` text NOT NULL,
+  `forum_post` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+CREATE TABLE `queue_pref` (
+  `queue` smallint(11) NOT NULL,
+  `owner_type` enum('host','user','team') NOT NULL,
+  `owner` int(11) NOT NULL,
+  `priority` smallint(6) NOT NULL,
+  `disable` tinyint(4) NOT NULL,
+  `quota` int(11) NOT NULL,
+  PRIMARY KEY (`owner_type`,`owner`,`queue`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+ALTER TABLE `queue`
+  MODIFY `id` smallint(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+DELIMITER $$
+create procedure GET_HOST_QUEUES_ENABLED (in userid int, in hostid int)
+BEGIN SELECT
+  q.id,
+  q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj,
+  COALESCE(up.priority,0),COALESCE(up.disable,0), COALESCE(up.quota,0), userid,
+  COALESCE(hp.priority,0),COALESCE(hp.disable,0), COALESCE(hp.quota,0), userid
+  FROM `queue` q
+  left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=userid
+  left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=hostid
+  WHERE q.state!='disable'
+  and COALESCE(up.disable,0)=0 and COALESCE(hp.disable,0)=0
+  and (q.state='optout' or up.disable=0 or hp.disable=0)
+  and (q.quota_user<0 or COALESCE(up.quota,1)>0)
+  and (q.quota_host<0 or COALESCE(hp.quota,1)>0)
+  order by prio_adj desc;
+END$$
+DELIMITER $$
+create procedure GET_HOST_QUEUES_ALL (in userid int, in hostid int)
+BEGIN SELECT
+  q.id,
+  q.priority + COALESCE(up.priority,0) + COALESCE(hp.priority,0) as prio_adj,
+  COALESCE(up.priority,0),COALESCE(up.disable,0), COALESCE(up.quota,0), userid,
+  COALESCE(hp.priority,0),COALESCE(hp.disable,0), COALESCE(hp.quota,0), userid
+  FROM `queue` q
+  left join queue_pref up on up.queue=q.id and up.owner_type='user' and up.owner=userid
+  left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=hostid
+  WHERE q.state!='disable'
+  and (q.state='optout' or up.disable=0 or hp.disable=0)
+  order by prio_adj desc;
+END$$
+DELIMITER ;
+
+-- --------------------------------------------------------
+
 --
 -- Dump of Data
 --
@@ -280,3 +343,11 @@ INSERT INTO `workunit` (`id`, `create_time`, `appid`, `name`, `xml_doc`, `batch`
 
 INSERT INTO `result` (`id`, `create_time`, `workunitid`, `server_state`, `outcome`, `client_state`, `hostid`, `userid`, `report_deadline`, `sent_time`, `received_time`, `name`, `cpu_time`, `xml_doc_in`, `xml_doc_out`, `stderr_out`, `batch`, `file_delete_state`, `validate_state`, `claimed_credit`, `granted_credit`, `opaque`, `random`, `app_version_num`, `appid`, `exit_status`, `teamid`, `priority`, `mod_time`, `elapsed_time`, `flops_estimate`, `app_version_id`, `runtime_outlier`, `size_class`, `peak_working_set_size`, `peak_swap_size`, `peak_disk_usage`) VALUES
 (4032343, 1600748869, 3426335, 4, 0, 0, 1, 1, 1601380268, 1600771968, 0, 'tot5_51c_SrW9chTcyBXXsiF4GR31T5hXh_1', 0, 0x3c66696c655f696e666f3e0a20202020202020203c6e616d653e746f74355f3531635f537257396368546379425858736946344752333154356858685f315f72313535353031363837365f303c2f6e616d653e0a20202020202020203c67656e6572617465645f6c6f63616c6c792f3e0a20202020202020203c75706c6f61645f7768656e5f70726573656e742f3e0a20202020202020203c6d61785f6e62797465733e3132383030303030303c2f6d61785f6e62797465733e0a20202020202020203c75706c6f61645f75726c3e68747470733a2f2f626f696e632e7462726164612e65752f7462726164615f6367692f6675683f643c2f75706c6f61645f75726c3e0a202020203c786d6c5f7369676e61747572653e0a323131313530363763646438323530356163366234393235373161303664623535386439663731653536636335633735633433323235363731373962363062610a373433326435643730353633626233653136313166313163376663303062393439316130373463383233623362613930353263366232656134343230643564340a333237616464643162376162306331396438613837333334653966363334653665333761623232346162653731663462313866303365623061396535316562380a303861393365373734346633636639316237386537373139386337346662316230613038636264633962316632313962653830646164386637623938383732340a2e0a3c2f786d6c5f7369676e61747572653e0a3c2f66696c655f696e666f3e0a202020203c726573756c743e0a20202020202020203c66696c655f7265663e0a2020202020202020202020203c66696c655f6e616d653e746f74355f3531635f537257396368546379425858736946344752333154356858685f315f72313535353031363837365f303c2f66696c655f6e616d653e0a2020202020202020202020203c6f70656e5f6e616d653e6f75747075742e6461743c2f6f70656e5f6e616d653e0a20202020202020203c2f66696c655f7265663e0a202020203c2f726573756c743e, '', '', 22, 0, 0, 0, 0, 0, 787009339, 0, 7, 0, 0, 22, '2020-09-22 10:52:48', 0, 3418220690.712844, 45, 0, -1, 0, 0, 0);
+
+INSERT INTO `queue` (`id`, `descr`, `name`, `state`, `priority`, `disable_on_error`, `quota_user`, `quota_host`, `feeder`, `args`) VALUES
+(1, 'Symmetric Prime Tuples', 'spt', 'optout', 100, 1, 100000, 100000, 'spt', ''),
+(2, 'Test App', 'test1', 'optin', 100, 1, 10, 10, 'wu', '<wu appid=\'4\'/>');
+
+INSERT INTO `queue_pref` (`queue`, `owner_type`, `owner`, `priority`, `disable`, `quota`) VALUES
+(1, 'user', 1, 2, 4, 1000),
+(2, 'user', 1, 0, 0,   10);
