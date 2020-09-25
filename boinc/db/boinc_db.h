@@ -609,14 +609,15 @@ class DB_QUEUE_PREF : public DB_BASE {
     int priority;
     bool disabled_scheduler, disabled_validator, optout;
     int quota;
+    int quota_orig;
     public:
     DB_QUEUE_PREF(DB_CONN* p=0);
     void db_print(char *);
     const char* db_field_list();
     void db_parse(MYSQL_ROW &row);
     public:
-    int dec_quota();
-        /// decrement quota of this record
+    int update_quota();
+        /// update quota of this record in db
     static int sched_disable( DB_CONN* db, const HOST& host, DB_ID_TYPE queue);
         /// disable a queue from schedq_handle_results()
     static int validator_bump( DB_CONN* db, const HOST& host, DB_ID_TYPE queue);

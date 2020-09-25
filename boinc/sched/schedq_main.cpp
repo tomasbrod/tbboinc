@@ -54,10 +54,7 @@
 #include "svn_version.h"
 #include "synch.h"
 #include "util.h"
-#include "handle_request.h"
 #include "sched_config.h"
-#include "sched_files.h"
-#include "sched_keyword.h"
 #include "sched_msgs.h"
 #include "sched_types.h"
 #include "sched_util.h"
@@ -281,7 +278,7 @@ void schedq_init() {
 		g_print_queries= true;
 
 	open_database();
-	//gui_urls.init(); TODO!
+	gui_urls.init();// TODO!
 	//project_files.init();
 	//init_file_delete_regex();
 

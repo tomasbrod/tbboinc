@@ -2983,7 +2983,22 @@ void DB_QUEUE_PREF::db_parse(MYSQL_ROW &r) {
     optout = disable>>2;
     disabled_validator= (disable>>1)&1;
     disabled_scheduler= disable&1;
-    quota = atol(r[i++]);
+    quota_orig = quota = atol(r[i++]);
+}
+
+int DB_QUEUE_PREF::update_quota() {
+    if(quota<0) quota=0;
+    char query[MAX_QUERY_LEN];
+    strcpy(query,"INSERT into queue_pref SET ");
+    db_print(query+strlen(query));
+    sprintf(query+strlen(query),
+        " ON duplicate key UPDATE quota=quota-%d",
+        quota-quota_orig
+    );
+
+    int retval = db->do_query(query);
+
+    if (retval) return mysql_errno(db->mysql); else return 0;
 }
 
 /*

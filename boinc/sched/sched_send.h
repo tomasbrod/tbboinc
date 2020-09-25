@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "boinc_db.h"
-#include "sched_shmem.h"
 #include "sched_types.h"
 
 const int MAX_GPUS = 64;

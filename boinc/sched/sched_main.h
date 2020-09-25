@@ -19,7 +19,6 @@
 #include "sched_config.h"
 #include "synch.h"
 #include "sched_types.h"
-#include "sched_shmem.h"
 
 // various delay params.
 // Any of these could be moved into SCHED_CONFIG, if projects need control.
@@ -61,7 +60,7 @@ extern GUI_URLS gui_urls;
 extern PROJECT_FILES project_files;
 extern key_t sema_key;
 extern int g_pid;
-extern SCHED_SHMEM* ssp;
+//extern SCHED_SHMEM* ssp;
 extern bool batch;
     // read sequences of requests from stdin (for testing)
 extern bool mark_jobs_done;

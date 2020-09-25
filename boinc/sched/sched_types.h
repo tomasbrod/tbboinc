@@ -27,7 +27,6 @@
 #include "coproc.h"
 #include "keyword.h"
 #include "sched_msgs.h"
-
 #include "edf_sim.h"
 
 // for projects that support work filtering by app,
