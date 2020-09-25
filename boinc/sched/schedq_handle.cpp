@@ -61,24 +61,46 @@ void log_user_messages();
 
 struct SCHED_QUEUE : DB_QUEUE {
 	virtual void feed(SCHEDULER_REPLY& sreply)=0;
-	explicit SCHED_QUEUE(const DB_QUEUE&);
-	virtual ~SCHED_QUEUE();
+	explicit SCHED_QUEUE(const DB_QUEUE&) {}
+	virtual ~SCHED_QUEUE() {}
 };
+
+struct FEEDER_WU_V1 : SCHED_QUEUE {
+	void feed(SCHEDULER_REPLY&)
+	{
+		//again, do nothing
+	}
+	FEEDER_WU_V1(const DB_QUEUE& q)
+		: SCHED_QUEUE(q)
+	{
+		//do nothing
+	}
+};
+
+std::map< DB_ID_TYPE, SCHED_QUEUE* > schedq_cache;
 
 SCHED_QUEUE* schedq_get_queue(SCHEDULER_REPLY& sreply, DB_ID_TYPE queueid)
 {
-	//TODO: cache the queue descriptions, feeder instances and feeder plugins.
-	DB_QUEUE descr(sreply.db);
-	if(descr.lookup_id(queueid)) {
-		sreply.log->printf(MSG_WARNING,"Queue %lu lookup failed\n",queueid);
+	SCHED_QUEUE* r =0;
+	r = schedq_cache[queueid];
+	if(!r) {
+		DB_QUEUE descr(sreply.db);
+		if(descr.lookup_id(queueid)) {
+			sreply.log->printf(MSG_WARNING,"Queue %lu lookup failed\n",queueid);
+			return 0;
+		}
+		if(0==strcmp(descr.feeder,"wu1")) {
+			schedq_cache[queueid] = r = new FEEDER_WU_V1 (descr) ;
+			return r;
+		}	
+		//supposed to instantiate the feeder here, but unimplemented
+		char buf[1024];
+		snprintf(buf, sizeof(buf), "Error loading '%s' feeder for queue '%s' #%lu",
+		descr.feeder, descr.name, descr.id );
+		sreply.insert_message(buf, "low");
 		return 0;
 	}
-	//supposed to instantiate the feeder here, but unimplemented
-	char buf[1024];
-	snprintf(buf, sizeof(buf), "Error loading '%s' feeder for queue '%s' #%lu",
-	descr.feeder, descr.name, descr.id );
-	sreply.insert_message(buf, "low");
-	return 0;
+	else return r;
 }
 
 bool schedq_reply_full(SCHEDULER_REPLY& sreply)
@@ -86,6 +108,14 @@ bool schedq_reply_full(SCHEDULER_REPLY& sreply)
 	(void)sreply;
 	return false; //TODO
 }
+
+/* maybe this queue model is not good for locality scheduling... but
+ * This can be solved with host-queue priority. When host is assigned
+ * locality work, the queue priority is bumped to be also used next time.
+ * The feeder should be internally locality aware as well.
+ * And if they run out, priority's reset.
+ * This will be responsibility of the locality-aware feeder.
+*/
 
 void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
 {

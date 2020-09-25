@@ -282,6 +282,7 @@ CREATE TABLE `queue_pref` (
   `owner_type` enum('host','user','team') NOT NULL,
   `owner` int(11) NOT NULL,
   `priority` smallint(6) NOT NULL,
+  `locality` tinyint(1) NOT NULL,
   `disable` tinyint(4) NOT NULL,
   `quota` int(11) NOT NULL,
   PRIMARY KEY (`owner_type`,`owner`,`queue`)
@@ -305,7 +306,7 @@ BEGIN SELECT
   and (q.state='optout' or up.disable=0 or hp.disable=0)
   and (q.quota_user<0 or COALESCE(up.quota,1)>0)
   and (q.quota_host<0 or COALESCE(hp.quota,1)>0)
-  order by prio_adj desc;
+  order by hp.locality desc, prio_adj desc;
 END$$
 DELIMITER $$
 create procedure GET_HOST_QUEUES_ALL (in userid int, in hostid int)
@@ -319,7 +320,7 @@ BEGIN SELECT
   left join queue_pref hp on hp.queue=q.id and hp.owner_type='host' and hp.owner=hostid
   WHERE q.state!='disable'
   and (q.state='optout' or up.disable=0 or hp.disable=0)
-  order by prio_adj desc;
+  order by hp.locality desc, prio_adj desc;
 END$$
 DELIMITER ;
 
@@ -348,6 +349,7 @@ INSERT INTO `queue` (`id`, `descr`, `name`, `state`, `priority`, `disable_on_err
 (1, 'Symmetric Prime Tuples', 'spt', 'optout', 100, 1, 100000, 100000, 'spt', ''),
 (2, 'Test App', 'test1', 'optin', 100, 1, 10, 10, 'wu', '<wu appid=\'4\'/>');
 
-INSERT INTO `queue_pref` (`queue`, `owner_type`, `owner`, `priority`, `disable`, `quota`) VALUES
-(1, 'user', 1, 2, 4, 1000),
-(2, 'user', 1, 0, 0,   10);
+INSERT INTO `queue_pref` (`queue`, `owner_type`, `owner`, `priority`, `locality`, `disable`, `quota`) VALUES
+(1, 'user', 1, 2, 0, 0, 1000),
+(2, 'user', 1, 0, 0, 0,   10),
+(2, 'host', 1, 0, 1, 0,   10);
