@@ -42,6 +42,7 @@ schedq_SOURCES = \
     schedq_misc.cpp \
     schedq_result.cpp \
     schedq_handle.cpp \
+    schedq_feeder_simple.cpp \
     schedq_main.cpp
 
 schedq_CPPFLAGS = -D_USING_FCGI_ -D_WITHOUT_SSP_ $(AM_CPPFLAGS)

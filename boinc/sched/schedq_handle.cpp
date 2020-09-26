@@ -58,24 +58,7 @@
 void process_request(char* code_sign_key);
 void log_incomplete_request();
 void log_user_messages();
-
-struct SCHED_QUEUE : DB_QUEUE {
-	virtual void feed(SCHEDULER_REPLY& sreply)=0;
-	explicit SCHED_QUEUE(const DB_QUEUE&) {}
-	virtual ~SCHED_QUEUE() {}
-};
-
-struct FEEDER_WU_V1 : SCHED_QUEUE {
-	void feed(SCHEDULER_REPLY&)
-	{
-		//again, do nothing
-	}
-	FEEDER_WU_V1(const DB_QUEUE& q)
-		: SCHED_QUEUE(q)
-	{
-		//do nothing
-	}
-};
+SCHED_QUEUE* create_feeder_simple(DB_QUEUE&);
 
 std::map< DB_ID_TYPE, SCHED_QUEUE* > schedq_cache;
 
@@ -90,7 +73,7 @@ SCHED_QUEUE* schedq_get_queue(SCHEDULER_REPLY& sreply, DB_ID_TYPE queueid)
 			return 0;
 		}
 		if(0==strcmp(descr.feeder,"wu1")) {
-			schedq_cache[queueid] = r = new FEEDER_WU_V1 (descr) ;
+			schedq_cache[queueid] = r = create_feeder_simple(descr);
 			return r;
 		}	
 		//supposed to instantiate the feeder here, but unimplemented
@@ -108,14 +91,6 @@ bool schedq_reply_full(SCHEDULER_REPLY& sreply)
 	(void)sreply;
 	return false; //TODO
 }
-
-/* maybe this queue model is not good for locality scheduling... but
- * This can be solved with host-queue priority. When host is assigned
- * locality work, the queue priority is bumped to be also used next time.
- * The feeder should be internally locality aware as well.
- * And if they run out, priority's reset.
- * This will be responsibility of the locality-aware feeder.
-*/
 
 void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
 {
@@ -139,21 +114,46 @@ void schedq_invoke_feeders(SCHEDULER_REPLY& sreply)
 		sreply.insert_message("No useable queues", "low");
 }
 
+void schedq_handle_lost(SCHEDULER_REPLY& sreply)
+{
+	/* Lost task handling.
+	 * 1) Abort tasks on server that are not in other_results.
+	 * 2) Abort other_results that are in unfavourable state on server.
+	*/
+	(void)sreply; //Stub.
+}
+
+void schedq_handle_codesign(SCHEDULER_REPLY& sreply)
+{
+	// send_code_sign_key is okay to use once we pull it out
+	(void)sreply; //Stub.
+}
+
 void schedq_handle(SCHEDULER_REPLY& sreply)
 {
 
 	bool auth_ok = schedq_handle_auth(sreply);
 	if(!auth_ok) return;
 
-	schedq_handle_cpid(sreply);
-	schedq_handle_team(sreply);
-	schedq_handle_urls(sreply);
-
 	schedq_handle_results(sreply);
 
-	//custom (shit like cpid, sticky files, in-progress wus, global_prefs, code_sign, msgs)
+	schedq_handle_lost(sreply);
+	schedq_handle_codesign(sreply);
+
+	// low prioriry stuff like cpid, team, urls, client stats, global_prefs
+	schedq_handle_misc(sreply);
 
 	schedq_invoke_feeders(sreply);
 
+	// todo important stuff like sticky files, messages
+
 	return;
 }
+
+/* maybe this queue model is not good for locality scheduling... but
+ * This can be solved with host-queue priority. When host is assigned
+ * locality work, the queue priority is bumped to be also used next time.
+ * The feeder should be internally locality aware as well.
+ * And if they run out, priority's reset.
+ * This will be responsibility of the locality-aware feeder.
+*/

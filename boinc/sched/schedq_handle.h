@@ -22,10 +22,17 @@
 void schedq_handle(SCHEDULER_REPLY& sreply);
 bool schedq_handle_auth(SCHEDULER_REPLY& sreply);
 void schedq_handle_results(SCHEDULER_REPLY& sreply);
+void schedq_handle_lost(SCHEDULER_REPLY& sreply);
+void schedq_handle_codesign(SCHEDULER_REPLY& sreply);
 
+void schedq_handle_misc(SCHEDULER_REPLY& sreply);
 
-void schedq_handle_cpid(SCHEDULER_REPLY& sreply);
-void schedq_handle_team(SCHEDULER_REPLY& sreply);
-void schedq_handle_urls(SCHEDULER_REPLY& sreply);
+bool schedq_reply_full(SCHEDULER_REPLY& sreply);
 
 struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
+
+struct SCHED_QUEUE : DB_QUEUE {
+	virtual void feed(SCHEDULER_REPLY& sreply) =0;
+	explicit SCHED_QUEUE(const DB_QUEUE&) {};
+	virtual ~SCHED_QUEUE() {};
+};

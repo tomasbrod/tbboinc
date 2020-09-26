@@ -20,9 +20,9 @@
 
 #include "schedq_handle.h"
 
-void schedq_handle_cpid(SCHEDULER_REPLY& sreply)
+void schedq_handle_misc(SCHEDULER_REPLY& sreply)
 {
-	// if new user CPID, update user record
+	// If new user CPID, update user record
 	if (!sreply.request.using_weak_auth && sreply.request.cross_project_id[0]) {
 		if (strcmp(sreply.request.cross_project_id, sreply.user.cross_project_id)) {
 			safe_strcpy(sreply.user.cross_project_id, sreply.request.cross_project_id);
@@ -35,10 +35,8 @@ void schedq_handle_cpid(SCHEDULER_REPLY& sreply)
 			sreply.user.update_field(buf);
 		}
 	}
-}
 
-void schedq_handle_team(SCHEDULER_REPLY& sreply)
-{
+	// Load team credit and name
 	if(sreply.user.teamid>0) {
 		int retval = sreply.team.lookup_id(sreply.user.teamid);
 		if(retval) {
@@ -47,9 +45,6 @@ void schedq_handle_team(SCHEDULER_REPLY& sreply)
 			);
 		}
 	}
-}
 
-void schedq_handle_urls(SCHEDULER_REPLY& sreply)
-{
-	(void)sreply; //TODO
+	//TODO: urls, client stats, global_prefs
 }
