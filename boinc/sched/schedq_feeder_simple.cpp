@@ -64,7 +64,7 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
 	{
 		//again, do nothing
 		/* Find app version for the host. Start transaction.
-		 * Fetch few results from db.
+		 * Fetch few results from db. FOR UPDATE
 		 * Try to assign them.
 		 * If assigned more than half, repeat query, else commit.
 		 * Last, adjust user quota.
