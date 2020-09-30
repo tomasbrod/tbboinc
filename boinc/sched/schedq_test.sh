@@ -88,6 +88,9 @@ mariadb-install-db --defaults-file=test.db/my.cnf --auth-root-authentication-met
 else
 echo "Using mariadb in test.db directory"
 fi
+
+make
+
 mariadbd=1
 function finish {
 	echo "Stopping mariadb"

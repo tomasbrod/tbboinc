@@ -59,6 +59,7 @@ void process_request(char* code_sign_key);
 void log_incomplete_request();
 void log_user_messages();
 SCHED_QUEUE* create_feeder_simple(DB_QUEUE&);
+SCHED_QUEUE* create_feeder_array(DB_QUEUE&);
 
 std::map< DB_ID_TYPE, SCHED_QUEUE* > schedq_cache;
 
@@ -72,8 +73,12 @@ SCHED_QUEUE* schedq_get_queue(SCHEDULER_REPLY& sreply, DB_ID_TYPE queueid)
 			sreply.log->printf(MSG_WARNING,"Queue %lu lookup failed\n",queueid);
 			return 0;
 		}
-		if(0==strcmp(descr.feeder,"wu1")) {
+		if(0==strcmp(descr.feeder,"simple")) {
 			schedq_cache[queueid] = r = create_feeder_simple(descr);
+			return r;
+		}	
+		if(0==strcmp(descr.feeder,"array")) {
+			schedq_cache[queueid] = r = create_feeder_array(descr);
 			return r;
 		}	
 		//supposed to instantiate the feeder here, but unimplemented
@@ -148,6 +153,54 @@ void schedq_handle(SCHEDULER_REPLY& sreply)
 	// todo important stuff like sticky files, messages
 
 	return;
+}
+
+void SCHEDULER_REPLY::message(const char* prio, const char* format, ...)
+{
+	va_list va;
+	va_start(va, format);
+	char buf[1024];
+	vsnprintf(buf, sizeof buf, format, va);
+	if(prio) {
+		log->printf(MSG_NORMAL,
+        "[u%lu.h%lu] %s [%s priority]\n",
+        user.id, host.id, buf, prio
+		);
+		this->messages.push_back(USER_MESSAGE(buf, prio));
+	} else {
+		log->printf(MSG_NORMAL,
+        "[u%lu.h%lu] %s\n",
+        user.id, host.id, buf
+		);
+	}
+}
+
+SCHED_QUEUE::SCHED_QUEUE(const DB_QUEUE& q)
+	:DB_QUEUE(q)
+{
+	if(!name[0]) {
+		snprintf(name, sizeof name, "q%lu",id);
+	}
+}
+
+void SCHED_QUEUE::message(SCHEDULER_REPLY& sreply, const char* prio, const char* format, ...)
+{
+	va_list va;
+	va_start(va, format);
+	char buf[1024];
+	vsnprintf(buf, sizeof buf, format, va);
+	if(prio) {
+		sreply.log->printf(MSG_NORMAL,
+        "[u%lu.h%lu.%s] %s [%s priority]\n",
+        sreply.user.id, sreply.host.id, this->name, buf, prio
+		);
+		sreply.messages.push_back(USER_MESSAGE(buf, prio)); //TODO show queue name
+	} else {
+		sreply.log->printf(MSG_NORMAL,
+        "[u%lu.h%lu.%s] %s\n",
+        sreply.user.id, sreply.host.id, this->name, buf
+		);
+	}
 }
 
 /* maybe this queue model is not good for locality scheduling... but

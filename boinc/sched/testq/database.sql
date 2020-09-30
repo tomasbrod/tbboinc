@@ -324,6 +324,26 @@ BEGIN SELECT
 END$$
 DELIMITER ;
 
+create table app_version (
+    id                      integer         not null auto_increment,
+    create_time             integer         not null,
+    appid                   integer         not null,
+    version_num             integer         not null,
+    platformid              integer         not null,
+    xml_doc                 mediumblob,
+    min_core_version        integer         not null default 0,
+    max_core_version        integer         not null default 0,
+    deprecated              tinyint         not null default 0,
+    plan_class              varchar(254)    not null default '',
+    pfc_n                   double          not null default 0,
+    pfc_avg                 double          not null default 0,
+    pfc_scale               double          not null default 0,
+    expavg_credit           double          not null default 0,
+    expavg_time             double          not null default 0,
+    beta                    tinyint         not null default 0,
+    primary key (id)
+) engine=InnoDB;
+
 -- --------------------------------------------------------
 
 --
@@ -347,7 +367,7 @@ INSERT INTO `result` (`id`, `create_time`, `workunitid`, `server_state`, `outcom
 
 INSERT INTO `queue` (`id`, `descr`, `name`, `state`, `priority`, `disable_on_error`, `quota_user`, `quota_host`, `feeder`, `args`) VALUES
 (1, 'Symmetric Prime Tuples', 'spt', 'optout', 100, 1, 100000, 100000, 'spt', ''),
-(2, 'Test App', 'test1', 'optin', 100, 1, 10, 10, 'wu', '<wu appid=\'4\'/>');
+(2, 'Test App', 'test1', 'optin', 100, 1, 10, 10, 'simple', '<wu app="lua8" />');
 
 INSERT INTO `queue_pref` (`queue`, `owner_type`, `owner`, `priority`, `locality`, `disable`, `quota`) VALUES
 (1, 'user', 1, 2, 0, 0, 1000),

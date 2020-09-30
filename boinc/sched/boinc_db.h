@@ -139,6 +139,7 @@ public:
     DB_ID_TYPE get_id();
     void db_print(char*);
     void db_parse(MYSQL_ROW &row);
+    int lookup_name(const char*);
 };
 
 class DB_APP_VERSION : public DB_BASE, public APP_VERSION {

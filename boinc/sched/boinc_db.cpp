@@ -3108,3 +3108,10 @@ int DB_SCHED_QUEUE_ITEM::enumerate_host(const HOST& host, bool filter)
     db_parse(row);
     return 0;
 }
+
+int DB_APP::lookup_name(const char* _name) {
+    char where_clause[MAX_QUERY_LEN] = {0};
+    // construct where clause and select single record
+    snprintf(where_clause, MAX_QUERY_LEN, "WHERE name = '%s'", _name);
+    return lookup(where_clause);
+}

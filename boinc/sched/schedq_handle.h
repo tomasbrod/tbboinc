@@ -33,6 +33,7 @@ struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 
 struct SCHED_QUEUE : DB_QUEUE {
 	virtual void feed(SCHEDULER_REPLY& sreply) =0;
-	explicit SCHED_QUEUE(const DB_QUEUE&) {};
+	explicit SCHED_QUEUE(const DB_QUEUE& q);
 	virtual ~SCHED_QUEUE() {};
+	void message(SCHEDULER_REPLY& sreply, const char* priority, const char* format, ...);
 };

@@ -565,6 +565,7 @@ struct SCHEDULER_REPLY {
     void insert_result(SCHED_DB_RESULT&);
     void insert_message(const char* msg, const char* prio);
     void insert_message(USER_MESSAGE&);
+    void message(const char* priority, const char* format, ...);
     void set_delay(double);
 };
 
