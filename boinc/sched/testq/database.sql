@@ -324,6 +324,36 @@ BEGIN SELECT
 END$$
 DELIMITER ;
 
+create table platform (
+    id                      integer         not null auto_increment,
+    create_time             integer         not null,
+    name                    varchar(254)    not null,
+    user_friendly_name      varchar(254)    not null,
+    deprecated              tinyint         not null default 0,
+    primary key (id)
+) engine=InnoDB;
+
+create table app (
+    id                      integer         not null auto_increment,
+    create_time             integer         not null,
+    name                    varchar(254)    not null,
+    min_version             integer         not null default 0,
+    deprecated              smallint        not null default 0,
+    user_friendly_name      varchar(254)    not null,
+    homogeneous_redundancy  smallint        not null default 0,
+    weight                  double          not null default 1,
+    beta                    smallint        not null default 0,
+    target_nresults         smallint        not null default 0,
+    min_avg_pfc             double          not null default 1,
+    host_scale_check        tinyint         not null default 0,
+    homogeneous_app_version tinyint         not null default 0,
+    non_cpu_intensive       tinyint         not null default 0,
+    locality_scheduling     integer         not null default 0,
+    n_size_classes          smallint        not null default 0,
+    fraction_done_exact     tinyint         not null default 0,
+    primary key (id)
+) engine=InnoDB;
+
 create table app_version (
     id                      integer         not null auto_increment,
     create_time             integer         not null,
@@ -343,6 +373,32 @@ create table app_version (
     beta                    tinyint         not null default 0,
     primary key (id)
 ) engine=InnoDB;
+
+alter table platform
+    add unique(name);
+
+alter table app
+    add unique(name);
+
+alter table app_version
+    add unique apvp (appid, platformid, version_num, plan_class);
+
+INSERT INTO `platform` (`id`, `create_time`, `name`, `user_friendly_name`, `deprecated`) VALUES
+(1, 1549219676, 'windows_intelx86', 'Microsoft Windows (98 or later) running on an Intel x86-compatible CPU', 0),
+(2, 1549219676, 'windows_x86_64', 'Microsoft Windows running on an AMD x86_64 or Intel EM64T CPU', 0),
+(3, 1549219676, 'i686-pc-linux-gnu', 'Linux running on an Intel x86-compatible CPU', 0),
+(4, 1549219676, 'x86_64-pc-linux-gnu', 'Linux running on an AMD x86_64 or Intel EM64T CPU', 0),
+(5, 1549219676, 'powerpc-apple-darwin', 'Mac OS X 10.3 or later running on Motorola PowerPC', 0),
+(6, 1549219676, 'i686-apple-darwin', 'Mac OS 10.4 or later running on Intel', 0),
+(7, 1549219676, 'x86_64-apple-darwin', 'Intel 64-bit Mac OS 10.5 or later', 0),
+(8, 1549219676, 'sparc-sun-solaris2.7', 'Solaris 2.7 running on a SPARC-compatible CPU', 0),
+(9, 1549219676, 'sparc-sun-solaris', 'Solaris 2.8 or later running on a SPARC-compatible CPU', 0),
+(10, 1549219676, 'sparc64-sun-solaris', 'Solaris 2.8 or later running on a SPARC 64-bit CPU', 0),
+(11, 1549219676, 'powerpc64-ps3-linux-gnu', 'Sony Playstation 3 running Linux', 0),
+(12, 1549219676, 'arm-android-linux-gnu', 'Android running on ARM', 0),
+(13, 1549219676, 'anonymous', 'anonymous', 0),
+(14, 1549564485, 'arm-unknown-linux-gnueabihf', 'Linux running on ARM, hardware FP', 0),
+(15, 1549564750, 'armv7l-unknown-linux-gnueabihf', 'Linux running on ARM v7l, hardware FP', 0);
 
 -- --------------------------------------------------------
 
@@ -368,6 +424,12 @@ INSERT INTO `result` (`id`, `create_time`, `workunitid`, `server_state`, `outcom
 INSERT INTO `queue` (`id`, `descr`, `name`, `state`, `priority`, `disable_on_error`, `quota_user`, `quota_host`, `feeder`, `args`) VALUES
 (1, 'Symmetric Prime Tuples', 'spt', 'optout', 100, 1, 100000, 100000, 'spt', ''),
 (2, 'Test App', 'test1', 'optin', 100, 1, 10, 10, 'simple', '<wu app="lua8" />');
+
+INSERT INTO `app` (`id`, `create_time`, `name`, `min_version`, `deprecated`, `user_friendly_name`, `homogeneous_redundancy`, `weight`, `beta`, `target_nresults`, `min_avg_pfc`, `host_scale_check`, `homogeneous_app_version`, `non_cpu_intensive`, `locality_scheduling`, `n_size_classes`, `fraction_done_exact`) VALUES
+(8, 1568713345, 'lua8', 0, 0, 'Lua Alfa', 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0);
+INSERT INTO `app_version` (`id`, `create_time`, `appid`, `version_num`, `platformid`, `xml_doc`, `min_core_version`, `max_core_version`, `deprecated`, `plan_class`, `pfc_n`, `pfc_avg`, `pfc_scale`, `expavg_credit`, `expavg_time`, `beta`) VALUES
+(75, 1594379035, 8, 4, 4, '<file_info>\n    <name>lua8_004_x86_64-pc-linux-gnu</name>\n    <url>https://boinc.tbrada.eu/download/lua8_004_x86_64-pc-linux-gnu</url>\n    <executable/>\n    <file_signature>\n7d5c57144e018851f6ef25468793b7096c208516db7fb71e3b97b1475a698385\n5817e924f8fec6dd26bcc058a14f68e0caa920947f12d0f9fd2ebe90d12c5831\n3580db9f661d0a21bf8fb03f063b2a6e24af51276b5291c93b60373c96e47e60\n7c7b080305cde6a5a2d17555d69d9fa2eaa6ca525c121339515f93b64bf62fbf\n.\n    </file_signature>\n    <nbytes>4457408</nbytes>\n</file_info>\n<app_version>\n    <app_name>lua8</app_name>\n    <version_num>4</version_num>\n    <api_version>7.15.0</api_version>\n<file_ref>\n    <file_name>lua8_004_x86_64-pc-linux-gnu</file_name>\n    <main_program/>\n</file_ref>\n</app_version>\n', 0, 0, 0, '', 0, 0, 0, 0, 0, 0),
+(76, 1594379037, 8, 4, 15, '<file_info>\n    <name>lua8_004_armv7l-unknown-linux-gnueabihf</name>\n    <url>https://boinc.tbrada.eu/download/lua8_004_armv7l-unknown-linux-gnueabihf</url>\n    <executable/>\n    <file_signature>\n1e886e0f276e61fc7628f0cfe5a983af40d91871927b9feb53c3bc291a08cc75\na127eb8816e32c9e8df64a9752ceb37b96c7cda096e8531a019a2e7635621a7b\ne185ecf8ce2991d8a8aa0eae43f0051c63b6c8da3ce848034568f4da0b5bab16\nf187f0cfe1b0be5aa33864951568b7bbed24c267c5d69e9b6b7ccab03b2ba201\n.\n    </file_signature>\n    <nbytes>3508060</nbytes>\n</file_info>\n<app_version>\n    <app_name>lua8</app_name>\n    <version_num>4</version_num>\n    <api_version>7.17.0</api_version>\n<file_ref>\n    <file_name>lua8_004_armv7l-unknown-linux-gnueabihf</file_name>\n    <main_program/>\n</file_ref>\n</app_version>\n', 0, 0, 0, '', 0, 0, 0, 0, 0, 0);
 
 INSERT INTO `queue_pref` (`queue`, `owner_type`, `owner`, `priority`, `locality`, `disable`, `quota`) VALUES
 (1, 'user', 1, 2, 0, 0, 1000),

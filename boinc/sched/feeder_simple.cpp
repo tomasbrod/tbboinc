@@ -76,15 +76,49 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
 	}
 	int select_app_version(DB_APP_VERSION &version, SCHEDULER_REPLY& sreply) {
     char where [MAX_QUERY_LEN] = {0};
-    snprintf(where, sizeof where, "WHERE appid = %lu and deprecated=0 order by version_num desc", app.id);
-    while(version.enumerate(where)) {
-			//let's pretend its done
+    std::map<DB_ID_TYPE, PLATFORM> platforms;
+    DB_PLATFORM platform;
+    snprintf(where, sizeof where, "WHERE name = '%s' limit 1", sreply.request.platform.name); //FIXME: escape
+    if(0==platform.lookup(where)) {
+			platforms.emplace(platform.id,platform);
 		}
-		return 0;
+		for(const auto& cp : sreply.request.alt_platforms) {
+			snprintf(where, sizeof where, "WHERE name = '%s' limit 1", cp.name);
+			if(0==platform.lookup(where)) {
+				platforms.emplace(platform.id,platform);
+			}
+		}
+    snprintf(where, sizeof where, "WHERE appid = %lu and deprecated=0 order by version_num desc, id asc", app.id);
+    while(0==version.enumerate(where)) {
+			//not deprecated, min_core_version satisfied (TODO)
+			if(version.deprecated || version.min_core_version>sreply.request.core_client_version)
+				continue;
+			if(version.version_num < app.min_version)
+				continue;
+			//no coproc support
+			//patform matching supported one
+			if(platforms.count(version.platformid)) {
+				return 0;
+			}
+		}
+		return 1;
 	}
-	bool assign_result(SCHEDULER_REPLY& sreply, DB_RESULT& result)
+	bool assign_result(SCHEDULER_REPLY& sreply, DB_RESULT& result, DB_APP_VERSION& appver)
 	{
+		//check if assigned result of same non-zero wu
+		if(result.workunitid) {
+			long same_user_wus = 0;
+			DB_RESULT result_counter;
+			char where [MAX_QUERY_LEN] = {0};
+			snprintf(where, sizeof where, "WHERE appid=%lu and workunitid=%lu and userid=%lu", app.id, result.workunitid, sreply.user.id);
+			result_counter.count(same_user_wus, where);
+			if(same_user_wus) {
+				return false;
+			}
+		}
 		return false;
+		//send uniqe app and version
+		//send workunit and 
 	}
 	void feed(SCHEDULER_REPLY& sreply)
 	{
@@ -96,32 +130,35 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
 		 * Last, adjust user quota.
 		*/
 		// very simple version picking - enumerate backwards and pick first one that matches host platform
+		// no coproc support yet
 		DB_APP_VERSION version (sreply.db);
 		if(select_app_version(version, sreply)) {
 			message(sreply, "low", "No app version for app %s queue %s", app.name, this->name);
 			return;
 		}
+		message(sreply, "low", "using app %s version %d #%lu", app.name, version.version_num,version.id);
     char where [MAX_QUERY_LEN] = {0};
 		// assert in transaction
 		DB_RESULT result (sreply.db);
 		const unsigned select_limit = 10;
+		g_print_queries=1;
     snprintf(where, sizeof where,
-			"FOR update skip locked WHERE appid = %lu and server_state=%d limit %d"
+			"WHERE appid = %lu and server_state=%d limit %d FOR update" // skip locked
 			, app.id
 			, RESULT_SERVER_STATE_UNSENT
 			, select_limit
 		);
 		while(1) {
 			unsigned assigned = 0;
-			while(result.enumerate(where)) {
-				assigned += assign_result(sreply, result);
+			while(0==result.enumerate(where)) {
+				assigned += assign_result(sreply, result, version);
 				if(schedq_reply_full(sreply))
 					break;
 			}
-			if(assigned < select_limit/2)
-				break;			
+			if(assigned < select_limit/2) {
+				break;
+			}
 		}
-		
 	}
 };
 

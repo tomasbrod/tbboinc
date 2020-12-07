@@ -210,3 +210,10 @@ void SCHED_QUEUE::message(SCHEDULER_REPLY& sreply, const char* prio, const char*
  * And if they run out, priority's reset.
  * This will be responsibility of the locality-aware feeder.
 */
+
+/* Better way to handle request and reply objects.
+ * req: a sense of what client says
+ * rpl: all info to serialize a response
+ * Some info need to be looked up to meaningfully handle the request,
+ * that is done later and filled into the request.
+*/
