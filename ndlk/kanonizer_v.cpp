@@ -4,7 +4,7 @@ struct KanonizerV {
 	std::vector<std::pair<int,int>> im_mtrans;
 	std::vector<uint64_t> im_isotopes;
 	std::vector<uint8_t> im_diagonals;
-	bool enable_cache=0;
+	bool enable_cache=1;
 
 	void ApplyM(Square& sq, std::pair<int,int> p)
 	{
@@ -162,16 +162,14 @@ struct KanonizerV {
 				if( (1LLU<<i) & im_isotopes[mt.first] ) {
 					ApplyM(sq, im_mtrans[i]);
 			}}
-			{
-				std::cout<<"#K "<<im_isotopes[mt.first]<<" "<<(int)mt.second<<endl;
-				unsigned cur_iso[order*2*8];
-				for(unsigned i=0; i<order; ++i)
-					cur_iso[i] = sq(i,i);
-				for(unsigned i=0; i<order; ++i)
-					cur_iso[order+i] = sq(i,N-i);
-				assert(std::equal(mt_rule,mt_rule+order, cur_iso+order));
-			}
 			sq=transform_sq(sq, mt.second).DiagNorm();
+			if(0){
+				std::cout<<"#K "<<im_isotopes[mt.first]<<" "<<(int)mt.second<<endl;
+				unsigned cur_rule[order];
+				for(unsigned i=0; i<order; ++i)
+					cur_rule[i] = sq(i,N-i);
+				assert(std::equal(mt_rule,mt_rule+order, cur_rule));
+			}
 			outset.insert(sq);
 		}
 		return *outset.begin();
@@ -210,7 +208,6 @@ struct KanonizerV {
 		const unsigned N = order-1;
 		this->order= order;
 		im_mtrans.clear();
-		// it works same with i=1 here...
 		for(unsigned i=0; i< order/2; ++i) {
 			im_mtrans.push_back(std::pair<int,int>{-1,i});
 		}
@@ -230,25 +227,39 @@ struct KanonizerV {
 		std::vector<bool> opts(im_mtrans.size(),0);
 		std::vector<unsigned> stack(im_mtrans.size()+1);
 		uint64_t transformation_index = 0;
-		uint64_t counter = 0;
+		unsigned i = 0, p = 0;
+		bool uniq;
+		unsigned cur_iso[order*2*8];
+		Square sq(natural);
 
 		std::cerr<<"# KanonizerV("<<order<<"): transformations: "<<im_mtrans.size()<<" + 8, initializing..."<<endl;
 
-		for(transformation_index=0; transformation_index < (1LLU<<im_mtrans.size()); transformation_index+=1) {
-			Square sq(natural);
-			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
-				if( (1LLU<<i) & transformation_index ) {
-					ApplyM(sq, im_mtrans[i]);
-					counter++;
-			}}
-			unsigned cur_iso[order*2*8];
+		goto start;
+		again:
+			for(; i<im_mtrans.size() && opts[i]; ++i) {}
+			if(i >= im_mtrans.size()) {
+				if(!p) goto stop;
+				i=stack[--p];
+				opts[i]=0;
+				ApplyM(sq, im_mtrans[i]);
+				transformation_index ^= 1LLU<<i;
+				i++;
+				goto again;
+			}
+			ApplyM(sq, im_mtrans[i]);
+			stack[p++] = i;
+			opts[i]=1;
+			transformation_index ^= 1LLU<<i;
+		start:
+			//std::cout<<"#m "<<transformation_index<<" p"<<p<<endl;
+
 			for(unsigned i=0; i<order; ++i)
 				cur_iso[i] = sq(i,i);
 			for(unsigned i=0; i<order; ++i)
 				cur_iso[order+i] = sq(i,N-i);
 			permute_diag(cur_iso);
 
-			bool uniq=true;
+			uniq=true;
 			for(unsigned k=0; k<8 && uniq; ++k) {
 				std::vector<uint8_t> diag_izotope(cur_iso+(k*order*2),cur_iso+((k+1)*order*2));
 				auto it = diag_izotopes.insert(diag_izotope);
@@ -260,9 +271,10 @@ struct KanonizerV {
 				im_isotopes.push_back( transformation_index );
 				im_diagonals.insert( im_diagonals.end(), cur_iso, cur_iso+(order*2) );
 			}
-		}
+		goto again;
+		stop:
 		std::cerr<<"# KanonizerV("<<order<<"): m-isotopes: "<<im_isotopes.size()<<" *8 ("<<
-		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s, "<<counter<<")"<<endl;
+		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s)"<<endl;
 
 	}
 
