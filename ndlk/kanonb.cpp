@@ -74,7 +74,6 @@ int main(int argc, char* argv[])
 		return 9;
 	}
 	try {
-			//kanonizerV.enable_cache=0;
 		kanon_cmd();
 	}
 	catch( const std::exception& e ) {

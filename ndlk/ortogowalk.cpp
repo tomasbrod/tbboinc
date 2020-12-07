@@ -28,7 +28,6 @@ KanonizerV kanonizer;
 
 int main(int argc, char* argv[])
 {
-	//kanonizer.enable_cache=1;
 	if(argc!=2) {
 		std::cerr<<
 			"ortowalk.exe: FileName\n"

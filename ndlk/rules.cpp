@@ -82,7 +82,6 @@ void fill(unsigned order)
 
 int main(int argc, char* argv[])
 {
-	//kanonizer.enable_cache=1;
 	if(argc!=2) {
 		std::cerr<<
 			"rules.exe: N >output\n"

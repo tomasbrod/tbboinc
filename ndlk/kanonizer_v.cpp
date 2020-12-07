@@ -2,8 +2,9 @@
 struct KanonizerV {
 	unsigned order=0;
 	std::vector<std::pair<int,int>> im_mtrans;
-	std::vector<uint32_t> im_isotopes;
+	std::vector<uint64_t> im_isotopes;
 	std::vector<uint8_t> im_diagonals;
+	bool enable_cache=0;
 
 	void ApplyM(Square& sq, std::pair<int,int> p)
 	{
@@ -63,6 +64,8 @@ struct KanonizerV {
 
 	void im_find_can(std::set<std::pair<unsigned,unsigned char>>* outset, unsigned* rule, const Square& sq)
 	{
+		/* Find the _rule_ of a input square and and all transformations that
+		 * result in that rule. */
 		unsigned tdiag[order*2*8];
 		unsigned nmap[order];
 		for(unsigned i=0; i<order; ++i) rule[i]=order;
@@ -143,16 +146,20 @@ struct KanonizerV {
 		const unsigned order = input_square.width();
 		const unsigned N = input_square.width()-1;
 		if(order!=this->order) {
-			init_order(order);
+			if(this->enable_cache && order>=12)
+				use_cache(order);
+				else init_order(order);
 		}
 		std::set<std::pair<unsigned,unsigned char>> mt_trans_set;
 		unsigned mt_rule[order];
 		std::set<Square> outset;
 		im_find_can(&mt_trans_set, mt_rule, input_square);
+		// rule was found, and also set of candidate transformations
+		// try each transformation, this time on full square to find smallest square
 		for( const auto& mt : mt_trans_set) {
 			Square sq(input_square);
 			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
-				if( (1<<i) & im_isotopes[mt.first] ) {
+				if( (1LLU<<i) & im_isotopes[mt.first] ) {
 					ApplyM(sq, im_mtrans[i]);
 			}}
 			{
@@ -222,23 +229,24 @@ struct KanonizerV {
 			lsq[i]=Square(order);
 		std::vector<bool> opts(im_mtrans.size(),0);
 		std::vector<unsigned> stack(im_mtrans.size()+1);
-		unsigned transformation_index = 0;
+		uint64_t transformation_index = 0;
+		uint64_t counter = 0;
 
 		std::cerr<<"# KanonizerV("<<order<<"): transformations: "<<im_mtrans.size()<<" + 8, initializing..."<<endl;
 
-		//transformation 0 appears to have no effect, maybe we do not have to test without it?
-		for(transformation_index=0; transformation_index < (1<<im_mtrans.size()); transformation_index+=1) {
+		for(transformation_index=0; transformation_index < (1LLU<<im_mtrans.size()); transformation_index+=1) {
 			Square sq(natural);
 			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
-				if( (1<<i) & transformation_index ) {
+				if( (1LLU<<i) & transformation_index ) {
 					ApplyM(sq, im_mtrans[i]);
+					counter++;
 			}}
 			unsigned cur_iso[order*2*8];
 			for(unsigned i=0; i<order; ++i)
 				cur_iso[i] = sq(i,i);
 			for(unsigned i=0; i<order; ++i)
 				cur_iso[order+i] = sq(i,N-i);
-			transform_diag(cur_iso);
+			permute_diag(cur_iso);
 
 			bool uniq=true;
 			for(unsigned k=0; k<8 && uniq; ++k) {
@@ -254,15 +262,55 @@ struct KanonizerV {
 			}
 		}
 		std::cerr<<"# KanonizerV("<<order<<"): m-isotopes: "<<im_isotopes.size()<<" *8 ("<<
-		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s)"<<endl;
+		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s, "<<counter<<")"<<endl;
 
+	}
+
+	void use_cache(int order)
+	{
+		std::ostringstream filename;
+		filename <<"kanonb_cache_" <<order<< ".dat";
+		std::ifstream cachein(filename.str(), ios::binary);
+		if(cachein) {
+			size_t sz_order, sz_mtrans, sz_diag, sz_isot;
+			cachein >> sz_order >> sz_mtrans >> sz_isot;
+			this->order=order;
+			im_mtrans.resize(sz_mtrans);
+			im_diagonals.resize(sz_diag = sz_isot*order*2 );
+			cachein.ignore(4096, '\n');
+			cachein.read(reinterpret_cast<char*>(im_mtrans.data()),sz_mtrans*sizeof(std::pair<int,int>));
+			if(order>=16) {
+				im_isotopes.resize(sz_isot);
+				cachein.read(reinterpret_cast<char*>(im_isotopes.data()),sz_isot*sizeof(uint64_t));
+			} else {
+				std::vector<uint32_t> conv (sz_isot);
+				cachein.read(reinterpret_cast<char*>(conv.data()),sz_isot*sizeof(uint32_t));
+				im_isotopes = std::move(std::vector<uint64_t> (conv.begin(), conv.end()));
+			}
+			cachein.read(reinterpret_cast<char*>(im_diagonals.data()),sz_diag*sizeof(uint8_t));
+			std::cerr<<"# KanonizerV: read "<<filename.str()<<": "<<sz_order<<" "<<sz_mtrans<<" "<<sz_isot<<" "<<sz_diag<<"\n";
+		} else {
+			init_order(order);
+			std::cerr<<"# KanonizerV: write "<<filename.str()<<"\n";
+			std::ofstream cacheo(filename.str(), ios::binary);
+			cacheo << order <<" "<< im_mtrans.size() <<" "<< im_isotopes.size() <<"\n";
+			cacheo.write(reinterpret_cast<char*>(im_mtrans.data()),im_mtrans.size()*sizeof(std::pair<int,int>));
+			if(order>=16) {
+				cacheo.write(reinterpret_cast<char*>(im_isotopes.data()),im_isotopes.size()*sizeof(uint64_t));
+			} else {
+				std::vector<uint32_t> conv (im_isotopes.begin(),im_isotopes.end());
+				cacheo.write(reinterpret_cast<char*>(conv.data()),im_isotopes.size()*sizeof(uint32_t));
+			}
+			cacheo.write(reinterpret_cast<char*>(im_diagonals.data()),im_diagonals.size()*sizeof(uint8_t));
+		}
 	}
 
 // order 11 - (2^15),   1920 uniq,	262144 (2^15*8) total transformations, 15360 unique ones (17x)
 // order 12 - (2^21),  23040 uniq
 // order 13 - (2^21),  23040 uniq
 // order 14 - (2^28), 322560 uniq
-// order 15 - (2^  *8), 
+// order 15 - (2^28), 
+// order 16 - (2^36), 
 // only the x is important
 // store both diagonals and transorm(18 bits)
 // find the minimal rule, foreach:
