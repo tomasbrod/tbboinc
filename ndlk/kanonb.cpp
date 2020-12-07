@@ -12,31 +12,56 @@
 #include <mutex>
 using std::string;
 using std::endl;
+using std::ios;
 
 #define DLX_QUIET
 
 #include "dlk_util.cpp"
-#include "exact_cover_mt.cpp"
 #include "kanonizer_b.cpp"
+#include "kanonizer_v.cpp"
 
-Kanonizer kanonizer;
+KanonizerV kanonizerV;
 
-void Kanonize(Square sq)
+Kanonizer kanonizerB;
+
+Square get_diag_kanon_b(Square sq)
 {
-	/*Exact_cover_u dlx;
-	std::cout<<"orig"<<endl<<sq;
-	dlx.count_trans(sq);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
-	Square min = Kanon(sq);
-	std::cout<<"min"<<endl<<min;
-	dlx.count_trans(min);
-	std::cout<<"dtrans: "<<dlx.num_trans<<endl;
-	std::cout<<min.Encode()<<endl;*/
-	//Square min = kanonizer.Kanon(sq);
+	std::set<Square> isotopes;
+	kanonizerB.Kanon(sq, &isotopes);
+	std::vector<unsigned> rule; rule.resize(sq.width(), sq.width());
+	std::vector<unsigned> anti( sq.width() );
+	const unsigned N = sq.width()-1;
 	Square min;
-	unsigned izo = kanonizer.KanonCnt(min, sq);
-	//std::cout<<"min"<<endl<<min;
-	std::cout<<"#cnt_izo: "<<izo<<endl<<min.Encode()<<endl;
+	for(Square izo : isotopes) {
+		izo=izo.DiagNorm();
+		for(unsigned i=0; i<sq.width(); ++i)
+			anti[i] = izo(i, N-i);
+		if(anti<rule) {
+			rule=anti;
+			min=izo;
+		}
+		else if(anti==rule && izo<min) {
+			min=izo;
+		}
+	}
+	return min;
+}
+
+void kanon_cmd()
+{
+			while(std::cin) {
+			std::string line;
+			std::getline(std::cin,line);
+			if( line!="" && line[0]!=' ' && line[0]!='#' ) {
+				Square sq;
+				sq.Decode(line);
+				if(!sq.width()) throw std::runtime_error("Zero-width square");
+
+				sq.DiagNorm();
+				Square min2 = kanonizerV.Kanon(sq);
+				std::cout<<min2.Encode()<<endl;
+			}
+		}
 }
 
 int main(int argc, char* argv[])
@@ -44,21 +69,13 @@ int main(int argc, char* argv[])
 	if(argc!=1) {
 		std::cerr<<
 			"kanonb.exe: <input >output\n"
-			"** Diagonal Latin Square Kanonizer **\n"
+			"** Diagonal Latin Square XXX **\n"
 			"Author: Tomas Brada (GPL)\n";
 		return 9;
 	}
 	try {
-		while(std::cin) {
-			std::string line;
-			std::getline(std::cin,line);
-			if( line!="" && line[0]!=' ' && line[0]!='#' ) {
-				Square sq;
-				sq.Decode(line);
-				if(!sq.width()) throw std::runtime_error("Zero-width square");
-				Kanonize(sq);
-			}
-		}
+			//kanonizerV.enable_cache=0;
+		kanon_cmd();
 	}
 	catch( const std::exception& e ) {
 		std::cerr<<"Exception: "<<e.what()<<endl;

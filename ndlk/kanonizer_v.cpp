@@ -29,7 +29,7 @@ struct KanonizerV {
 		}
 	}
 
-	void transform_diag(unsigned *iso)
+	void permute_diag(unsigned *iso)
 	{
 		const unsigned n = order;
 		const unsigned N = n - 1;
@@ -47,11 +47,11 @@ struct KanonizerV {
 			iso[6*n+i] = iso[i];
 			iso[7*n+i] = iso[N-i+n];
 					//lsq[4][o] = sq(j, N-i); 4
-			iso[8*n+i] = iso[N-i+n];
-			iso[9*n+i] = iso[i];
+			iso[8*n+i] = iso[i+n];
+			iso[9*n+i] = iso[N-i];
 					//lsq[5][o] = sq(N-j, i); 5
-			iso[10*n+i] = iso[i+n];
-			iso[11*n+i] = iso[N-i];
+			iso[10*n+i] = iso[N-i+n];
+			iso[11*n+i] = iso[i];
 					//lsq[6][o] = sq(N-j, N-i); 6
 			iso[12*n+i] = iso[N-i];
 			iso[13*n+i] = iso[i+n];
@@ -66,14 +66,19 @@ struct KanonizerV {
 		unsigned tdiag[order*2*8];
 		unsigned nmap[order];
 		for(unsigned i=0; i<order; ++i) rule[i]=order;
+		//for every diagonal transformation
 		for(unsigned m=0; m < im_isotopes.size(); ++m) {
+			//apply the transformation to our double-diagonal
 			for(unsigned i=0; i<(order*2); ++i) {
 				unsigned d = im_diagonals[m*order*2+i];
 				tdiag[i] = sq [ d ];
 			}
-			transform_diag(tdiag);
+			//apply the 7 remaining simple permutations
+			permute_diag(tdiag);
 			for(unsigned t=0; t<8; ++t) {
+				//this is the permuted diagonal
 				unsigned* diag = &tdiag[order*2*t];
+				//build normalization map
 				for(unsigned i=0; i<order; ++i)
 					nmap[diag[i]] = i;
 				if(nmap[diag[order]]==0) {
@@ -86,6 +91,7 @@ struct KanonizerV {
 					std::cerr<<endl;
 					throw ESquareOp();
 				}
+				//normalize
 				for(unsigned i=0; i<(order*2); ++i)
 					diag[i] = nmap[ diag[i] ];
 				//somehow the normalization was not applied here ???
@@ -149,10 +155,46 @@ struct KanonizerV {
 				if( (1<<i) & im_isotopes[mt.first] ) {
 					ApplyM(sq, im_mtrans[i]);
 			}}
+			{
+				std::cout<<"#K "<<im_isotopes[mt.first]<<" "<<(int)mt.second<<endl;
+				unsigned cur_iso[order*2*8];
+				for(unsigned i=0; i<order; ++i)
+					cur_iso[i] = sq(i,i);
+				for(unsigned i=0; i<order; ++i)
+					cur_iso[order+i] = sq(i,N-i);
+				assert(std::equal(mt_rule,mt_rule+order, cur_iso+order));
+			}
 			sq=transform_sq(sq, mt.second).DiagNorm();
 			outset.insert(sq);
 		}
 		return *outset.begin();
+	}
+
+	void test_permutations()
+	{
+		const unsigned N = order-1;
+		Square natural(order);
+		for(unsigned i=0; i<natural.size(); ++i)
+			natural[i] = i;
+		unsigned diag[order*2*8];
+		for(unsigned i=0; i<order; ++i)
+			diag[i] = natural(i,i);
+		for(unsigned i=0; i<order; ++i)
+			diag[order+i] = natural(i,N-i);
+		permute_diag(diag);
+		for(unsigned t=0; t<8; ++t) {
+
+			Square sq1 = transform_sq(natural, t);
+			unsigned diag_1[order*2];
+			for(unsigned i=0; i<order; ++i)
+				diag_1[i] = sq1(i,i);
+			for(unsigned i=0; i<order; ++i)
+				diag_1[order+i] = sq1(i,N-i);
+
+			if(!std::equal(diag_1,diag_1+order, diag+order*2*t)) {
+				std::cerr<<"transform_diag broken on "<<t<<endl;
+			}
+		}
 	}
 
 	void init_order(unsigned order)
@@ -169,6 +211,7 @@ struct KanonizerV {
 			for(unsigned j=i+1; j< order/2; ++j) {
 				im_mtrans.push_back(std::pair<int,int>{i,j});
 		}
+		test_permutations();
 		Square natural(order);
 		for(unsigned i=0; i<natural.size(); ++i)
 			natural[i] = i;
@@ -202,8 +245,10 @@ struct KanonizerV {
 				std::vector<uint8_t> diag_izotope(cur_iso+(k*order*2),cur_iso+((k+1)*order*2));
 				auto it = diag_izotopes.insert(diag_izotope);
 				uniq= uniq && it.second;
+				assert(!k || uniq);
 			}
 			if(uniq) {
+				//std::cout<<"#M "<<transformation_index<<endl;
 				im_isotopes.push_back( transformation_index );
 				im_diagonals.insert( im_diagonals.end(), cur_iso, cur_iso+(order*2) );
 			}
@@ -223,4 +268,10 @@ struct KanonizerV {
 // find the minimal rule, foreach:
 // buld normalization map, normalize antidiag
 // opt works 11, 12  ... vymenit, otocit jednu, druhu
+
+// in kanon_b find which transform leads to the desired result
+// then in _v find why it was not applied
+
+// create unit (A/B) tests for each function
+// i suspect it might be in the diagonal permutation
 };

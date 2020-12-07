@@ -2,8 +2,11 @@ struct Kanonizer {
 	Square last_sq[8];
 	std::vector<std::pair<int,int>> optX;
 	unsigned order=0;
+
+	unsigned mindex;
+	Square expected;
 	
-	bool Last(Square& min, Square& sq, std::set<Square> *SOS)
+	bool Last(Square& min, Square& sq, std::set<Square> *SOS, unsigned mindex)
 	{
 		const unsigned n = sq.width();
 		const unsigned N = sq.width()-1;
@@ -38,6 +41,9 @@ struct Kanonizer {
 			if(SOS) {
 				auto it = SOS->insert(lsq[k]);
 				if(!it.second) dupe=true;
+				if(lsq[k]==expected) {
+					std::cout<<"#J "<<lsq[k].Encode()<<" "<<mindex<<" "<<k<<endl;
+				}
 			}
 			if(lsq[k]<min)
 				min= lsq[k];
@@ -91,7 +97,10 @@ struct Kanonizer {
 		stack.resize(optX.size()+1);
 		opts.resize(optX.size(),0);
 
-		Last(min, sq, SOS);
+		mindex = 0;
+		expected.Decode("EnWeNsa7eeM4oANJoLiU2b9YyuwBhmxUUCbbmKW");
+		expected.Normaliz();
+		Last(min, sq, SOS, mindex);
 
 		while(1) {
 			for(; i<optX.size() && opts[i]; ++i) {}
@@ -101,11 +110,13 @@ struct Kanonizer {
 				opts[i]=0;
 				//std::cerr<<"U "<<i<<endl;
 				ApplyM(sq, optX[i]);
+				mindex ^= 1<<i;
 				i++;
 			} else {
 				//std::cerr<<"A "<<i<<endl;
 				ApplyM(sq, optX[i]);
-				Last(min, sq, SOS);
+				mindex ^= 1<<i;
+				Last(min, sq, SOS, mindex);
 				stack[p++] = i;
 				opts[i]=1;
 			}

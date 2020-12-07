@@ -12,6 +12,7 @@
 #include <mutex>
 using std::string;
 using std::endl;
+using std::ios;
 
 #include "dlk_util.cpp"
 #include "exact_cover_mt.cpp"
@@ -27,6 +28,7 @@ KanonizerV kanonizer;
 
 int main(int argc, char* argv[])
 {
+	//kanonizer.enable_cache=1;
 	if(argc!=2) {
 		std::cerr<<
 			"ortowalk.exe: FileName\n"
