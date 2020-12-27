@@ -527,10 +527,13 @@ void database_reprocess()
 	);
 	if (retval) throw EDatabase("Cant open second db connection.");
 
-	retval=enum_db.do_query("select r.id, COALESCE(r.uid,s.userid), COALESCE(r.batch,s.batch), r.input, r.output from spt_result r left join result s on r.id=s.id where 1");
-	if(retval) throw EDatabase("spt_result enum query");
+	retval=enum_db.do_query("select r.res, COALESCE(r.user,s.userid), COALESCE(r.batch,s.batch), "
+		"w.data, r.data "
+		"from result_file r join input_file w on r.wu=w.wu left join result s on r.res=s.id "
+		"where r.app in(9,10,11)"); //TODO: use of constant
+	if(retval) throw EDatabase("result_file enum query");
 	MYSQL_RES* enum_res= mysql_use_result(enum_db.mysql);
-	if(!enum_res) throw EDatabase("spt_result enum use");
+	if(!enum_res) throw EDatabase("result_file enum use");
 
 	RESULT result;
 	long n_proc = 0;
