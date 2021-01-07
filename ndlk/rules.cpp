@@ -24,7 +24,7 @@ KanonizerV kanonizer;
 void fill(unsigned order)
 {
 	//const unsigned order = 12;
-	kanonizer.init_order(order);
+	kanonizer.use_cache(order);
 	Square sq(order);
 	std::set<std::vector<unsigned>> ruleset;
 	std::vector<unsigned> rule ( order, order );

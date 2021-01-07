@@ -2,8 +2,10 @@
 struct KanonizerV {
 	unsigned order=0;
 	std::vector<std::pair<int,int>> im_mtrans;
-	std::vector<uint64_t> im_isotopes;
+	std::vector<uint32_t> im_isotopes;
 	std::vector<uint8_t> im_diagonals;
+	std::vector<uint64_t> imh_isotopes;
+	std::vector<uint16_t> imh_diagonals;
 	bool enable_cache=1;
 
 	void ApplyM(Square& sq, std::pair<int,int> p)
@@ -30,7 +32,21 @@ struct KanonizerV {
 		}
 	}
 
-	void permute_diag(unsigned *iso)
+	void ApplyAllM(Square& sq, unsigned index) {
+		if(order<16) {
+			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
+				if( (1<<i) & im_isotopes[index] ) {
+					ApplyM(sq, im_mtrans[i]);
+		}}}
+		else {
+			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
+				if( (1LLU<<i) & imh_isotopes[index] ) {
+					assert(i<im_mtrans.size());
+					ApplyM(sq, im_mtrans[i]);
+		}}}
+	}
+
+	void permute_diag(uint16_t *iso)
 	{
 		const unsigned n = order;
 		const unsigned N = n - 1;
@@ -62,38 +78,43 @@ struct KanonizerV {
 		}
 	}
 
-	void im_find_can(std::set<std::pair<unsigned,unsigned char>>* outset, unsigned* rule, const Square& sq)
+	void im_find_can(std::set<std::pair<uint64_t, unsigned char>>* outset, unsigned* rule, const Square& sq)
 	{
 		/* Find the _rule_ of a input square and and all transformations that
 		 * result in that rule. */
-		unsigned tdiag[order*2*8];
-		unsigned nmap[order];
+		uint16_t tdiag[order*2*8];
+		uint16_t nmap[order];
 		for(unsigned i=0; i<order; ++i) rule[i]=order;
 		//for every diagonal transformation
-		for(unsigned m=0; m < im_isotopes.size(); ++m) {
+		uint64_t max_m= (order<16)? im_isotopes.size() : imh_isotopes.size();
+		for(uint64_t m=0; m < max_m; ++m) {
 			//apply the transformation to our double-diagonal
 			for(unsigned i=0; i<(order*2); ++i) {
-				unsigned d = im_diagonals[m*order*2+i];
+				unsigned d;
+				if(order<17)
+					d = im_diagonals[m*order*2+i];
+					else d = imh_diagonals[m*order*2+i];
 				tdiag[i] = sq [ d ];
 			}
 			//apply the 7 remaining simple permutations
 			permute_diag(tdiag);
 			for(unsigned t=0; t<8; ++t) {
 				//this is the permuted diagonal
-				unsigned* diag = &tdiag[order*2*t];
+				uint16_t* diag = &tdiag[order*2*t];
 				//build normalization map
 				for(unsigned i=0; i<order; ++i)
 					nmap[diag[i]] = i;
+				/*
 				if(nmap[diag[order]]==0) {
 					std::cerr<<"im_find_can: invalid anti-diagonal, m="<<m<<" t="<<t<<endl<<"t=0:";
 					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<tdiag[i];
 					std::cerr<<endl<<"t="<<t<<":";
 					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<diag[i];
 					std::cerr<<endl<<"mt:";
-					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<unsigned(im_diagonals[m*order*2+i]);
+					for(unsigned i=0; i<(order*2); ++i) std::cerr<<" "<<unsigned(imZ_diagonals[m*order*2+i]);
 					std::cerr<<endl;
 					throw ESquareOp();
-				}
+				}*/
 				//normalize
 				for(unsigned i=0; i<(order*2); ++i)
 					diag[i] = nmap[ diag[i] ];
@@ -150,25 +171,25 @@ struct KanonizerV {
 				use_cache(order);
 				else init_order(order);
 		}
-		std::set<std::pair<unsigned,unsigned char>> mt_trans_set;
+		std::set<std::pair<uint64_t, unsigned char>> mt_trans_set;
 		unsigned mt_rule[order];
 		std::set<Square> outset;
 		im_find_can(&mt_trans_set, mt_rule, input_square);
 		// rule was found, and also set of candidate transformations
 		// try each transformation, this time on full square to find smallest square
 		for( const auto& mt : mt_trans_set) {
+			//std::cout<<"#L "<<mt.first<<" "<<(int)mt.second<<endl;
 			Square sq(input_square);
-			for(unsigned i=0; i<=im_mtrans.size(); ++i) {
-				if( (1LLU<<i) & im_isotopes[mt.first] ) {
-					ApplyM(sq, im_mtrans[i]);
-			}}
+			ApplyAllM(sq, mt.first);
 			sq=transform_sq(sq, mt.second).DiagNorm();
-			if(0){
-				std::cout<<"#K "<<im_isotopes[mt.first]<<" "<<(int)mt.second<<endl;
-				unsigned cur_rule[order];
+			{
+				unsigned diag_1[order];
 				for(unsigned i=0; i<order; ++i)
-					cur_rule[i] = sq(i,N-i);
-				assert(std::equal(mt_rule,mt_rule+order, cur_rule));
+					diag_1[i] = sq(i,N-i);
+				if(!std::equal(diag_1,diag_1+order, mt_rule)) {
+					std::cerr<<"wrong rule "<<mt.first<<" "<<int(mt.second)<<endl;
+					throw ESquareOp();
+				}
 			}
 			outset.insert(sq);
 		}
@@ -181,7 +202,7 @@ struct KanonizerV {
 		Square natural(order);
 		for(unsigned i=0; i<natural.size(); ++i)
 			natural[i] = i;
-		unsigned diag[order*2*8];
+		uint16_t diag[order*2*8];
 		for(unsigned i=0; i<order; ++i)
 			diag[i] = natural(i,i);
 		for(unsigned i=0; i<order; ++i)
@@ -198,6 +219,7 @@ struct KanonizerV {
 
 			if(!std::equal(diag_1,diag_1+order, diag+order*2*t)) {
 				std::cerr<<"transform_diag broken on "<<t<<endl;
+				throw ESquareOp();
 			}
 		}
 	}
@@ -219,7 +241,7 @@ struct KanonizerV {
 		Square natural(order);
 		for(unsigned i=0; i<natural.size(); ++i)
 			natural[i] = i;
-		std::set<std::vector<uint8_t>> diag_izotopes;
+		std::set<std::vector<uint16_t>> diag_izotopes;
 
 		std::array<Square,8> lsq;
 		for(int i=0; i<8; ++i)
@@ -229,9 +251,13 @@ struct KanonizerV {
 		uint64_t transformation_index = 0;
 		unsigned i = 0, p = 0;
 		bool uniq;
-		unsigned cur_iso[order*2*8];
+		uint16_t cur_iso[order*2*8];
 		Square sq(natural);
 
+		if(im_mtrans.size()>=64) {
+			std::cerr<<"Error: too many m-transformations"<<endl;
+			throw ESquareOp();
+		}
 		std::cerr<<"# KanonizerV("<<order<<"): transformations: "<<im_mtrans.size()<<" + 8, initializing..."<<endl;
 
 		goto start;
@@ -250,6 +276,9 @@ struct KanonizerV {
 			stack[p++] = i;
 			opts[i]=1;
 			transformation_index ^= 1LLU<<i;
+			if(order>=16 && !(imh_isotopes.size()&0xFFF)) {
+				std::cerr<<imh_isotopes.size()<<"\r";
+			}
 		start:
 			//std::cout<<"#m "<<transformation_index<<" p"<<p<<endl;
 
@@ -261,19 +290,26 @@ struct KanonizerV {
 
 			uniq=true;
 			for(unsigned k=0; k<8 && uniq; ++k) {
-				std::vector<uint8_t> diag_izotope(cur_iso+(k*order*2),cur_iso+((k+1)*order*2));
+				std::vector<uint16_t> diag_izotope(cur_iso+(k*order*2),cur_iso+((k+1)*order*2));
 				auto it = diag_izotopes.insert(diag_izotope);
 				uniq= uniq && it.second;
 				assert(!k || uniq);
 			}
 			if(uniq) {
 				//std::cout<<"#M "<<transformation_index<<endl;
-				im_isotopes.push_back( transformation_index );
-				im_diagonals.insert( im_diagonals.end(), cur_iso, cur_iso+(order*2) );
+				if(order<16)
+					im_isotopes.push_back( transformation_index );
+					else imh_isotopes.push_back( transformation_index );
+				if(order<17)
+					im_diagonals.insert( im_diagonals.end(), cur_iso, cur_iso+(order*2) );
+					else imh_diagonals.insert( imh_diagonals.end(), cur_iso, cur_iso+(order*2) );
 			}
+			if(order>=16 && order<=17 && imh_isotopes.size()>=5160960)
+				goto stop;
 		goto again;
 		stop:
-		std::cerr<<"# KanonizerV("<<order<<"): m-isotopes: "<<im_isotopes.size()<<" *8 ("<<
+		uint64_t n_misotopes = (order<16)? im_isotopes.size() : imh_isotopes.size();
+		std::cerr<<"# KanonizerV("<<order<<"): m-isotopes: "<<n_misotopes<<" *8 ("<<
 		(double(clock() - t0) / CLOCKS_PER_SEC)<<"s)"<<endl;
 
 	}
@@ -286,34 +322,39 @@ struct KanonizerV {
 		if(cachein) {
 			size_t sz_order, sz_mtrans, sz_diag, sz_isot;
 			cachein >> sz_order >> sz_mtrans >> sz_isot;
+			sz_diag = sz_isot*order*2;
 			this->order=order;
 			im_mtrans.resize(sz_mtrans);
-			im_diagonals.resize(sz_diag = sz_isot*order*2 );
 			cachein.ignore(4096, '\n');
 			cachein.read(reinterpret_cast<char*>(im_mtrans.data()),sz_mtrans*sizeof(std::pair<int,int>));
-			if(order>=16) {
+			if(order<16) {
 				im_isotopes.resize(sz_isot);
-				cachein.read(reinterpret_cast<char*>(im_isotopes.data()),sz_isot*sizeof(uint64_t));
+				cachein.read(reinterpret_cast<char*>(im_isotopes.data()),sz_isot*sizeof(uint32_t));
 			} else {
-				std::vector<uint32_t> conv (sz_isot);
-				cachein.read(reinterpret_cast<char*>(conv.data()),sz_isot*sizeof(uint32_t));
-				im_isotopes = std::move(std::vector<uint64_t> (conv.begin(), conv.end()));
+				imh_isotopes.resize(sz_isot);
+				cachein.read(reinterpret_cast<char*>(imh_isotopes.data()),sz_isot*sizeof(uint64_t));
 			}
-			cachein.read(reinterpret_cast<char*>(im_diagonals.data()),sz_diag*sizeof(uint8_t));
+			if(order<17) {
+				im_diagonals.resize(sz_diag );
+				cachein.read(reinterpret_cast<char*>(im_diagonals.data()),sz_diag*sizeof(uint8_t));
+			} else {
+				imh_diagonals.resize(sz_diag );
+				cachein.read(reinterpret_cast<char*>(imh_diagonals.data()),sz_diag*sizeof(uint16_t));
+			}
 			std::cerr<<"# KanonizerV: read "<<filename.str()<<": "<<sz_order<<" "<<sz_mtrans<<" "<<sz_isot<<" "<<sz_diag<<"\n";
 		} else {
 			init_order(order);
 			std::cerr<<"# KanonizerV: write "<<filename.str()<<"\n";
 			std::ofstream cacheo(filename.str(), ios::binary);
-			cacheo << order <<" "<< im_mtrans.size() <<" "<< im_isotopes.size() <<"\n";
+			uint64_t max_m= (order<16)? im_isotopes.size() : imh_isotopes.size();
+			cacheo << order <<" "<< im_mtrans.size() <<" "<< max_m <<"\n";
 			cacheo.write(reinterpret_cast<char*>(im_mtrans.data()),im_mtrans.size()*sizeof(std::pair<int,int>));
-			if(order>=16) {
-				cacheo.write(reinterpret_cast<char*>(im_isotopes.data()),im_isotopes.size()*sizeof(uint64_t));
-			} else {
-				std::vector<uint32_t> conv (im_isotopes.begin(),im_isotopes.end());
-				cacheo.write(reinterpret_cast<char*>(conv.data()),im_isotopes.size()*sizeof(uint32_t));
-			}
-			cacheo.write(reinterpret_cast<char*>(im_diagonals.data()),im_diagonals.size()*sizeof(uint8_t));
+			if(order<16)
+				cacheo.write(reinterpret_cast<char*>(im_isotopes.data()),im_isotopes.size()*sizeof(uint32_t));
+				else cacheo.write(reinterpret_cast<char*>(imh_isotopes.data()),imh_isotopes.size()*sizeof(uint64_t));
+			if(order<17)
+				cacheo.write(reinterpret_cast<char*>(im_diagonals.data()),im_diagonals.size()*sizeof(uint8_t));
+				else cacheo.write(reinterpret_cast<char*>(imh_diagonals.data()),imh_diagonals.size()*sizeof(uint16_t));
 		}
 	}
 
@@ -322,16 +363,9 @@ struct KanonizerV {
 // order 13 - (2^21),  23040 uniq
 // order 14 - (2^28), 322560 uniq
 // order 15 - (2^28), 
-// order 16 - (2^36), 
-// only the x is important
-// store both diagonals and transorm(18 bits)
-// find the minimal rule, foreach:
-// buld normalization map, normalize antidiag
-// opt works 11, 12  ... vymenit, otocit jednu, druhu
+// order 16 - (2^36),
 
-// in kanon_b find which transform leads to the desired result
-// then in _v find why it was not applied
+// now this works
+// slowly replace uint64_t with appropriate types
 
-// create unit (A/B) tests for each function
-// i suspect it might be in the diagonal permutation
 };

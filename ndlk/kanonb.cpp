@@ -17,14 +17,14 @@ using std::ios;
 #define DLX_QUIET
 
 #include "dlk_util.cpp"
-#include "kanonizer_b.cpp"
+//#include "kanonizer_b.cpp"
 #include "kanonizer_v.cpp"
 
 KanonizerV kanonizerV;
 
-Kanonizer kanonizerB;
+//Kanonizer kanonizerB;
 
-Square get_diag_kanon_b(Square sq)
+/*Square get_diag_kanon_b(Square sq)
 {
 	std::set<Square> isotopes;
 	kanonizerB.Kanon(sq, &isotopes);
@@ -45,7 +45,7 @@ Square get_diag_kanon_b(Square sq)
 		}
 	}
 	return min;
-}
+}*/
 
 void kanon_cmd()
 {

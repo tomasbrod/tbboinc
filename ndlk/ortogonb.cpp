@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
 	try {
 		bool orig_output = false;
 		bool just_count = false;
+		bool write_output = false;
 		char* name = 0;
 		if(string(argv[1])=="-c") {
 			just_count= true;
@@ -41,6 +42,9 @@ int main(int argc, char* argv[])
 		} else
 		if(string(argv[1])=="-o") {
 			orig_output= true;
+			name= argv[2];
+		if(string(argv[1])=="-w") {
+			write_output=true;
 			name= argv[2];
 		} else
 			name= argv[1];

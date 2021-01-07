@@ -120,8 +120,8 @@ class Exact_cover_u {
 	void save_trans(nodeix* O);
 	void save_one_mate(nodeix* O);
 	void save_mates(nodeix* O);
-	void dance(save_func_t save, dataHeadDyn* H, dataComDyn* N, nodeix* O, int level);
-	void dance(save_func_t save) { dance(save, headsDyn.data(),nodesDyn.data(), O2.data(), 0); }
+	void dance(dataHeadDyn* H, dataComDyn* N, nodeix* O, bool* do_bt, int lmax);
+	void dance(save_func_t save);
 	void dance_mt(save_func_t save);
 	std::mutex cs_main;
 	nodeix global_r;
@@ -132,26 +132,28 @@ class Exact_cover_u {
 	void connect_node(nodeix ix, nodeix col);
 	void dance_lim(save_func_t save);
 	void save_count_trans(nodeix* O);
+	void get_mate(Square& mate, nodeix* O);
 };
 
-void Exact_cover_u::save_one_mate(nodeix* O){
-	Square mate(order);
+void Exact_cover_u::get_mate(Square& mate, nodeix* O)
+{
 	for(int i = 0; i < order; i++){
 		for(int j = 0, k = 0; j < order; k += order, j++){
 			mate[k + get_trans(nodesSt[O[i]].dr)[j]] = i; //O[i]:node
 		}
 	}
+}	
+
+void Exact_cover_u::save_one_mate(nodeix* O){
+	Square mate(order);
+	get_mate(mate, O);
 	std::lock_guard<std::mutex> lock(cs_main);
 	mates.push_back(mate);
 	stop_dance=true;
 }
 void Exact_cover_u::save_mates(nodeix* O) {
 	Square mate(order);
-	for(int i = 0; i < order; i++){
-		for(int j = 0, k = 0; j < order; k += order, j++){
-			mate[k + get_trans(nodesSt[O[i]].dr)[j]] = i; //O[i]:node
-		}
-	}
+	get_mate(mate, O);
 	std::lock_guard<std::mutex> lock(cs_main);
 	mates.push_back(mate);
 }
@@ -247,20 +249,18 @@ void Exact_cover_u::save_count_trans(nodeix* O)
 	cs_main.unlock();
 }
 
-void Exact_cover_u::dance(save_func_t save, dataHeadDyn* H, dataComDyn* N, nodeix* O, int level){
+void Exact_cover_u::dance(dataHeadDyn* H, dataComDyn* N, nodeix* O, bool* do_bt, int lmax){
 	nodeix c;
 	nodeix r;
+	#if 0
 	const int r_l = 5;
 	unsigned r_num[r_l] = {0};
 	unsigned r_cnt[r_l] = {101,0};
-	int l = level;
+	#endif
+	int l = 0;
+	if(*do_bt) {l=lmax; goto backtrack;}
 enter_level_l: 
-	if(l >= order){
-		(this->*save)(O);
-		if(stop_dance)
-			return;
-		goto backtrack;
-	}
+	if(l >= lmax) { *do_bt=1; return; }
 	c = choose_column(H);
 	r = N[c].down;
 	#if 0
@@ -285,7 +285,7 @@ try_to_advance:
 		goto enter_level_l;
 	}
 backtrack:
-	if(--l >= level){
+	if(--l >= 0){
 		r = O[l];
 		c = nodesSt[r].column;
 		for(nodeix j = nodesSt[r].left; j != r; j = nodesSt[j].left)
@@ -294,6 +294,7 @@ backtrack:
 		r = N[r].down;
 		goto try_to_advance;
 	}
+	*do_bt=0;
 	return;
 }
 
@@ -341,7 +342,13 @@ void Exact_cover_u::dance_mt_thr(bool show) {
 			for(nodeix j = nodesSt[r].right; j != r; j = nodesSt[j].right)
 				cover_column(nodesSt[j].column, &heads[0],&nodes[0]);
 			O[0] = r;
-			dance(global_save, &heads[0],&nodes[0],&O[0],1);
+			bool found = 0;
+			do {
+				dance(&heads[0],&nodes[0],&O[1],&found,order-1);
+				if(found) {
+					(this->*global_save)(O.data());
+				} else break;
+			} while(!stop_dance);
 			for(nodeix j = nodesSt[r].left; j != r; j = nodesSt[j].left)
 				uncover_column(nodesSt[j].column, &heads[0],&nodes[0]);
 
@@ -400,7 +407,13 @@ void Exact_cover_u::dance_lim(save_func_t save)
       for(nodeix j = nodesSt[r].right; j != r; j = nodesSt[j].right)
 				cover_column(nodesSt[j].column, &headsDyn[0],&nodesDyn[0]);
 			O2[0] = r;
-			dance(save, &headsDyn[0],&nodesDyn[0],&O2[0],1);
+			bool found = 0;
+			do {
+				dance(&headsDyn[0],&nodesDyn[0],&O2[0],&found,order);
+				if(found) {
+					(this->*save)(O2.data());
+				} else break;
+			} while(!stop_dance);
 			for(nodeix j = nodesSt[r].left; j != r; j = nodesSt[j].left)
 				uncover_column(nodesSt[j].column, &headsDyn[0],&nodesDyn[0]);
 
@@ -409,6 +422,17 @@ void Exact_cover_u::dance_lim(save_func_t save)
     sols=mates.size();
     r= nodesDyn[r].down;
   }
+}
+
+void Exact_cover_u::dance(save_func_t save)
+{
+	bool found = 0;
+	do {
+		dance(&headsDyn[0],&nodesDyn[0],&O2[0],&found,order);
+		if(found) {
+			(this->*save)(O2.data());
+		} else break;
+	} while(!stop_dance);
 }
 
 #if 0
