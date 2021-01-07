@@ -34,26 +34,26 @@
 using std::string;
 
 MIOFILE::MIOFILE() {
-    mf = 0;
-    wbuf = 0;
-    len = 0;
-    stdio_stream = 0;
+		mf = 0;
+		wbuf = 0;
+		len = 0;
+		stdio_stream = 0;
 		#ifdef _USING_FCGI_
 		fcgx_stream = 0;
 		#endif
-    buf = 0;
+		buf = 0;
 }
 
 MIOFILE::~MIOFILE() {
 }
 
 void MIOFILE::init_mfile(MFILE* _mf) {
-    mf = _mf;
+		mf = _mf;
 }
 
 void MIOFILE::init_file(FILE* _f) {
-    mf = 0;
-    stdio_stream = _f;
+		mf = 0;
+		stdio_stream = _f;
 		#ifdef _USING_FCGI_
 		fcgx_stream= 0;
 		#endif
@@ -61,95 +61,95 @@ void MIOFILE::init_file(FILE* _f) {
 
 #ifdef _USING_FCGI_
 void MIOFILE::init_file(FCGI_FILE* _f) {
-    mf = 0;
-    stdio_stream = _f->stdio_stream;
+		mf = 0;
+		stdio_stream = _f->stdio_stream;
 		fcgx_stream = _f->fcgx_stream;
 }
 
 void MIOFILE::init_file(FCGX_Stream* _f) {
-    mf = 0;
-    stdio_stream = 0;
+		mf = 0;
+		stdio_stream = 0;
 		fcgx_stream = _f;
 }
 #endif
 
 void MIOFILE::init_buf_read(const char* _buf) {
-    buf = _buf;
+		buf = _buf;
 }
 
 void MIOFILE::init_buf_write(char* _buf, int _len) {
-    wbuf = _buf;
-    len = _len;
-    wbuf[0] = 0;
+		wbuf = _buf;
+		len = _len;
+		wbuf[0] = 0;
 }
 
 bool MIOFILE::eof() {
-    if (stdio_stream) {
-        if (!::feof(stdio_stream)) {
-            return false;
-        }
-    }
+		if (stdio_stream) {
+				if (!::feof(stdio_stream)) {
+						return false;
+				}
+		}
 		#ifdef _USING_FCGI_
-    if (fcgx_stream) {
-        if (!FCGX_HasSeenEOF(fcgx_stream)) {
-            return false;
-        }
-    }
+		if (fcgx_stream) {
+				if (!FCGX_HasSeenEOF(fcgx_stream)) {
+						return false;
+				}
+		}
 		#endif
-    return true;
+		return true;
 }
 
 
 int MIOFILE::printf(const char* format, ...) {
-    int retval;
+		int retval;
 
-    va_list ap;
-    va_start(ap, format);
-    if (mf) {
-        retval = mf->vprintf(format, ap);
-    } else
-    if (stdio_stream) {
-        retval = ::vfprintf(stdio_stream, format, ap);
-    } else
+		va_list ap;
+		va_start(ap, format);
+		if (mf) {
+				retval = mf->vprintf(format, ap);
+		} else
+		if (stdio_stream) {
+				retval = ::vfprintf(stdio_stream, format, ap);
+		} else
 		#ifdef _USING_FCGI_
-    if (fcgx_stream) {
-        retval = FCGX_VFPrintF(fcgx_stream, format, ap);
-    } else
+		if (fcgx_stream) {
+				retval = FCGX_VFPrintF(fcgx_stream, format, ap);
+		} else
 		#endif
 		{
-        size_t cursize = strlen(wbuf);
-        size_t remaining_len = len - cursize;
-        retval = vsnprintf(wbuf+cursize, remaining_len, format, ap);
-    }
-    va_end(ap);
-    return retval;
+				size_t cursize = strlen(wbuf);
+				size_t remaining_len = len - cursize;
+				retval = vsnprintf(wbuf+cursize, remaining_len, format, ap);
+		}
+		va_end(ap);
+		return retval;
 }
 
 char* MIOFILE::fgets(char* dst, int dst_len) {
-    if (stdio_stream) {
-        return ::fgets(dst, dst_len, stdio_stream);
+		if (stdio_stream) {
+				return ::fgets(dst, dst_len, stdio_stream);
 		}
 #ifdef _USING_FCGI_
 		else if(fcgx_stream) {
 			return FCGX_GetLine(dst,dst_len,fcgx_stream);
 		}
 #endif
-    const char* q = strchr(buf, '\n');
-    if (!q) return 0;
+		const char* q = strchr(buf, '\n');
+		if (!q) return 0;
 
-    q++;
-    int n = (int)(q - buf);
-    if (n > dst_len-1) n = dst_len-1;
-    memcpy(dst, buf, n);
-    dst[n] = 0;
+		q++;
+		int n = (int)(q - buf);
+		if (n > dst_len-1) n = dst_len-1;
+		memcpy(dst, buf, n);
+		dst[n] = 0;
 
-    buf = q;
-    return dst;
+		buf = q;
+		return dst;
 }
 
 int MIOFILE::_ungetc(int c) {
-    if (stdio_stream) {
-        return ::ungetc(c, stdio_stream);
+		if (stdio_stream) {
+				return ::ungetc(c, stdio_stream);
 		} else
 #ifdef _USING_FCGI_
 		if(fcgx_stream) {
@@ -157,44 +157,44 @@ int MIOFILE::_ungetc(int c) {
 		} else
 #endif
 		{
-        buf--;
-        // NOTE: we assume that the char being pushed
-        // is what's already there
-        //*buf = c;
-    }
-    return c;
+				buf--;
+				// NOTE: we assume that the char being pushed
+				// is what's already there
+				//*buf = c;
+		}
+		return c;
 }
 
 // copy from a file to static buffer
 //
 int copy_element_contents(MIOFILE& in, const char* end_tag, char* p, int len) {
-    char buf[256];
-    int n;
+		char buf[256];
+		int n;
 
-    strlcpy(p, "", len);
-    while (in.fgets(buf, 256)) {
-        if (strstr(buf, end_tag)) {
-            return 0;
-        }
-        n = (int)strlen(buf);
-        if (n >= len-1) return ERR_XML_PARSE;
-        strlcat(p, buf, len);
-        len -= n;
-    }
-    return ERR_XML_PARSE;
+		strlcpy(p, "", len);
+		while (in.fgets(buf, 256)) {
+				if (strstr(buf, end_tag)) {
+						return 0;
+				}
+				n = (int)strlen(buf);
+				if (n >= len-1) return ERR_XML_PARSE;
+				strlcat(p, buf, len);
+				len -= n;
+		}
+		return ERR_XML_PARSE;
 }
 
 int copy_element_contents(MIOFILE& in, const char* end_tag, string& str) {
-    char buf[256];
+		char buf[256];
 
-    str = "";
-    while (in.fgets(buf, 256)) {
-        if (strstr(buf, end_tag)) {
-            return 0;
-        }
-        str += buf;
-    }
-    fprintf(stderr, "copy_element_contents(): no end tag\n");
-    return ERR_XML_PARSE;
+		str = "";
+		while (in.fgets(buf, 256)) {
+				if (strstr(buf, end_tag)) {
+						return 0;
+				}
+				str += buf;
+		}
+		fprintf(stderr, "copy_element_contents(): no end tag\n");
+		return ERR_XML_PARSE;
 }
 

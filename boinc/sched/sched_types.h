@@ -91,6 +91,7 @@ struct HOST_USAGE {
         strcpy(cmdline, "");
         strcpy(custom_coproc_type, "");
     }
+    
     void sequential_app(double flops) {
         proc_type = PROC_TYPE_CPU;
         gpu_usage = 0;

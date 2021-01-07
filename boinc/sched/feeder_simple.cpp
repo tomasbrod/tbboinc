@@ -78,6 +78,7 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
     char where [MAX_QUERY_LEN] = {0};
     std::map<DB_ID_TYPE, PLATFORM> platforms;
     DB_PLATFORM platform;
+    /* select * from app_version a join platform p on a.platformid=p.id where a.name = ? and a.deprecated=0 and p.name in (??) order by version_num desc */
     snprintf(where, sizeof where, "WHERE name = '%s' limit 1", sreply.request.platform.name); //FIXME: escape
     if(0==platform.lookup(where)) {
 			platforms.emplace(platform.id,platform);
@@ -117,6 +118,7 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
 			}
 		}
 		return false;
+		//TODO
 		//send uniqe app and version
 		//send workunit and 
 	}
@@ -152,7 +154,7 @@ struct FEEDER_SIMPLE : SCHED_QUEUE {
 			unsigned assigned = 0;
 			while(0==result.enumerate(where)) {
 				assigned += assign_result(sreply, result, version);
-				if(schedq_reply_full(sreply))
+				if(schedq_reply_full(sreply)) //TODO: flawed logic
 					break;
 			}
 			if(assigned < select_limit/2) {
