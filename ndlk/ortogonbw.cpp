@@ -85,11 +85,15 @@ int main(int argc, char* argv[])
 {
 	if(argc<=1) {
 		std::cerr<<
-			"ortogonbw.exe: (Input)\n"
+			"ortogonbw.exe: (Input) (Path)\n"
 			"** Search for Orthogonal mates of Diagonal Latin Square **\n"
 			"Input: encoded diagonal latin square (see dlkconv.exe)\n"
 			"Output: metadata and orthogonal squares in encoded format\n"
-			"Prints to output immediately as square is found.\n"
+			"Prints to output immediately as square is found. Single thread.\n"
+			"Path: sequence of space-separated numbers narrowing the problem space\n"
+			"Explanation: L(level) c(column) choosen-row / count-rows\n"
+			"Specify number as Path from 1 up to count-rows to narrow down the Search,\n"
+			"specify multiple numbers to narrow down further.\n"
 			"Author: Tomas Brada (GPL)\n";
 		return 9;
 	}
