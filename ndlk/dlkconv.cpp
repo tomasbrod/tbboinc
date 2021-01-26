@@ -95,7 +95,7 @@ struct InputSpec {
 				//getline(*is,line);
 				(*is)>>line;
 				if(line.empty()) return sq;
-				std::cerr<<"read "<<line<<"$"<<endl;
+				//std::cerr<<"read "<<line<<"$"<<endl;
 				sq.Decode(line);
 			} else {
 				if(name.empty()) return sq;
