@@ -64,17 +64,47 @@ void kanon_cmd()
 		}
 }
 
+void kanon_uniq_cmd()
+{
+	std::set<std::string> outputset;
+	while(std::cin) {
+		std::string line;
+		std::getline(std::cin,line);
+		if( line!="" && line[0]!=' ' && line[0]!='#' ) {
+			Square sq;
+			sq.Decode(line);
+			if(!sq.width()) throw std::runtime_error("Zero-width square");
+
+			sq.DiagNorm();
+			Square min2 = kanonizerV.Kanon(sq);
+			outputset.emplace(min2.Encode());
+		}
+	}
+	for(const std::string& out : outputset) {
+		std::cout<<out<<endl;
+	}
+}
+
 int main(int argc, char* argv[])
 {
+	bool output_uniq = false;
+	if(argc==2 && string(argv[1])=="-u") {
+		output_uniq=true;
+	} else
 	if(argc!=1) {
 		std::cerr<<
-			"kanonb.exe: <input >output\n"
-			"** Diagonal Latin Square XXX **\n"
-			"Author: Tomas Brada (GPL)\n";
+			"kanonb.exe: [-u] <input >output\n"
+			"** Diagonal Latin Square Kanonizer **\n"
+			"Input and Output in Encoded form (see dlkconv)\n"
+			"-u: unique and sorted output\n"
+			"Uses cache files kanonb_cache_NN.dat in the current directory.\n";
 		return 9;
 	}
 	try {
-		kanon_cmd();
+		if(output_uniq)
+			kanon_uniq_cmd();
+		else
+			kanon_cmd();
 	}
 	catch( const std::exception& e ) {
 		std::cerr<<"Exception: "<<e.what()<<endl;

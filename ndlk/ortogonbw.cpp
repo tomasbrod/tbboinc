@@ -10,6 +10,7 @@
 #include <error.h>
 #include <thread>
 #include <mutex>
+#include <atomic>
 using std::string;
 using std::endl;
 
@@ -37,12 +38,12 @@ struct Exact_cover_2 : Exact_cover_u {
 			} else break;
 		} while(!stop_dance);
 	}
-	int search_mates_cout(const nodeix* path)
+	int search_mates_cout(const nodeix* path2)
 	{
 		init_disjoint();
 		int level=0;
-		if(path) {
-			for(; *path; ++path) {
+		if(path2) {
+			for(const nodeix* path=path2; *path; ++path) {
 				nodeix c = choose_column(headsDyn.data());
 				cover_column(c, headsDyn.data(),nodesDyn.data());
 				nodesDyn[nodesDyn[c].up].down = 0;
@@ -103,9 +104,6 @@ int main(int argc, char* argv[])
 		std::vector<Exact_cover_2::nodeix> path;
 		path.resize(argc-1);
 		path[argc-2]=0;
-		for(unsigned i=2; i<argc; ++i) {
-			path[i-2]=atoi(argv[i]);
-		}
 		Square in;
 		if(!name && !name[0]) throw std::runtime_error("No input square");
 		in.Decode(name);
@@ -114,8 +112,12 @@ int main(int argc, char* argv[])
 		Exact_cover_2 dlx;
 		dlx.search_trans(in);
 		std::cerr<<"num_dtrans: "<<dlx.num_trans<<endl;
-		std::cout<<"# in: "<<name<<endl;
-		std::cout<<"# num_dtrans: "<<dlx.num_trans<<endl;
+		std::cout<<"# in: "<<name;
+		for(unsigned i=2; i<argc; ++i) {
+			path[i-2]=atoi(argv[i]);
+			std::cout<<" "<<argv[i];
+		}
+		std::cout<<endl<<"# num_dtrans: "<<dlx.num_trans<<endl;
 		dlx.search_mates_cout(path.data());
 		//std::cout<<"# num_mates: "<<(dlx.mates.size())<<endl;
 		return 0;

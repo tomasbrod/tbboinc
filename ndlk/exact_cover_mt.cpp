@@ -21,8 +21,9 @@ class Exact_cover_u {
 	size_t count_trans(const Square& dlk)
 	{
 		init_trans(dlk);
+		num_trans_at=0;
 		dance_mt(&Exact_cover_u::save_count_trans);
-    return num_trans;
+    return num_trans = num_trans_at;
 	}
 
 	bool is_ortogon()
@@ -117,6 +118,7 @@ class Exact_cover_u {
 
 	typedef  void (Exact_cover_u::*save_func_t)(nodeix* O);
 	bool stop_dance;
+	std::atomic_ullong num_trans_at;
 	void save_trans(nodeix* O);
 	void save_one_mate(nodeix* O);
 	void save_mates(nodeix* O);
@@ -244,9 +246,7 @@ void Exact_cover_u::save_trans(nodeix* O)
 
 void Exact_cover_u::save_count_trans(nodeix* O)
 {
-	cs_main.lock();
-	num_trans++;
-	cs_main.unlock();
+	num_trans_at++;
 }
 
 void Exact_cover_u::dance(dataHeadDyn* H, dataComDyn* N, nodeix* O, bool* do_bt, int lmax){

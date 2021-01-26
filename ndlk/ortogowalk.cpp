@@ -10,6 +10,7 @@
 #include <error.h>
 #include <thread>
 #include <mutex>
+#include <atomic>
 using std::string;
 using std::endl;
 using std::ios;
