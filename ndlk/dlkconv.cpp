@@ -92,10 +92,15 @@ struct InputSpec {
 		if(enc) {
 			if(is) {
 				std::string line;
-				//getline(*is,line);
-				(*is)>>line;
+				while(bool(*is)) {
+					getline(*is,line);
+					if(line.empty()) continue;
+					if(line[0]==' ' || line[0]=='#') continue;
+					if(line[line.length()-1]='\r') line.pop_back();
+					break;
+				}
+				//std::cerr<<"read "<<line<<"$"<<line.length()<<"."<<int(line[0])<<endl;
 				if(line.empty()) return sq;
-				//std::cerr<<"read "<<line<<"$"<<endl;
 				sq.Decode(line);
 			} else {
 				if(name.empty()) return sq;
