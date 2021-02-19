@@ -1,3 +1,3 @@
 test -x configure || ./_autosetup
-./configure -C --disable-client --disable-fcgi --disable-manager
+./configure -C --disable-client --enable-fcgi --disable-manager
 make -j4

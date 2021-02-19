@@ -9,9 +9,9 @@
 #include <cstdlib>
 #include <sys/stat.h>
 
-#include "odlkcommon/common.h"
-#include "odlkcommon/namechdlk10.h"
-#include "family_mar/prov_blk_trans.h"
+//#include "odlkcommon/common.h"
+//#include "odlkcommon/namechdlk10.h"
+//#include "family_mar/prov_blk_trans.h"
 
 #include "boinc_api.h"
 #include "bocom/Stream.cpp"
@@ -22,14 +22,16 @@
 #include "sched_config.h"
 #include "sched_util.h"
 
-#include "odlkcommon/namechdlk10.cpp"
-#include "odlkcommon/kvio.cpp"
+//#include "odlkcommon/namechdlk10.cpp"
+//#include "odlkcommon/kvio.cpp"
+using namespace std;
+// std::cerr, std::cout, std::endl, std::string;
 
 struct EDatabase	: std::runtime_error { using runtime_error::runtime_error; };
 struct EInvalid	: std::runtime_error { using runtime_error::runtime_error; };
 static int retval;
 
-#include "wio.cpp"
+//#include "wio.cpp"
 
 void initz() {
 	int retval = config.parse_file();
