@@ -186,11 +186,11 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 
-	uint64_t start= 1399201660000000000;
+	uint64_t start= 1648801660000000000;
 	uint64_t   end= 9000000000000000000;
 	uint64_t  step=      1950000000000;
 	unsigned maxcnt = 128000;
-	int batch = 78;
+	int batch = 79;
 	uint64_t next = start;
 	unsigned long count = 0;
 	while(1) {
