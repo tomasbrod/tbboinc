@@ -49,28 +49,39 @@ function generateStructBody($arr) {
 }
 
 function generateTable($name,$table) {
-	echo "const char* {$name}[] = {\n";
+	echo "const char* ".$name."::tag_table [] = {\n";
 	foreach($table as $row) {
-		echo "\"$row\",\n";
+		echo " \"$row[0]\",\n";
 	}
 	echo "};\n";
 }
 
-function getSortedTable($arr) {
-	$res=array();
-	foreach($arr as $field) {
-		$res[]=$field[0];
-	}
-	sort($res);
+function getSorted_compare($l,$r) {
+	return strcmp($l[0],$r[0]);
+}
+
+function getSorted($arr) {
+	$res=$arr;
+	usort($res,"getSorted_compare");
 	return $res;
 }
 
-function generateDeserFunction($arr)
+function generateDeserFunction($name,$arr)
 {
-	
+	echo "void parse_struct(XML_PARSER2& xp, $name &st) {\n";
+	echo " while(xp.get_tag()) {\n";
+	echo "  switch(get_index($name::tag_table,sizeof($name::tag_table), xp.tag)) {\n";
+	foreach($arr as $index=>$field) {
+		echo "   case $index:\n";
+		echo "    xp.parse_str(st.$field[0], sizeof(st.$field[0]));\n";
+		echo "    break;\n";
+	}
+	echo "   default: xp.skip();\n";
+	echo "  }\n }\n}\n\n";
 }
 
 $arr=to_our_array($struct);
 generateStructBody($arr);
-$sorted = getSortedTable($arr);
-generateTable("sampleText",$sorted);
+$sorted = getSorted($arr);
+generateTable("SampleText",$sorted);
+generateDeserFunction("SampleText",$sorted);
