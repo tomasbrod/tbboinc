@@ -68,7 +68,6 @@ const char* Table[] = {
 
 void XML_PARSER2::close_tag()
 {
-	if(in_tag==3) in_tag=0;
 	while(in_tag)
 	{
 		int c= mf->_getc();
@@ -141,7 +140,6 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 	char* max = text + len - 1;
 	if(len) text[0]=0;
 	else   text=max=0;
-	if(in_tag==3) in_tag=0;
 	if(!in_tag) return;
 	is_closed=0;
 	int c= skip_ws(' ');
@@ -150,9 +148,7 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 		if(c==EOF) break;
 		else if(in_tag==2) {
 			if(c=='"' || c=='\'') { in_tag=c; goto nextchar; }
-			else if(c=='>') { in_tag=0; break; }
 			else if(isascii(c) && isspace(c)) {in_tag=1; break; }
-			is_closed=(c=='/');
 		}
 		else if(in_tag==c) { in_tag=1; break; }
 		if(text<max)
@@ -160,10 +156,7 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 		nextchar:
 		c= mf->_getc();
 	}
-	if(len) {
-		if(is_closed && c=='>') text--;
-		*text=0;
-	}
+	if(len) *text=0;
 	//printf("] in_tag=%d\n",in_tag);
 }
 
@@ -177,10 +170,6 @@ int XML_PARSER2::skip_ws_close(int c)
 		else if( c=='/' ) is_closed=1;
 		else if (!isascii(c) || !isspace(c)) break;
 		c= mf->_getc();
-	}
-	if(is_closed) {
-		//mf->_ungetc('/'); - slash is invalid in this place
-		is_closed=0;
 	}
 	return c;
 }
@@ -201,9 +190,9 @@ bool XML_PARSER2::get_attr()
 	c= scan_for(attr+1, sizeof(attr)-1, "=/> \n\t");
 	// whitespace
 	c = skip_ws_close(c);
-	// self-close tag, close tag, equals
-	if(c=='=') in_tag=2;
-	if(!in_tag) in_tag=3;
+	//
+	if(c!='=') return in_tag = 0;
+	in_tag=2;
 	return true;
 }
 
@@ -254,8 +243,7 @@ void parse_test_1(XML_PARSER2& xp)
 			break;
 		case 2:
 			while(xp.get_attr()) {
-				// this eats the tag contents if attribute has no value and no whitespace
-				//xp.parse_str(tag_body, sizeof tag_body);
+				xp.parse_str(tag_body, sizeof tag_body);
 				printf(" attr: %s in_tag=%d text: %s\n",xp.attr,xp.in_tag,tag_body);
 				/*if(!strcmp(xp.attr,"attr"))
 					tag_attr= xp.parse_int();*/
