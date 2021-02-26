@@ -138,10 +138,12 @@ bool XML_PARSER2::get_tag()
 void XML_PARSER2::scan_attr(char* text, size_t len)
 {
 	//printf("  scan_attr: in_tag=%d [",in_tag);
-	is_closed=0;
 	char* max = text + len - 1;
 	if(len) text[0]=0;
 	else   text=max=0;
+	if(in_tag==3) in_tag=0;
+	if(!in_tag) return;
+	is_closed=0;
 	int c= skip_ws(' ');
 	while(1) {
 		//putc(c,stdout);
@@ -219,10 +221,8 @@ void XML_PARSER2::skip()
 void XML_PARSER2::parse_str(char* str, size_t max)
 {
 	if(max) str[0]=0;
-	if(in_tag==2) {
+	if(in_tag>1) {
 		scan_attr(str,max);
-	} else if(in_tag==3) {
-		in_tag=0;
 	} else if(max<2) {
 		skip();
 	} else {
@@ -231,7 +231,7 @@ void XML_PARSER2::parse_str(char* str, size_t max)
 		int c = skip_ws();
 		str[0]=c;
 		c= scan_for(str+1,max-1,"<");
-		//should check the closing tag, but dont
+		//TODO: should check the closing tag
 		in_tag=1;
 		//rtrim(str);
 		//for( 1; str>=base; isspace(*(str--)) );
@@ -255,7 +255,7 @@ void parse_test_1(XML_PARSER2& xp)
 		case 2:
 			while(xp.get_attr()) {
 				// this eats the tag contents if attribute has no value and no whitespace
-				xp.parse_str(tag_body, sizeof tag_body);
+				//xp.parse_str(tag_body, sizeof tag_body);
 				printf(" attr: %s in_tag=%d text: %s\n",xp.attr,xp.in_tag,tag_body);
 				/*if(!strcmp(xp.attr,"attr"))
 					tag_attr= xp.parse_int();*/
