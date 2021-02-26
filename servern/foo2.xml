@@ -1,0 +1,18 @@
+<blah>
+    <authenticator>12345ABC</a>
+    <unknown>Sample Text "" '' </unknown>
+    <tag_name /attr1="6"/>
+    <tag_name attr2 />
+    <tag_name attr3 / =1/>
+    <tag_name
+    attr4 =    /6blah6//9/    attr4.1 =
+    x1
+    attr4.2
+    =x2
+
+
+     />
+    <tag_name attr5 = '1'/>
+    <tag_name attr="6">tag_body</tag_name>
+    <empty/>
+</blah>
