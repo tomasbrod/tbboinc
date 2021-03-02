@@ -17,4 +17,7 @@
     <tag_name attr5 = '1'/>
     <tag_name attr6="6">tag_body</tag_name>
     <empty/>
+    <alt_platform>
+      <name>i686-pc-linux-gnu</name>
+    </alt_platform>
 </blah>

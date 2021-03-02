@@ -1,0 +1,54 @@
+# hola hola
+hpp build/defs.hpp
+cpp build/defs.cpp
+
+
+
+struct SampleText1
+authenticator   varchar 32
+# note
+hostid id
+platform varchar 256
+alt_platform1 vector varchar 256 _innertag=name
+alt_platform2 vector varchar 256 innertag=name
+%
+
+struct SampleText2
+sample id
+%
+
+struct scheduler_request_t
+authenticator varchar 256
+platform_name varchar 1
+alt_platform vector varchar 1 innertag=name
+cross_project_id varchar 256
+hostid id
+rpc_seqno long
+core_client_major_version int
+core_client_minor_version int
+core_client_release int
+resource_share_fraction float
+rrs_fraction float
+prrs_fraction float
+duration_correction_factor float
+allow_multiple_clients bool
+sandbox bool
+dont_send_work bool
+work_req_seconds float
+cpu_req_secs float
+cpu_req_instances float
+estimated_delay float
+client_cap_plan_class int
+code_sign_key string
+#^ copy_element_contents, strip_whitespace
+working_global_preferences ignore
+global_preferences ignore
+global_prefs_source_email_hash varchar 1
+time_stats ignore
+net_stats ignore
+host_info ignore
+disk_usage ignore
+result ignore vector struct Result
+app_versions ignore vector struct app_version innertag=app_version
+other_results ignore vector
+%

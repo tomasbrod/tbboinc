@@ -29,7 +29,7 @@ struct XML_PARSER2
 	void parse_str(char* str, size_t max);
 	long parse_int();
 	void assert_closing_tag(char* tag);
-	int scan_for(char* text, size_t len, const char* delim);
+	int scan_for(char* text, size_t len, const char* delim, size_t* rsize=0);
 	void close_tag();
 	int skip_ws(int c=' ');
 	void skip();
@@ -88,9 +88,10 @@ int XML_PARSER2::skip_ws(int c)
 	return c;
 }
 
-int XML_PARSER2::scan_for(char* text, size_t len, const char* delim)
+int XML_PARSER2::scan_for(char* text, size_t len, const char* delim, size_t* rsize)
 {
 	int c;
+	const char* base = text;
 	while(1) {
 		c= mf->_getc();
 		for(unsigned i=0; delim[i]; ++i) if(delim[i]==c) goto stop;
@@ -102,6 +103,7 @@ int XML_PARSER2::scan_for(char* text, size_t len, const char* delim)
 	}
 	stop:
 	if(len) *text=0;
+	if(rsize) *rsize = text-base;
 	return c;
 }
 
