@@ -2,25 +2,10 @@
 hpp build/defs.hpp
 cpp build/defs.cpp
 
-
-
-struct SampleText1
-authenticator   varchar 32
-# note
-hostid id
-platform varchar 256
-alt_platform1 vector varchar 256 _innertag=name
-alt_platform2 vector varchar 256 innertag=name
-%
-
-struct SampleText2
-sample id
-%
-
 struct scheduler_request_t
 authenticator varchar 256
-platform_name varchar 1
-alt_platform vector varchar 1 innertag=name
+platform_name varchar 256
+alt_platform vector varchar 256 innertag=name
 cross_project_id varchar 256
 hostid id
 rpc_seqno long
@@ -43,7 +28,7 @@ code_sign_key string
 #^ copy_element_contents, strip_whitespace
 working_global_preferences ignore
 global_preferences ignore
-global_prefs_source_email_hash varchar 1
+global_prefs_source_email_hash varchar 65
 time_stats ignore
 net_stats ignore
 host_info ignore
@@ -51,4 +36,54 @@ disk_usage ignore
 result ignore vector struct Result
 app_versions ignore vector struct app_version innertag=app_version
 other_results ignore vector
+%
+
+struct host_info_t
+timezone int
+domain_name varchar 256
+ip_addr varchar 256
+host_cpid varchar 256
+p_ncpus int
+p_vendor  varchar 256
+p_model  varchar 256
+p_features  varchar 256
+p_fpops float
+p_iops float
+p_membw float
+p_calculated float
+p_vm_extensions_disabled bool
+m_nbytes float
+m_cache float
+m_swap float
+d_total float
+d_free float
+os_name varchar 256
+os_version varchar 256
+n_usable_coprocs int
+wsl_available bool
+%
+
+struct result_t
+name varchar 256
+final_cpu_time float
+final_elapsed_time float
+exit_status int
+state int
+platform varchar 256
+version_num int
+plan_class varchar 256
+final_peak_working_set_size float
+final_peak_swap_size float
+final_peak_disk_usage float
+app_version_num int
+stderr_out ignore element
+file_info ignore struct result_file_t
+%
+
+struct result_file_t
+name varchar 256
+nbytes float
+max_nbytes float
+md5_cksum varchar 65
+upload_url varchar 256
 %

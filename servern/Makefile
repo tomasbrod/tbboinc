@@ -9,7 +9,7 @@ build/servern.o: servern.cpp Makefile
 build/boinclib.o: boinclib.cpp
 	g++ -c -o $@ -g -O0 -I boinclib $<
 
-build/parse3.o: parse3.cpp Makefile
+build/parse3.o: parse3.cpp parse3.hpp Makefile
 	g++ -c -o $@ -g -O0 $<
 
 build/defs.hpp build/defs.cpp: defs.txt defs.php Makefile

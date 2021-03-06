@@ -1,13 +1,5 @@
 <?php
 
-$struct = <<<EOT
-authenticator   varchar 32
-hostid id
-platform varchar 256
-alt_platform1 vector varchar 256 _innertag=name
-alt_platform2 vector varchar 256 innertag=name
-EOT;
-
 /* types:
  * id - database ID - 'long' s32
  * int - 'int' s32
@@ -30,24 +22,6 @@ EOT;
  * lastis=id - optional (0..n), like opt, but allow duplicates and last wins
 */
 
-function to_our_array($text)
-{
-  $result = array();
-  foreach( explode("\n",$text) as $line) {
-    $rline=array();
-    foreach( explode(" ",$line) as $word) {
-      if($word=="") continue;
-      $kv=explode("=",$word);
-      if(sizeof($kv)==2) {
-        $rline[$kv[0]]=$kv[1];
-      } else {
-        $rline[]=$word;
-      }
-    }
-    $result[]=$rline;
-  }
-  return $result;
-}
 
 function generateFieldType($field,$i) {
   if($i>0) $field=array_slice($field, $i, 99999, false);
@@ -125,10 +99,7 @@ function generateFieldParse($ref,$field)
 {
   $tab = "    ";
   if($field[1]=='varchar') {
-    if($field[0]=='vector')
-      echo $tab."xp.parse_str($ref.data(), $field[2]);\n";
-    else
-      echo $tab."xp.parse_str($ref, $field[2]);\n";
+    echo $tab."xp.parse_str($ref, $field[2]);\n";
   }
   else if($field[1]=='id' or $field[1]=='int' or $field[1]=='long') {
     echo $tab."$ref= xp.parse_long();\n";
@@ -159,7 +130,7 @@ void <?=$name?>::parse(XML_PARSER2& xp)
  while(1) {
   if(xp.get_tag()) throw EParseXML();
   if(xp.parsed_tag[0]=='/') break;
-  switch(get_index(<?=$name?>::tag_table,sizeof(<?=$name?>::tag_table), xp.parsed_tag)) {
+  switch(xp.lookup_tag(<?=$name?>::tag_table,sizeof(<?=$name?>::tag_table))) {
 <?php foreach($arr as $index=>$field): ?>
    case <?=$index?>: //<?=$field[0]?>/
 <?php generateFieldParse($field[0],$field); ?>
@@ -267,14 +238,6 @@ function processInputFile($filename)
   }
   if($cpp) fclose($cpp);
   if($hpp) fclose($hpp);
-}
-
-if(0) {
-  $arr=to_our_array($struct);
-  $sorted=getSorted($arr);
-  generateStructBody($arr);
-  generateTable("SampleText",$sorted);
-  generateDeserFunction("SampleText",$sorted);
 }
 
 if(!empty($argv[1])) {
