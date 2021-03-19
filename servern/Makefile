@@ -1,9 +1,9 @@
 all: servern
 
-servern: build/servern.o build/boinclib.o build/parse3.o
-	g++ -o $@ -g -O0 $^
+servern: build/servern.o build/boinclib.o build/kv.o
+	g++ -o $@ -g -O0 $^ -lkyotocabinet -llmdb
 
-build/servern.o: servern.cpp Makefile
+build/servern.o: servern.cpp parse2.cpp Makefile
 	g++ -c -o $@ -g -O0 $<
 
 build/boinclib.o: boinclib.cpp
@@ -15,6 +15,8 @@ build/parse3.o: parse3.cpp parse3.hpp Makefile
 build/defs.hpp build/defs.cpp: defs.txt defs.php Makefile
 	php defs.php defs.txt
 
+build/kv.o: kv.cpp Makefile Stream.cpp
+	g++ -c -o $@ -g -O0 $<
 
 # -MF boinclib.d -MMD
 build/boinclib.o: boinclib.cpp boinclib/miofile.cpp boinclib/config.h \

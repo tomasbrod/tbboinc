@@ -1,5 +1,5 @@
 <blah>
-    <authenticator>12345ABC</a>
+    <authenticator>12345ABC   </a>
     <unknown>Sample Text "" '' </unknown>
     <tag_name attr1="6"/>
     <tag_name attr1='6'/>
@@ -15,7 +15,7 @@
 
      />
     <tag_name attr5 = '1'/>
-    <tag_name attr6="6">tag_body</tag_name>
+    <tag_name attr6="6">tag_body<b>kek</b></tag_name>
     <empty/>
     <alt_platform>
       <name>i686-pc-linux-gnu</name>

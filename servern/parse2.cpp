@@ -13,7 +13,7 @@ struct XML_PARSER2
 {
 	char tag [TAG_BUF_LEN];
 	char attr[TAG_BUF_LEN];
-	bool get_tag();
+	bool get_tag(int c =0);
 	bool get_attr();
 
 	MIOFILE* mf;
@@ -30,6 +30,11 @@ struct XML_PARSER2
 	long parse_int();
 	void assert_closing_tag(char* tag);
 	int scan_for(char* text, size_t len, const char* delim, size_t* rsize=0);
+	int unescape_for(char* text, size_t len, char delim, size_t* rsize=0)
+	{
+		char k[2]= {delim,0};
+		return scan_for(text,len,k,rsize);
+	}
 	void close_tag();
 	int skip_ws(int c=' ');
 	void skip();
@@ -40,10 +45,12 @@ struct XML_PARSER2
 };
 
 #if 0
-  <tag name="value" >  text </tag>
-  ^---^ Open
-       ^---^ Attr
-            ^-----^ AttrVal
+get()
+get_tag -> opening, closing, self-closing
+get_attr
+get_attr_value
+get_raw_contents - copy as-is
+get_contents - unescape, un-cdata, trim
 #endif
 
 long get_index(const char* table[], const size_t length, const char* needle)
@@ -107,7 +114,7 @@ int XML_PARSER2::scan_for(char* text, size_t len, const char* delim, size_t* rsi
 	return c;
 }
 
-bool XML_PARSER2::get_tag()
+bool XML_PARSER2::get_tag(int c)
 {
 	// if in a tag, then close it (skip attributes)
 	close_tag();
@@ -115,8 +122,6 @@ bool XML_PARSER2::get_tag()
 	if(is_closed) {
 		is_closed=0;
 		return false;	}
-	// skip whitespace
-	int c = skip_ws();
 	tag[0]=attr[0]=0;
 	// if there is other text, skip it
 	if(c!='<') {
@@ -124,12 +129,12 @@ bool XML_PARSER2::get_tag()
 	}
 	if(c==EOF) return false;
 	// scan tag
-	c= scan_for(tag, sizeof tag, "> \n\t");
+	size_t len;
+	c= scan_for(tag, sizeof tag, "> \n\t",&len);
 	if(c==EOF) return false;
 	in_tag=(c!='>');
 	if(c=='>') {
-		c = strlen(tag);
-		if(c && tag[c-1]=='/')
+		if(len && tag[len-1]=='/')
 			is_closed=1;
 	}
 	return (tag[0] && tag[0]!='/');
@@ -144,21 +149,22 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 	else   text=max=0;
 	if(!in_tag) return;
 	is_closed=0;
-	int c= skip_ws(' ');
-	while(1) {
-		//putc(c,stdout);
-		if(c==EOF) break;
-		else if(in_tag==2) {
-			if(c=='"' || c=='\'') { in_tag=c; goto nextchar; }
-			else if(isascii(c) && isspace(c)) {in_tag=1; break; }
+	// int c= skip_ws(' ');
+	int c = skip_ws_close(' ');
+	if(!in_tag)	return;
+	//
+	if(c=='"' || c=='\'') {
+		in_tag=c;
+		c= unescape_for(text,len,in_tag,0);
+		in_tag=1;
+	} else {
+		if(len>1) {
+			text[0]=c;
+			text++; len--;
 		}
-		else if(in_tag==c) { in_tag=1; break; }
-		if(text<max)
-			*(text++)=c;
-		nextchar:
-		c= mf->_getc();
+		c= scan_for(text,len,"> \n\t",0);
+		in_tag= (c!='>') && (c!=EOF);
 	}
-	if(len) *text=0;
 	//printf("] in_tag=%d\n",in_tag);
 }
 
@@ -221,11 +227,32 @@ void XML_PARSER2::parse_str(char* str, size_t max)
 		if(is_closed) { is_closed=str[0]=0; return; }
 		int c = skip_ws();
 		str[0]=c;
-		c= scan_for(str+1,max-1,"<");
-		//TODO: should check the closing tag
-		in_tag=1;
+		size_t len;
+		c= unescape_for(str+1,max-1,'<',&len);
 		//rtrim(str);
-		//for( 1; str>=base; isspace(*(str--)) );
+		for(len=len+1-1; len; --len) {
+			if(isspace(str[len]))
+				str[len]=0;
+		}
+		while(get_tag(c)) {
+			fprintf(stderr,"got tag in parse_str %s\n",tag);
+			skip();
+			c=0;
+		}
+		//TODO: should check the closing tag matches
+		/* if get_tag was true
+		while(get_tag()) {
+			append(str, '<', tag);
+			if(in_tag) {
+				append(str',' ');
+				scan_for(str,">");
+				append(str,'>');
+			}
+			parse_str(str);
+			append(str,'<',tag);
+			append(str,'/');
+		}
+		*/
 	}
 }
 
@@ -257,9 +284,9 @@ void parse_test_1(XML_PARSER2& xp)
 		}
 	}
 	//xp.assert_closing_tag(enclosing_tag);
-	printf("authenticator = %s\n",authenticator);
+	printf("authenticator = %s|\n",authenticator);
 	printf("tag_attr = %d\n",tag_attr);
-	printf("tag_body = %s\n",tag_body);
+	printf("tag_body = %s|\n",tag_body);
 }
 
 void parse_test(FILE* f) {
