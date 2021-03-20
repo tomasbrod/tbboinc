@@ -1,5 +1,5 @@
 <blah>
-    <authenticator>12345ABC   </a>
+    <authenticator><![CDATA[12345ABC]]>   </a>
     <unknown>Sample Text "" '' </unknown>
     <tag_name attr1="6"/>
     <tag_name attr1='6'/>
@@ -20,4 +20,17 @@
     <alt_platform>
       <name>i686-pc-linux-gnu</name>
     </alt_platform>
+    <tree>
+      Holla
+      <sample_usual id=2>
+        <!-- example of usual configuration -->
+        <listen/>
+        <files path='uploads/usual'/>
+        <trickle enable=0/>
+        <reports db=main errors=expire />
+        <expire db=main />
+        <queue files=0 trickle=0 reports=1 errors=2 expire=1 />
+        <![CDATA[ kek ]]>
+      </sample_usual>
+    </tree>
 </blah>

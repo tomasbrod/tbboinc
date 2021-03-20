@@ -1,0 +1,34 @@
+%%{
+	machine xml;
+	# space is [\t\v\f\n\r ]
+	action stag {}
+	action ctag {}
+	action sattr {}
+	action cattr {}
+	action cavalue {}
+	action endslash {}
+	action opentag {}
+	action closetag {}
+
+	trash = (any*);
+
+	tident = ( (any-space-[?!/>[]) (any-space-[/>])* )>stag$ctag;
+	aident = ( (any-space-[=/>'"])* )$cattr;
+
+	#specialvalue = ( (any-space-['"]) (any-space)* )$cavalue;
+	specialvalue = ( (any-space-['"/>])+ )$cavalue;
+	#value = ( ['] (any-['])*$cavalue ['] ) | ( ["] (any-["])*$cavalue ["] );
+	value = ( ['] (any-['])*$cavalue ['] ) | ( ["] (any-["])*$cavalue ["] );
+
+	attrtuple = space+ aident space* ('=' space* value )?;
+
+	close = '</' tident %closetag space* '>';
+	comment = '<!--' any* :>> '-->';
+	cdata = '<[CDATA[' any* :>> ']]>';
+	tag = '<' tident %opentag attrtuple* space* '/'?@endslash '>' ;
+
+	text = (any-'<');
+
+	#main := ( tag | close | comment | cdata | text )*;
+	main := attrtuple* '>'+;
+}%%
