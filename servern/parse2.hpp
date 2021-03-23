@@ -32,7 +32,7 @@ class XML_PARSER2
 	protected:
 	bool get_tag(int c);
 	int scan_for(char* text, size_t len, const char* delim, size_t* rsize=0);
-	int unescape_for(char* text, size_t len, char delim, size_t* rsize=0);
+	int unescape_for(char* text, size_t len, char delim, int c, size_t* rsize);
 	void close_tag();
 	int skip_ws(int c=' ');
 	void scan_attr(char* text, size_t len);

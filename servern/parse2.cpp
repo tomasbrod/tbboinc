@@ -59,34 +59,77 @@ int XML_PARSER2::skip_ws(int c)
 	return c;
 }
 
-int XML_PARSER2::scan_for(char* text, size_t len, const char* delim, size_t* rsize)
+int XML_PARSER2::scan_for(char* cur, size_t len, const char* delim, size_t* rsize)
 {
+	char* base = cur;
+	char* end = cur+len;
 	int c;
-	const char* base = text;
 	try {
-		while(1) {
+		while(11) {
 			c= mf->r1();
 			if(copy_buf<copy_end) *(copy_buf++)=c;
 			for(unsigned i=0; delim[i]; ++i) if(delim[i]==c) goto stop;
-			if(len>1) {
-				*text = c;
-				len--; text++;
-			}
+			if(cur<end) (*cur++)=c;
 		}
 		stop:;
 	}	catch(EStreamOutOfBounds& e) {c=EOF;}
-	if(len) *text=0;
-	if(rsize) *rsize = text-base;
+	if(cur<end) *cur=0;
+	if(len) end[-1]=0;
+	if(rsize) *rsize= cur-base;
+	//maybe we should return len if the output string was truncated
 	return c;
 }
 
-int XML_PARSER2::unescape_for(char* text, size_t len, char delim, size_t* rsize)
+static const char* entity_table[] = {
+	"#xA", "#xD", "#xa", "#xd", 
+	"amp", "apos", "gt",
+	"lt", "quot",
+};
+static const char entity_values[] = {
+	'\n', '\r', '\n', '\r',
+	'&', '\'', '>',
+	'<', '"',
+};
+
+int XML_PARSER2::unescape_for(char* cur, size_t len, char delim, int c, size_t* rsize)
 {
 	// copy one argument char
 	// track entities
 	// when etity, unescape using table and unhex
-	char k[2]= {delim,0};
-	return scan_for(text,len,k,rsize);
+	char* base = cur;
+	char* end = cur+len;
+	char* amp = 0;
+	try {
+		if(!c) goto advance;
+		again:
+		if(cur<end) {
+			if(c=='&') amp=cur;
+			if(c==';' && amp) {
+				*cur=0;
+				long li= lookup(entity_table, sizeof entity_table, amp);
+				if(li!=-1) {
+					(*amp++)= entity_values[li];
+					(*amp++)= 0;
+					cur=amp;
+				} else if((cur-amp)>2 && amp[1]=='#') {
+					(*amp++)= '_';
+					(*amp++)= 0;
+				}
+				else (*cur++)=c;
+				amp=0;
+			}
+			else (*cur++)=c;
+		}
+		advance:
+		c= mf->r1();
+		if(copy_buf<copy_end) *(copy_buf++)=c;
+		if(c!=delim) goto again;
+	}	catch(EStreamOutOfBounds& e) {c=EOF;}
+	if(cur<end) *cur=0;
+	if(len) end[-1]=0;
+	if(rsize) *rsize= cur-base;
+	//maybe we should return len if the output string was truncated
+	return c;
 }
 
 bool XML_PARSER2::get_tag(int c)
@@ -135,7 +178,7 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 	//
 	if(c=='"' || c=='\'') {
 		in_tag=c;
-		c= unescape_for(text,len,in_tag,0);
+		c= unescape_for(text,len,in_tag,0,0);
 		in_tag=1;
 	} else {
 		if(len>1) {
@@ -252,9 +295,8 @@ void XML_PARSER2::get_str(char* str, size_t max)
 			if(is_closed) { is_closed=str[0]=0; return; }
 			int c = skip_ws();
 			if(c!='<') {
-				str[0]=c;
 				size_t len=0;
-				c= unescape_for(str+1,max-1,'<',&len);
+				c= unescape_for(str,max,'<',c,&len);
 				for(len=len+1-1; len; --len) {
 					if(isspace(str[len]))
 						str[len]=0;

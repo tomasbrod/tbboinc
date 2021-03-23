@@ -3,9 +3,9 @@
 #include "boinclib/miofile.h"
 #include <fcgiapp.h>
 using std::string;
-#include "parse2.cpp"
 
 void parse_test(FILE* f);
+void parse_test_3(FILE* f);
 void kv_test();
 
 int main(void) {

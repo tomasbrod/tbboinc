@@ -1,6 +1,6 @@
 all: servern
 
-servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o
+servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o build/parse2.o
 	g++ -o $@ -g -O0 $^ -lkyotocabinet -llmdb
 
 build/boinclib.o: boinclib.cpp Makefile
@@ -29,6 +29,6 @@ build/boinclib.o: boinclib.cpp boinclib/miofile.cpp boinclib/config.h \
  boinclib/parse.h boinclib/str_util.h boinclib/filesys.cpp \
  boinclib/util.h boinclib/util.cpp boinclib/base64.h boinclib/parse.cpp
 build/kv.o: kv.cpp Stream.hpp kv.hpp
-build/servern.o: servern.cpp boinclib/miofile.h boinclib/mfile.h parse2.cpp \
+build/servern.o: servern.cpp boinclib/miofile.h boinclib/mfile.h \
  parse2.hpp Stream.hpp
 build/Stream.o: Stream.cpp Stream.hpp
