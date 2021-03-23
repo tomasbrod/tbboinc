@@ -1,0 +1,31 @@
+<server_config>
+  <database type=lmdb path=db />
+  <fastcgi threads=4 path='fcgi.sock' />
+  <listen path='plugin.sock' />
+  <listen port=3456 />
+  <id name='saran' key='1234CAFE' />
+  <subs>
+
+    <sample_fwd id=1>
+      <!-- example of work-only server -->
+      <forward to='parlon' />
+      <files to='parlon' />
+      <listen/>
+    </sample_fwd>
+
+    <postcard id=2>
+      <listen key='1234CAFE'/>
+      <report db=main queue=yes errors=queue />
+      <expire db=main notify=yes />
+      <trickle db=main notify=yes />
+      <files size=1k db=main notify=yes />
+      <files path='uploads/postcard' group=no />
+      <inputs />
+    </postcard>
+
+  </subs>
+  <peers>
+    <parlon id=1 key='1234CAFE' host=parlon port=3456 />
+    <zirkon id=2 key='1234CAFE' ip=192.168.0.12 port=3456 />
+  </peers>
+</server_config>

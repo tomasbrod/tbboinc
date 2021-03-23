@@ -1,63 +1,25 @@
 
+#include "parse2.hpp"
 #include <stdio.h>
 #include <string>
 #include <cstring>
-
 using std::string;
 
-#include "boinclib/miofile.h"
 
-#define TAG_BUF_LEN         4096
-
-struct XML_PARSER2
+XML_PARSER2::XML_PARSER2(IStream* mf) {
+	this->mf= mf;
+	tag[0]=0;
+	in_tag=0;
+	is_closed=0;
+	copy_end=copy_buf=0;
+}
+int XML_PARSER2::unescape_for(char* text, size_t len, char delim, size_t* rsize)
 {
-	char tag [TAG_BUF_LEN];
-	char attr[TAG_BUF_LEN];
-	bool get_tag(int c =0);
-	bool get_attr();
-	char*  copy_buf;
-	char*  copy_ptr;
-	char*  copy_end;
+	char k[2]= {delim,0};
+	return scan_for(text,len,k,rsize);
+}
 
-	MIOFILE* mf;
-	XML_PARSER2(MIOFILE* mf) {
-		this->mf= mf;
-		tag[0]=0;
-		in_tag=0;
-		is_closed=0;
-		copy_end=copy_buf=0;
-	}
-	void save_enclosing(char* c) {
-		strcpy(c, tag);
-	}
-	void parse_str(char* str, size_t max);
-	long parse_int();
-	void assert_closing_tag(char* tag);
-	int scan_for(char* text, size_t len, const char* delim, size_t* rsize=0);
-	int unescape_for(char* text, size_t len, char delim, size_t* rsize=0)
-	{
-		char k[2]= {delim,0};
-		return scan_for(text,len,k,rsize);
-	}
-	void close_tag();
-	int skip_ws(int c=' ');
-	void skip(char* buf=0, size_t len=0);
-	void scan_attr(char* text, size_t len);
-	int skip_ws_close(int c=' ');
-	short in_tag; /* 0- not tag, i - in tag , ' , " */
-	bool is_closed;
-};
-
-#if 0
-get()
-get_tag -> opening, closing, self-closing
-get_attr
-get_attr_value
-get_raw_contents - copy as-is
-get_contents - unescape, un-cdata, trim
-#endif
-
-long get_index(const char* table[], const size_t length, const char* needle)
+long XML_PARSER2::lookup(const char* table[], const size_t length, const char* needle)
 {
 	long l=0;
 	long r= (length/sizeof(ptrdiff_t))-1;
@@ -71,7 +33,7 @@ long get_index(const char* table[], const size_t length, const char* needle)
 	return -1;
 }
 
-const char* Table[] = {
+static const char* Table[] = {
 	"authenticator",
 	"empty",
 	"tag_name",
@@ -82,7 +44,7 @@ void XML_PARSER2::close_tag()
 {
 	while(in_tag)
 	{
-		int c= mf->_getc();
+		int c= mf->getc();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 		if(in_tag>1) {
 			if(in_tag==c) in_tag=1;
@@ -97,7 +59,7 @@ void XML_PARSER2::close_tag()
 int XML_PARSER2::skip_ws(int c)
 {
 	while( c!=EOF && isascii(c) && isspace(c) ) {
-		c= mf->_getc();
+		c= mf->getc();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 	}
 	return c;
@@ -108,7 +70,7 @@ int XML_PARSER2::scan_for(char* text, size_t len, const char* delim, size_t* rsi
 	int c;
 	const char* base = text;
 	while(1) {
-		c= mf->_getc();
+		c= mf->getc();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 		for(unsigned i=0; delim[i]; ++i) if(delim[i]==c) goto stop;
 		if(c==EOF) break;
@@ -149,10 +111,10 @@ bool XML_PARSER2::get_tag(int c)
 		if(len>1 && tag[0]!='/' && tag[len-1]=='/')
 			is_closed=1;
 	}
-	if(!strcmp(tag,"!--")) {
+	if(!strncmp(tag,"!--",3)) {
 		goto again;
 	}
-	if(!strcmp(tag,"![CDATA[")) {
+	if(!strncmp(tag,"![CDATA[",8)) {
 		fprintf(stderr,"FIXME got cdata %s\n",tag);
 		goto again; //FIXME
 	}
@@ -196,7 +158,7 @@ int XML_PARSER2::skip_ws_close(int c)
 		}
 		else if( c=='/' ) is_closed=1;
 		else if (!isascii(c) || !isspace(c)) break;
-		c= mf->_getc();
+		c= mf->getc();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 	}
 	return c;
@@ -224,7 +186,7 @@ bool XML_PARSER2::get_attr()
 	return true;
 }
 
-void XML_PARSER2::skip(char* buf, size_t len)
+void XML_PARSER2::get_tree(char* buf, size_t len)
 {
 	if(len>1) {
 		copy_ptr=copy_buf=buf;
@@ -246,7 +208,7 @@ void XML_PARSER2::skip(char* buf, size_t len)
 	}
 }
 
-void XML_PARSER2::parse_str(char* str, size_t max)
+void XML_PARSER2::get_str(char* str, size_t max)
 {
 	if(max) str[0]=0;
 	if(in_tag>1) {
@@ -258,18 +220,17 @@ void XML_PARSER2::parse_str(char* str, size_t max)
 		if(is_closed) { is_closed=str[0]=0; return; }
 		int c = skip_ws();
 		str[0]=c;
-		size_t len;
-		c= unescape_for(str+1,max-1,'<',&len);
+		size_t len=0;
+		if(c!='<') {
+			c= unescape_for(str+1,max-1,'<',&len);
+			//rtrim(str);
+			for(len=len+1-1; len; --len) {
+				if(isspace(str[len]))
+					str[len]=0;
+			}
+		}
+		else str[0]=0;
 		
-		if(!strcmp(str,"<![CDATA[")) {
-			fprintf(stderr,"FIXME got cdata %s\n",tag);
-			//FIXME
-		}
-		//rtrim(str);
-		for(len=len+1-1; len; --len) {
-			if(isspace(str[len]))
-				str[len]=0;
-		}
 		// reference behaviour is to throw if there are any other tags in the string
 		// in ideal case, consistently return the unescaped contents
 		// if there are any other tags, skip until end tag
@@ -288,25 +249,25 @@ void parse_test_1(XML_PARSER2& xp)
 	char tree[1024];
 	int tag_attr=0;
 	tag_body[0]=authenticator[0]=0;
-	xp.save_enclosing(enclosing_tag);
+	//xp.save_enclosing(enclosing_tag);
 	while(xp.get_tag()) {
-		long ix = get_index(Table,sizeof Table, xp.tag);
+		long ix = xp.lookup(Table,sizeof Table, xp.tag);
 		printf("tag: %s n:%ld\n",xp.tag,ix);
 		switch(ix) {
 		case 0:
-			xp.parse_str(authenticator, sizeof authenticator);
+			xp.get_str(authenticator, sizeof authenticator);
 			break;
 		case 2:
 			while(xp.get_attr()) {
-				xp.parse_str(tag_body, sizeof tag_body);
+				xp.get_str(tag_body, sizeof tag_body);
 				printf(" attr: %s in_tag=%d text: %s\n",xp.attr,xp.in_tag,tag_body);
 				/*if(!strcmp(xp.attr,"attr"))
 					tag_attr= xp.parse_int();*/
 			}
-			xp.parse_str(tag_body, sizeof tag_body);
+			xp.get_str(tag_body, sizeof tag_body);
 			break;
 		case 3:
-			xp.skip(tree,sizeof(tree));
+			xp.get_tree(tree,sizeof(tree));
 		default:
 			xp.skip();
 		}
@@ -320,7 +281,7 @@ void parse_test_1(XML_PARSER2& xp)
 
 void parse_test(FILE* f) {
 	bool flag;
-	MIOFILE mf;
+	CFileStream mf(f);
 	XML_PARSER2 xp(&mf);
 	char name[64];
 	char foo[64];
@@ -329,7 +290,6 @@ void parse_test(FILE* f) {
 	string s;
 
 	strcpy(name, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-	mf.init_file(f);
 	/*if (!xp.parse_start("blah")) {
 		printf("missing start tag\n");
 		return;
@@ -341,12 +301,11 @@ void parse_test(FILE* f) {
 
 
 void parse_test_3(FILE* f) {
-	MIOFILE mf;
+	CFileStream mf(f);
 	XML_PARSER2 xp(&mf);
 	char name[64];
 
 	strcpy(name, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-	mf.init_file(f);
 	int level = 0;
 	do {
 		if(xp.get_tag()) {

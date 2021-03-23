@@ -3,7 +3,7 @@ all: servern
 servern: build/servern.o build/boinclib.o build/kv.o
 	g++ -o $@ -g -O0 $^ -lkyotocabinet -llmdb
 
-build/servern.o: servern.cpp parse2.cpp Makefile
+build/servern.o: servern.cpp parse2.cpp parse2.hpp Stream.cpp build/defs.hpp Makefile
 	g++ -c -o $@ -g -O0 $<
 
 build/boinclib.o: boinclib.cpp

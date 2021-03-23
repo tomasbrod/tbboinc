@@ -1,5 +1,5 @@
 <blah>
-    <authenticator><![CDATA[12345ABC]]>   </a>
+    <authenticator>12345ABC   </a>
     <unknown>Sample Text "" '' </unknown>
     <tag_name attr1="6"/>
     <tag_name attr1='6'/>

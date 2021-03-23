@@ -1,8 +1,10 @@
 #pragma once
+#include <unistd.h>
+#include <stdexcept>
 
 typedef unsigned char byte;
 
-struct EStreamOutOufBounds
+struct EStreamOutOfBounds
 	: std::exception
 { const char * what () const noexcept {return "Stream access Out Ouf Bounds";} };
 
@@ -14,6 +16,9 @@ struct CBuffer
 
 	size_t pos() const {
 		return cur - base;
+	}
+	size_t length() const {
+		return wend - base;
 	}
 	void reset() {
 		base=wend=cur=0;
@@ -133,13 +138,52 @@ namespace StreamInternals
 			p[7]=v>>56;
 		}
 
+		int getc()
+		{
+			try {
+				return this->getdata(1,0)[0];
+			} catch(EStreamOutOfBounds&) {
+				return EOF;
+			}
+		}
+
+	};
+
+	class Virtual
+	{
+		protected:
+		virtual byte* outofbounds(size_t len, bool wr) =0;
+		CBuffer buffer;
+		size_t chunk_pos;
+		public:
+		byte* getdata(size_t len, bool wr)
+		{
+			byte* ret= buffer.cur;
+			buffer.cur+=len;
+			if(buffer.cur>buffer.wend)
+				return outofbounds(len,wr);
+			else return ret;
+		}
+		size_t pos() const { return chunk_pos + buffer.pos(); }
+		virtual void setpos(size_t pos) =0;
+		virtual void skip(unsigned displacement)
+		{
+			byte* p = buffer.cur + displacement;
+			if(p >= buffer.base && p < buffer.wend)
+				buffer.cur=p;
+			else
+				setpos(pos()+displacement);
+		}
+		//virtual size_t left() =0;
+		//virtual size_t length() =0;
+		//virtual void read(void* buf, size_t len) =0;
+		//virtual void write(void* buf, size_t len) =0;
+		virtual ~Virtual() {}
 	};
 
 };
 
-struct CUnchStream : StreamInternals::PartOne<StreamInternals::Unchecked>
-{
-};
+struct CUnchStream : StreamInternals::PartOne<StreamInternals::Unchecked> {};
 
 template <size_t SIZE>
 struct CStUnStream : CUnchStream
@@ -152,34 +196,66 @@ struct CStUnStream : CUnchStream
 	}
 };
 
-class CStream // TODO
+struct IStream : StreamInternals::PartOne<StreamInternals::Virtual> {};
+
+struct CBufStream : IStream
+{
+	// moveable from CBuffer
+	CBufStream(const CBuffer& ibuf) {buffer=ibuf;}
+	CBufStream() = default;
+	// convert back to CBuffer derived object
+	void release(CBuffer& obuf) {obuf=buffer;}
+	// implements IStream
+	virtual void setpos(size_t pos) { throw EStreamOutOfBounds(); }
+	protected:
+	virtual byte* outofbounds(size_t len, bool wr){throw EStreamOutOfBounds();}
+};
+
+struct CFileStream : IStream
+{
+	int file;
+	byte static_buffer[512];
+	CFileStream(int ifile) {file=ifile; buffer.reset(); chunk_pos=0;}
+	CFileStream(FILE* ifile) {file=fileno(ifile); buffer.reset(); chunk_pos=0;}
+	// flush method
+	void flush();
+	// implements IStream
+	virtual void setpos(size_t pos) {
+		if(pos!=lseek(file, pos, SEEK_SET))
+			throw std::runtime_error("CFileStream seek failed");
+		chunk_pos=pos;
+		ssize_t rc= read(file, static_buffer, sizeof(static_buffer));
+		if(rc<0)
+			throw std::runtime_error("CFileStream read failed");
+		if(rc==0)
+			throw EStreamOutOfBounds();
+		buffer.reset(static_buffer,rc);
+	}
+	protected:
+	virtual byte* outofbounds(size_t len, bool wr)
+	{
+		if(len>sizeof(static_buffer))
+			throw std::runtime_error("CFileStream read too big");
+		buffer.cur-=len;
+		setpos(pos());
+		buffer.cur+=len;
+		return buffer.base;
+	}
+};
+
+static void t() {
+	IStream* i;
+	CBufStream bs;
+	//i->outofbounds(1,2);
+}
+
+
+
+class CStreamzzzz // TODO
 	: CUnchStream
 {
-	protected:
-	byte *base;
-	byte *cur;
-	byte *wend;
 
 	public:
-
-	CStream()
-		:base(0), wend(0)
-	{ setpos(0); }
-	CStream(byte *ibase,	size_t isize)
-		:base(ibase), wend(ibase+isize)
-	{ setpos(0); }
-
-	size_t length() const {
-		return wend - base;
-	}
-	
-	const byte* getbase() const {
-		return base;
-	}
-	
-	byte* getbase() {
-		return base;
-	}
 
 	void read(void *dest, size_t len) {
 		byte* x=this->getdata(len,0);
