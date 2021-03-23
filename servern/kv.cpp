@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <vector>
 #include <stdexcept>
-#include "Stream.cpp"
+#include "Stream.hpp"
 #include "kv.hpp"
 
 using std::string;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "Stream.cpp"
+#include "Stream.hpp"
 
 #define TAG_BUF_LEN         4096
 
@@ -37,4 +37,5 @@ class XML_PARSER2
 	int skip_ws(int c=' ');
 	void scan_attr(char* text, size_t len);
 	int skip_ws_close(int c=' ');
+	bool skip_comments(char c);
 };

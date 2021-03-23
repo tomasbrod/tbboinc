@@ -13,11 +13,6 @@ XML_PARSER2::XML_PARSER2(IStream* mf) {
 	is_closed=0;
 	copy_end=copy_buf=0;
 }
-int XML_PARSER2::unescape_for(char* text, size_t len, char delim, size_t* rsize)
-{
-	char k[2]= {delim,0};
-	return scan_for(text,len,k,rsize);
-}
 
 long XML_PARSER2::lookup(const char* table[], const size_t length, const char* needle)
 {
@@ -44,22 +39,21 @@ void XML_PARSER2::close_tag()
 {
 	while(in_tag)
 	{
-		int c= mf->getc();
+		int c= mf->r1();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 		if(in_tag>1) {
 			if(in_tag==c) in_tag=1;
 		}
 		else if(c=='>') { in_tag=0; break; }
 		else if(c=='"' || c=='\'') in_tag=c;
-		else if(c==EOF) in_tag=0;
 		is_closed=(c=='/');
 	}
 }
 
 int XML_PARSER2::skip_ws(int c)
 {
-	while( c!=EOF && isascii(c) && isspace(c) ) {
-		c= mf->getc();
+	while( isascii(c) && isspace(c) ) {
+		c= mf->r1();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 	}
 	return c;
@@ -69,56 +63,61 @@ int XML_PARSER2::scan_for(char* text, size_t len, const char* delim, size_t* rsi
 {
 	int c;
 	const char* base = text;
-	while(1) {
-		c= mf->getc();
-		if(copy_buf<copy_end) *(copy_buf++)=c;
-		for(unsigned i=0; delim[i]; ++i) if(delim[i]==c) goto stop;
-		if(c==EOF) break;
-		if(len>1) {
-			*text = c;
-			len--; text++;
+	try {
+		while(1) {
+			c= mf->r1();
+			if(copy_buf<copy_end) *(copy_buf++)=c;
+			for(unsigned i=0; delim[i]; ++i) if(delim[i]==c) goto stop;
+			if(len>1) {
+				*text = c;
+				len--; text++;
+			}
 		}
-	}
-	stop:
+		stop:;
+	}	catch(EStreamOutOfBounds& e) {c=EOF;}
 	if(len) *text=0;
 	if(rsize) *rsize = text-base;
 	return c;
 }
 
+int XML_PARSER2::unescape_for(char* text, size_t len, char delim, size_t* rsize)
+{
+	// copy one argument char
+	// track entities
+	// when etity, unescape using table and unhex
+	char k[2]= {delim,0};
+	return scan_for(text,len,k,rsize);
+}
+
 bool XML_PARSER2::get_tag(int c)
 {
-	again:
-	// if in a tag, then close it (skip attributes)
-	close_tag();
-	// if this was self-closing tag - return false
-	if(is_closed) {
-		is_closed=0;
-		return false;	}
-	tag[0]=attr[0]=0;
-	// if there is other text, skip it
-	if(c!='<') {
-		c= scan_for(0,0,"<");
+	try {
+		do {
+			// if in a tag, then close it (skip attributes)
+			close_tag();
+			// if this was self-closing tag - return false
+			if(is_closed) {
+				is_closed=0;
+				return false;	}
+			tag[0]=attr[0]=0;
+			// if there is other text, skip it
+			if(c!='<') {
+				c= scan_for(0,0,"<");
+			}
+			//save pointer just before the tag, in case this is the closing tag of the tree
+			copy_ptr=copy_buf-1;
+			// scan tag
+			size_t len;
+			c= scan_for(tag, sizeof tag, "!> \n\t",&len);
+			in_tag=(c!='>');
+			if(c=='>') {
+				if(len>1 && tag[0]!='/' && tag[len-1]=='/')
+					is_closed=1;
+			}
+		} while(c=='!' && skip_comments(c));
+		return (tag[0] && tag[0]!='/');
 	}
-	//save pointer just before the tag, in case this is the closing tag of the tree
-	copy_ptr=copy_buf-1;
-	if(c==EOF) return false;
-	// scan tag
-	size_t len;
-	c= scan_for(tag, sizeof tag, "> \n\t",&len);
-	if(c==EOF) return false;
-	in_tag=(c!='>');
-	if(c=='>') {
-		if(len>1 && tag[0]!='/' && tag[len-1]=='/')
-			is_closed=1;
-	}
-	if(!strncmp(tag,"!--",3)) {
-		goto again;
-	}
-	if(!strncmp(tag,"![CDATA[",8)) {
-		fprintf(stderr,"FIXME got cdata %s\n",tag);
-		goto again; //FIXME
-	}
-	return (tag[0] && tag[0]!='/');
+	catch(EStreamOutOfBounds&) {return false;}
 }
 
 
@@ -144,7 +143,7 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 			text++; len--;
 		}
 		c= scan_for(text,len,"> \n\t",0);
-		in_tag= (c!='>') && (c!=EOF);
+		in_tag= (c!='>');
 	}
 	//printf("] in_tag=%d\n",in_tag);
 }
@@ -152,13 +151,13 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 int XML_PARSER2::skip_ws_close(int c)
 {
 	while( 1 ) {
-		if(c=='>' || c==EOF) {
+		if(c=='>') {
 			in_tag=0;
 			return c;
 		}
 		else if( c=='/' ) is_closed=1;
 		else if (!isascii(c) || !isspace(c)) break;
-		c= mf->getc();
+		c= mf->r1();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
 	}
 	return c;
@@ -166,23 +165,55 @@ int XML_PARSER2::skip_ws_close(int c)
 
 bool XML_PARSER2::get_attr()
 {
-	int c=' ';
-	// in attribute? skip it (using parse_str or something)
-	if(in_tag>1)
-		scan_attr(0,0);
-	if(!in_tag)
-		return false;
-	// whitespace
-	c = skip_ws_close(c);
-	if(!in_tag)	return false;
-	// start of attr name
-	attr[0]=c;
-	c= scan_for(attr+1, sizeof(attr)-1, "=/> \n\t");
-	// whitespace
-	c = skip_ws_close(c);
-	//
-	if(c!='=') return in_tag = 0;
-	in_tag=2;
+	try {
+		int c=' ';
+		// in attribute? skip it (using parse_str or something)
+		if(in_tag>1)
+			scan_attr(0,0);
+		if(!in_tag)
+			return false;
+		// whitespace
+		c = skip_ws_close(c);
+		if(!in_tag)	return false;
+		// start of attr name
+		attr[0]=c;
+		c= scan_for(attr+1, sizeof(attr)-1, "=/> \n\t");
+		// whitespace
+		c = skip_ws_close(c);
+		//
+		if(c!='=') return in_tag = 0;
+		in_tag=2;
+		return true;
+	}
+	catch(EStreamOutOfBounds&) {return false;}
+}
+
+bool XML_PARSER2::skip_comments(char c)
+{
+	//               0  3 5 7     13 16
+	const char tr[]="!----> [CDATA[]]> > ";
+	int i=0;
+	while(1) {
+
+		if(c==tr[i]) i++;
+		else if(i==0) return false;
+		else if(i==1 && c==tr[7]) i=8;
+		else if(i<3) i=18;
+		else if(i==5 && c==tr[4]) i=5;
+		else if(i<=5) i=3;
+		else if(i<=13) i=18;
+		else if(i==16 && c==tr[15]) i=16;
+		else if(i<=16) i=14;
+		else if(i<=18) i=18;
+		//fprintf(stderr,"skip_comments '%c' -> %d\n",c,i);
+
+		if(tr[i]==' ') break;
+		if(i==18 && c==tr[i]) break;
+
+		c=mf->r1();
+		if(copy_buf<copy_end) *(copy_buf++)=c;
+	}
+	is_closed=in_tag=0;
 	return true;
 }
 
@@ -211,35 +242,35 @@ void XML_PARSER2::get_tree(char* buf, size_t len)
 void XML_PARSER2::get_str(char* str, size_t max)
 {
 	if(max) str[0]=0;
-	if(in_tag>1) {
-		scan_attr(str,max);
-	} else if(max<2) {
-		skip();
-	} else {
-		close_tag();
-		if(is_closed) { is_closed=str[0]=0; return; }
-		int c = skip_ws();
-		str[0]=c;
-		size_t len=0;
-		if(c!='<') {
-			c= unescape_for(str+1,max-1,'<',&len);
-			//rtrim(str);
-			for(len=len+1-1; len; --len) {
-				if(isspace(str[len]))
-					str[len]=0;
+	try {
+		if(in_tag>1) {
+			scan_attr(str,max);
+		} else if(max<2) {
+			skip();
+		} else {
+			close_tag();
+			if(is_closed) { is_closed=str[0]=0; return; }
+			int c = skip_ws();
+			if(c!='<') {
+				str[0]=c;
+				size_t len=0;
+				c= unescape_for(str+1,max-1,'<',&len);
+				for(len=len+1-1; len; --len) {
+					if(isspace(str[len]))
+						str[len]=0;
+				}
+			}
+			// reference behaviour is to throw if there are any other tags in the string
+			// in ideal case, consistently return the unescaped contents
+			// if there are any other tags, skip until end tag
+			while(get_tag(c)) {
+				//fprintf(stderr,"got tag in parse_str %s\n",tag);
+				skip();
+				c=0;
 			}
 		}
-		else str[0]=0;
-		
-		// reference behaviour is to throw if there are any other tags in the string
-		// in ideal case, consistently return the unescaped contents
-		// if there are any other tags, skip until end tag
-		while(get_tag(c)) {
-			fprintf(stderr,"got tag in parse_str %s\n",tag);
-			skip();
-			c=0;
-		}
 	}
+	catch(EStreamOutOfBounds&) {};
 }
 
 void parse_test_1(XML_PARSER2& xp)
