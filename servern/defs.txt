@@ -24,7 +24,7 @@ cpu_req_secs float
 cpu_req_instances float
 estimated_delay float
 client_cap_plan_class int
-code_sign_key string
+code_sign_key string 1024
 #^ copy_element_contents, strip_whitespace
 working_global_preferences ignore
 global_preferences ignore

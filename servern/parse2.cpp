@@ -3,8 +3,17 @@
 #include <stdio.h>
 #include <string>
 #include <cstring>
+#include <vector>
 using std::string;
 
+/* exception todo
+have the get_str raise on overflow
+have get_int/float raise on bad format
+have get_enum raise on unknown values
+have lookup_tag, lookup_attr raise on unknowns
+provide array_too_long
+provide missing_tag
+*/
 
 XML_PARSER2::XML_PARSER2(IStream* mf) {
 	this->mf= mf;
@@ -120,6 +129,9 @@ int XML_PARSER2::unescape_for(char* cur, size_t len, char delim, int c, size_t* 
 			}
 			else (*cur++)=c;
 		}
+		// overflow reporting
+		else if(len) throw EXmlParse(*this, "string too long");
+		// overflow reporting
 		advance:
 		c= mf->r1();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
@@ -156,6 +168,7 @@ bool XML_PARSER2::get_tag(int c)
 			if(c=='>') {
 				if(len>1 && tag[0]!='/' && tag[len-1]=='/')
 					is_closed=1;
+					//tag[len-1]=0;
 			}
 		} while(c=='!' && skip_comments(c));
 		return (tag[0] && tag[0]!='/');
@@ -210,7 +223,8 @@ bool XML_PARSER2::get_attr()
 {
 	try {
 		int c=' ';
-		// in attribute? skip it (using parse_str or something)
+		do {
+		// in attribute? skip it (using get_str or something)
 		if(in_tag>1)
 			scan_attr(0,0);
 		if(!in_tag)
@@ -226,6 +240,7 @@ bool XML_PARSER2::get_attr()
 		//
 		if(c!='=') return in_tag = 0;
 		in_tag=2;
+		}while(attr[0]=='-');
 		return true;
 	}
 	catch(EStreamOutOfBounds&) {return false;}
@@ -263,6 +278,7 @@ bool XML_PARSER2::skip_comments(char c)
 void XML_PARSER2::get_tree(char* buf, size_t len)
 {
 	if(len>1) {
+		close_tag();
 		copy_ptr=copy_buf=buf;
 		copy_end=buf+len-1;
 	}
@@ -306,13 +322,113 @@ void XML_PARSER2::get_str(char* str, size_t max)
 			// in ideal case, consistently return the unescaped contents
 			// if there are any other tags, skip until end tag
 			while(get_tag(c)) {
-				//fprintf(stderr,"got tag in parse_str %s\n",tag);
+				//fprintf(stderr,"got tag in get_str %s\n",tag);
 				skip();
 				c=0;
 			}
 		}
 	}
 	catch(EStreamOutOfBounds&) {};
+}
+
+void XML_PARSER2::get_string(std::string& str, size_t max)
+{
+	std::vector<char> buf (max);
+	get_str(buf.data(), max);
+	str = buf.data();
+};
+
+
+static const char* Table_boolean[] = {
+	"true", "1", "yes",
+	"false", "0", "no",
+};
+
+bool XML_PARSER2::get_bool()
+{
+	if(is_closed) //presence of <tag/> means true
+		return true;
+	char buf[32];
+	get_str(buf,sizeof(buf));
+	long ix = lookup(Table_boolean,sizeof Table_boolean, buf);
+	if(ix==-1) throw EXmlParse(*this,"invalid boolean value");
+	return (ix < 3 );
+}
+
+long XML_PARSER2::get_long()
+{
+	char buf[256], *end;
+	get_str(buf, sizeof buf);
+	errno = 0;
+	long val = strtol(buf, &end, 0);
+	if (errno || *end) throw EXmlParse(*this,"invalid integer value");
+	return val;
+}
+
+double XML_PARSER2::get_double()
+{
+	char buf[256], *end;
+	get_str(buf, sizeof buf);
+	errno = 0;
+	double val = strtod(buf, &end);
+	if (errno || *end) throw EXmlParse(*this,"invalid float value");
+	return val;
+}
+
+unsigned long XML_PARSER2::get_ulong()
+{
+	char buf[256], *end;
+	get_str(buf, sizeof buf);
+	errno = 0;
+	unsigned long val = strtoul(buf, &end, 0);
+	if (errno || *end) throw EXmlParse(*this,"invalid unsigned value");
+	return val;
+}
+
+unsigned long long XML_PARSER2::get_uquad()
+{
+	char buf[256], *end;
+	get_str(buf, sizeof buf);
+	errno = 0;
+	unsigned long long val = strtoull(buf, &end, 0);
+	if (errno || *end) throw EXmlParse(*this,"invalid unsigned value");
+	return val;
+}
+
+short XML_PARSER2::get_enum_value(const char* table[], const size_t length)
+{
+	char buf[32];
+	get_str(buf,sizeof(buf));
+	long ix = lookup(table, length, buf);
+	if(ix==-1) throw EXmlParse(*this,"invalid enumerated value");
+	return ix;
+}
+
+const char* XML_PARSER2::array_too_long = "array too long";
+const char* XML_PARSER2::duplicate_field = "is duplicate";
+const char* XML_PARSER2::unknown_field = "not expected";
+
+EXmlParse::EXmlParse( const XML_PARSER2& xp, const char* _msg )
+{
+	if(xp.attr[0]) {
+		snprintf(buf, sizeof buf, "at xml tag %s, attr %s, %s", xp.tag, xp.attr, _msg);
+	} else {
+		snprintf(buf, sizeof buf, "at xml tag %s, %s", xp.tag, _msg);
+	}
+}
+
+EXmlParse::EXmlParse( const XML_PARSER2& xp, bool _attr, const char* _name )
+{
+	if(_attr) {
+		snprintf(buf, sizeof buf, "at xml tag %s, missing attribute %s", xp.tag, _name);
+	} else {
+		snprintf(buf, sizeof buf, "at xml tag %s, missing tag %s", xp.tag, _name);
+	}
+}
+
+const char * EXmlParse::what () const noexcept
+{
+	return buf;
 }
 
 void parse_test_1(XML_PARSER2& xp)

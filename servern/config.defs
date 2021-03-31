@@ -1,0 +1,78 @@
+hpp build/cofig.hpp
+cpp build/cofig.cpp
+
+struct t_config_database
+type attr varchar 7
+path attr string 1024
+#other db options, like locking
+%
+
+struct t_config_fastcgi
+threads attr int def=62
+path attr string 1024
+%
+
+struct t_config_listen
+port attr int
+path attr string 1024
+%
+
+struct t_config_id
+name attr string 1024
+keyfile attr string 1024 def=
+%
+
+struct t_config_subs_files
+%
+
+struct t_config_subs
+name tagname string 20
+id attr int
+key attr string 64 def=
+report_db attr string 16 def=main
+success attr enum notify,fail def=notify
+errors attr enum queue,expire def=expire
+expire attr enum notify,queue,disable def=notify
+files attr enum queue,store def=store
+trickle_db attr string 16 def=main
+trickle attr enum queue,store,ignore def=ignore
+filesv vector struct t_config_subs_files tag=files
+inputs skip
+%
+
+struct t_config_peers
+name tagname string 20
+id attr int
+host attr string 512 def=
+ip attr string 128 def=
+port attr int
+%
+
+struct t_config_signature
+id attr string 64
+content content string 1024
+%
+
+struct t_config_server_keys_old
+expire attr long
+content content string 64
+%
+
+struct t_config_server_keys
+master string 64
+old vector structn
+%
+
+struct t_config
+database structn
+fastcgi structn
+listen structn
+id structn
+signature structn
+server_keys structn opt=has_keys
+subs vector structn innertag=*
+peers vector structn innertag=* vmax=56
+codesign string 1024
+bullshit enum aa,bb,cc
+stdio boolp
+%

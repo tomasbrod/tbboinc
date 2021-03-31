@@ -4,3 +4,6 @@
 #include "filesys.cpp"
 #include "util.cpp"
 #include "parse.cpp"
+#include "md5.cpp"
+#include "md5_file.cpp"
+#include "crypt.cpp"

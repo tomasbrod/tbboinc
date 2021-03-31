@@ -22,224 +22,391 @@
  * lastis=id - optional (0..n), like opt, but allow duplicates and last wins
 */
 
-
-function generateFieldType($field,$i) {
-  if($i>0) $field=array_slice($field, $i, 99999, false);
-  if($field[0]=="transient") {
-    generateFieldType($field,1);
-  } elseif($field[0]=="varchar") {
-    echo "immstring<$field[1]>";
-  } elseif($field[0]=="id") {
-    echo "long";
-  } elseif($field[0]=="vector") {
-    echo "std::vector< ";
-    generateFieldType($field,1,3);
-    echo " >";
-  } elseif($field[0]=="int" or $field[0]=="bool" or $field[0]=="long" or $field[0]=="double" or $field[0]=="float") {
-    echo $field[0];
-  } elseif($field[0]=="ulong") {
-    echo "unsigned long";
-  } elseif($field[0]=="uquad") {
-    echo "unsigned long long";
-  } elseif($field[0]=="string" or $field[0]=="element") {
-    echo "std::string";
-  } else {
-    echo "#error $field[0]";
-  }
-}
-
-function generateStructBody($arr) {
-  foreach($arr as $field) {
-    if($field[1]=='ignore') continue;
-    echo "  ";
-    generateFieldType($field,1,1);
-    echo " $field[0];\n";
-  }
-}
-
-function generateTable($name,$table) {
-  echo "const char* ".$name."::tag_table [] = {\n";
-  foreach($table as $row) {
-    echo " \"$row[0]\",\n";
-  }
-  echo "};\n\n";
-}
-
-function getSorted_compare($l,$r) {
-  return strcmp($l[0],$r[0]);
-}
-
-function getSorted($arr) {
-  $res=$arr;
-  usort($res,"getSorted_compare");
-  return $res;
-}
-
-function generateVectorFieldParse($ref,$field)
+class Struct
 {
-  $tab = "    ";
-  if(isset($field['innertag'])):
+	public $name=NULL;
+	public $fields=array();
+	public $attrs=array();
+	public $tags=array();
+	public $content=NULL;
+	public $tagname=NULL;
+	public $flags=0;
+	public $enums=array();
+	public $optflags=array();
+};
+
+function generateFieldType($struct,$field,$i) {
+	$type=$field->type;
+	if($type[$i]=="varchar") {
+		echo "immstring<".$type[$i+1].">";
+		if(isset($field->def)) $field->def= '"'.$field->def.'"';
+	} elseif($type[$i]=="id") {
+		echo "long";
+	} elseif($type[$i]=="vector") {
+		echo "std::vector< ";
+		generateFieldType($struct,$field,$i+1);
+		echo " >";
+		$field->def='.clear()';
+	} elseif($type[$i]=="int" or $type[$i]=="bool" or $type[$i]=="long" or $type[$i]=="double" or $type[$i]=="float") {
+		echo $type[$i];
+	} elseif($type[$i]=="ulong") {
+		echo "unsigned long";
+	} elseif($type[$i]=="uquad") {
+		echo "unsigned long long";
+	} elseif($type[$i]=="string" or $type[$i]=="element") {
+		echo "std::string";
+		if(isset($field->def)) $field->def= '"'.$field->def.'"';
+	} elseif($type[$i]=="boolp") {
+		echo "bool";
+		$field->def=0;
+	} elseif($type[$i]=="struct") {
+		echo $type[$i+1];
+	} elseif($type[$i]=="structn") {
+		echo $struct->name."_".$field->name;
+		//$type[$i]='struct';
+		//$type[$i+1]=$struct->name."_".$field->name;
+	} elseif($type[$i]=="enum") {
+		echo "short";
+		$field->enum = explode(',',$type[$i+1]);
+		$struct->enums += array_flip($field->enum);
+		if(isset($field->def)) $field->def= 'v_'.$field->def;
+	} else {
+		echo "#error $type[$i]";
+	}
+}
+
+function generateStructBody($struct) {
+	foreach($struct->fields as $field) {
+		$field->name=$field->type[0];
+		if(!isset($field->tag)) $field->tag = $field->name;
+		$field->serialize=true;
+		array_shift($field->type);
+		if($field->type[0]=='attr') {
+			array_shift($field->type);
+			$struct->attrs[]=$field;
+		}
+		elseif($field->type[0]=='content') {
+			array_shift($field->type);
+			$field->def='';
+			$struct->content=$field;
+		}
+		elseif($field->type[0]=='tagname') {
+			array_shift($field->type);
+			$struct->tagname=$field;
+		} elseif($field->type[0]=='transient') {
+			array_shift($field->type);
+			$field->serialize=false;
+		} elseif($field->type[0]=='ignore' or $field->type[0]=='skip') {
+			$field->serialize=false;
+			$struct->tags[]=$field;
+		} else {
+			$struct->tags[]=$field;
+		}
+		if($field->type[0]=='skip') $field->type[0]='ignore';
+		if($field->type[0]=='ignore') continue;
+		ob_start();
+		echo "  ";
+		generateFieldType($struct,$field,0);
+		echo " $field->name;\n";
+		if(!isset($field->def) and !isset($field->opt) and $field->serialize) {
+			$field->optx=$struct->flags;
+			$struct->flags++;
+			//todo: do not for structs?
+		}
+		if($field->serialize)
+			ob_end_flush();
+			else ob_end_clean();
+		if(isset($field->opt)) {
+			echo "  bool {$field->opt};\n";
+			$struct->optflags[]=$field->opt;
+		}
+		if(isset($field->def)) {
+			if($field->def==='""') $field->def= '.clear()';
+			if(is_numeric($field->def) or $field->def[0]!='.') $field->def= '= '.$field->def;
+		}
+	}
+	if($struct->enums) {
+		$struct->enums=array_keys($struct->enums);
+		sort($struct->enums);
+		echo "  enum { ";
+		foreach($struct->enums as $v) {
+			echo "v_$v, ";
+		} echo "};\n";
+		echo "  static const char* enum_table [".sizeof($struct->enums)."];\n";
+	}
+	if($struct->tags) {
+		usort($struct->tags,"compare_by_tag_str");
+		echo "  static const char* tag_table [".sizeof($struct->tags)."];\n";
+	}
+	if($struct->attrs) {
+		usort($struct->attrs,"compare_by_tag_str");
+		echo "  static const char* attr_table [".sizeof($struct->attrs)."];\n";
+	}
+	//var_dump($struct);
+}
+
+function generateTables($struct) {
+	if($struct->tags) {
+		echo "const char* ".$struct->name."::tag_table [".sizeof($struct->tags)."] = {\n";
+		foreach($struct->tags as $row) {
+			echo " \"".$row->tag."\",\n";
+		}
+		echo "};\n\n";
+	}
+	if($struct->attrs) {
+		echo "const char* ".$struct->name."::attr_table [".sizeof($struct->attrs)."] = {\n";
+		foreach($struct->attrs as $row) {
+			echo " \"".$row->tag."\",\n";
+		}
+		echo "};\n\n";
+	}
+	if($struct->enums) {
+		echo "const char* ".$struct->name."::enum_table [".sizeof($struct->enums)."] = {\n";
+		foreach($struct->enums as $row) {
+			echo " \"".$row."\",\n";
+		}
+		echo "};\n\n";
+	}
+}
+
+function compare_by_tag_str($l,$r) {
+	return strcmp($l->tag,$r->tag);
+}
+
+
+function generateVectorFieldParse($ref,$field,$i)
+{
+	$tab = "\t\t\t";
+	if(isset($field->innertag)):
 ?>
-    while(1) {
-    if(xp.get_tag()) throw EParseXML();
-    if(xp.parsed_tag[0]=='/') break;
-    if(!strcmp(xp.parsed_tag,"<?=$field['innertag']?>")) {
-    <?=$ref?>.emplace_back();
-<?php generateFieldParse("$ref.back()",array_slice($field,1)); ?>
-    } else xp.unknown_tag();
-    }<?php
-  else:
-    echo $tab."$ref.emplace_back();\n";
-    generateFieldParse("$ref.back()",array_slice($field,1));
-  endif;
+		while(xp.get_tag()) {
+<?php if($field->innertag!='*'): ?>
+			if(strcmp(xp.tag,"<?=$field->innertag?>")) continue;
+<?php endif; 
+		if(!empty($field->vmax))
+			echo $tab."if( $ref.size() >= {$field->vmax} ) throw EXmlParse(xp, xp.array_too_long);\n";
+?>
+			<?=$ref?>.emplace_back();
+<?php generateFieldParse("$ref.back()",$field,$i); ?>
+		}
+<?php	else:
+		if(!empty($field->vmax))
+			echo $tab."if( $ref.size() >= {$field->vmax} ) throw EXmlParse(xp, xp.array_too_long);\n";
+		echo $tab."$ref.emplace_back();\n";
+		generateFieldParse("$ref.back()",$field,$i);
+	endif;
 }
-  
+	
 
-function generateFieldParse($ref,$field)
+function generateFieldParse($ref,$field,$i)
 {
-  $tab = "    ";
-  if($field[1]=='varchar') {
-    echo $tab."xp.parse_str($ref, $field[2]);\n";
-  }
-  else if($field[1]=='id' or $field[1]=='int' or $field[1]=='long') {
-    echo $tab."$ref= xp.parse_long();\n";
-  }
-  else if($field[1]=='vector') {
-    generateVectorFieldParse($ref,$field);
-  }
-  else if($field[1]=='ignore') {
-    echo $tab."xp.ignore_tag();\n";
-  }
-  else if($field[1]=='bool') {
-    echo $tab."$ref= xp.parse_bool();\n";
-  }
-  else if($field[1]=='string') {
-    echo $tab."xp.parse_string($ref);\n";
-  }
-  else if($field[1]=='float' or $field[1]=='double') {
-    echo $tab."$ref= xp.parse_double();\n";
-  }
-  else echo $tab."#error parse $field[0] $field[1] :)\n";
+	$tab = "\t\t\t";
+
+	$flag=false;
+	if(isset($field->optx)) $flag="flags[{$field->optx}]";
+	if(isset($field->opt))  $flag=$field->opt;
+	if($flag) {
+		echo $tab."if($flag) throw EXmlParse(xp,xp.duplicate_field);\n";
+		echo $tab.$flag."=1;\n";
+	}
+
+	if($field->type[$i]=='varchar') {
+		echo $tab."xp.get_str($ref, ".$field->type[$i+1].");\n";
+	}
+	else if($field->type[$i]=='id' or $field->type[$i]=='int' or $field->type[$i]=='long') {
+		echo $tab."$ref= xp.get_long();\n";
+	}
+	else if($field->type[$i]=='vector') {
+		generateVectorFieldParse($ref,$field,$i+1);
+	}
+	else if($field->type[$i]=='ignore') {
+		echo $tab."xp.skip();\n";
+	}
+	else if($field->type[$i]=='bool') {
+		echo $tab."$ref= xp.get_bool();\n";
+	}
+	else if($field->type[$i]=='string') {
+		echo $tab."xp.get_string($ref, ".$field->type[$i+1].");\n";
+	}
+	else if($field->type[$i]=='float' or $field->type[$i]=='double') {
+		echo $tab."$ref= xp.get_double();\n";
+	}
+	else if($field->type[$i]=='struct' or $field->type[$i]=='structn') {
+		echo $tab."$ref.parse(xp);\n";
+	}
+	else if($field->type[$i]=='boolp') {
+		echo $tab."$ref=true;\n";
+		echo $tab."xp.skip();\n";
+	}
+	else if($field->type[$i]=='enum') {
+		echo $tab."$ref= xp.get_enum_value(enum_table,sizeof(enum_table));\n";
+	}
+	else echo $tab."#error parse $field->name {$field->type[$i]} :)\n";
 }
 
-function generateDeserFunction($name,$arr)
+function generateTagAttrParse($struct,$tag)
 {
-  ?>
-void <?=$name?>::parse(XML_PARSER2& xp)
-{
- while(1) {
-  if(xp.get_tag()) throw EParseXML();
-  if(xp.parsed_tag[0]=='/') break;
-  switch(xp.lookup_tag(<?=$name?>::tag_table,sizeof(<?=$name?>::tag_table))) {
-<?php foreach($arr as $index=>$field): ?>
-   case <?=$index?>: //<?=$field[0]?>/
-<?php generateFieldParse($field[0],$field); ?>
-    break;
-<?php endforeach; ?>
-   default:
-    xp.unknown_tag();
-  }
- }
- //todo: verify non-optional fields
-}
-
+	$what=($tag?"tag":"attr");
+	$list=$tag? $struct->tags : $struct->attrs;
+	$table = $struct->name."::".$what."_table";
+?>
+	while(xp.get_<?=$what?>()) {
+		long ix = xp.lookup(<?=$table?>,sizeof <?=$table?>, xp.<?=$what?>);
+		printf("<?=$what?>: %s n:%ld\n",xp.<?=$what?>,ix);
+		switch(ix) {
+<?php foreach($list as $index=>$field): ?>
+		case <?=$index?>: //<?=$field->name?>/
+<?php generateFieldParse($field->name,$field,0); ?>
+			break;
+<?php endforeach; if($tag): ?>
+		default:
+			xp.skip();
+<?php else: ?>
+		default:
+			throw EXmlParse(xp,xp.unknown_field);
+<?php endif; ?>
+		}
+	}
 <?php
+	// flags
+	foreach($list as $index=>$field) if(isset($field->optx)) {
+		echo "	if(!flags[{$field->optx}]) throw EXmlParse(xp,".($tag?'false':'true').",{$table}[$index]);\n";
+	}
+
 }
 
-function processStruct($struct,$name,$cpp,$hpp)
+function generateDeserFunction($struct)
 {
-  $sorted=getSorted($struct);
-  if($hpp) {
-    ob_start();
-    echo "struct $name {\n";
-    generateStructBody($struct);
-    ?>
-  static const char* tag_table [];
-  void parse(XML_PARSER2& xp);
+	echo "void {$struct->name}::parse(XML_PARSER2& xp)\n";
+	echo "{\n";
+	// flags
+	if($struct->flags) {
+		echo "	std::bitset<{$struct->flags}> flags;\n";
+	}
+	foreach($struct->optflags as $opt) {
+		echo "	$opt = 0;\n";
+	}
+	// default values
+	foreach($struct->fields as $field) if(isset($field->def)) {
+		echo "	{$field->name}{$field->def};\n";
+	}
+	// tag name
+	if($struct->tagname) {
+		echo "	".$struct->tagname->name." = xp.tag;\n";
+		//echo "	//generateTagNameParse({$struct->name});\n";
+	}
+	// attributes
+	if($struct->attrs) {
+		generateTagAttrParse($struct,false);
+	}
+	// contents
+	if($struct->content) {
+		generateFieldParse($struct->content->name,$struct->content,0);
+	}
+	// tags
+	else if($struct->tags) {
+		generateTagAttrParse($struct,true);
+	} else {
+		echo "	xp.skip();\n";
+	}
+	echo "}\n\n";
+}
+
+function processStruct($struct,$cpp,$hpp)
+{
+	ob_start();
+	echo "struct {$struct->name} {\n";
+	generateStructBody($struct);
+	if($hpp) {
+		?>
+	void parse(XML_PARSER2& xp);
 };
 
 <?php
-    fwrite($hpp,ob_get_clean());
-  }
-  if($cpp) {
-    ob_start();
-    generateTable($name,$sorted);
-    generateDeserFunction($name,$sorted);
-    fwrite($cpp,ob_get_clean());
-  }
+		fwrite($hpp,ob_get_clean());
+	}
+	else ob_end_clean();
+	if($cpp) {
+		ob_start();
+		generateTables($struct);
+		generateDeserFunction($struct);
+		fwrite($cpp,ob_get_clean());
+	}
 }
 
 function open_output_file(&$fh,$which,$name)
 {
-  if($name!='-') {
-    $fh=fopen($name,'w');
-    if(!$fh) {
-      print("Cant open output $which file $name\n");
-      exit(1);
-    }
-  } else {
-    if($fh) fclose($fh);
-    $fh=false;
-  }
+	if($name!='-') {
+		$fh=fopen($name,'w');
+		if(!$fh) {
+			print("Cant open output $which file $name\n");
+			exit(1);
+		}
+	} else {
+		if($fh) fclose($fh);
+		$fh=false;
+	}
 }
 
 function processInputFile($filename)
 {
-  $hpp=$cpp=$name=false;
-  $fh= fopen($filename,'r');
-  if(!$fh) {
-    print("File open error\n");
-    exit(1);
-  }
-  $opt['fh']=$fh;
-  while(($line = fgets($fh))!==FALSE) {
-    $el=array();
-    if(!preg_match("/^[[:space:]]*(.+)[[:space:]]+(.+)/",$line,$el)) continue;
-    if($el[1][0]=='#') continue;
-    if($el[1]=='hpp')
-      open_output_file($hpp,'hpp',$el[2]);
-    elseif($el[1]=='cpp') 
-      open_output_file($cpp,'cpp',$el[2]);
-    elseif($el[1]=='echocpp') {
-      if($cpp) fwrite($cpp, $el[2]."\n");
-    }
-    elseif($el[1]=='echohpp') {
-      if($hpp) fwrite($hpp, $el[2]."\n");
-    }
-    elseif($el[1]=='struct') {
-      $name = $el[2];
-      $struct=array();
-      while(1)
-      {
-        $line = fgets($fh);
-        if(false===$line) {
-          print("Unexpected EOF in struct $name\n");
-          exit(1);
-        }
-        $line=trim($line);
-        if($line=='' or $line[0]=='#') continue;
-        if($line[0]=='%') break;
-        $rline=array();
-        foreach( explode(" ",$line) as $word) {
-          if($word=="") continue;
-          $kv=explode("=",$word);
-          if(sizeof($kv)==2) {
-            $rline[$kv[0]]=$kv[1];
-          } else {
-            $rline[]=$word;
-          }
-        }
-        $struct[]=$rline;
-      }
-      processStruct($struct,$name,$cpp,$hpp);
-    } else {
-      echo "Unrecognized line $line\n";
-    }
-  }
-  if($cpp) fclose($cpp);
-  if($hpp) fclose($hpp);
+	$hpp=$cpp=$name=false;
+	$fh= fopen($filename,'r');
+	if(!$fh) {
+		print("File open error\n");
+		exit(1);
+	}
+	$opt['fh']=$fh;
+	$struct= new Struct();
+	while(($line = fgets($fh))!==FALSE) {
+		$el=array();
+		if(!preg_match("/^[[:space:]]*(.+)[[:space:]]+(.+)/",$line,$el)) continue;
+		if($el[1][0]=='#') continue;
+		if($el[1]=='hpp')
+			open_output_file($hpp,'hpp',$el[2]);
+		elseif($el[1]=='cpp') 
+			open_output_file($cpp,'cpp',$el[2]);
+		elseif($el[1]=='echocpp') {
+			if($cpp) fwrite($cpp, $el[2]."\n");
+		}
+		elseif($el[1]=='echohpp') {
+			if($hpp) fwrite($hpp, $el[2]."\n");
+		}
+		elseif($el[1]=='struct') {
+			$struct->name= $el[2];
+			while(1)
+			{
+				$line = fgets($fh);
+				if(false===$line) {
+					print("Unexpected EOF in struct $name\n");
+					exit(1);
+				}
+				$line=trim($line);
+				if($line=='' or $line[0]=='#') continue;
+				if($line[0]=='%') break;
+				$rline=new stdClass();
+				$rline->type=array();
+				foreach( explode(" ",$line) as $word) {
+					if($word=="") continue;
+					$kv=explode("=",$word);
+					if(sizeof($kv)==2) {
+						$rline->{$kv[0]}=$kv[1];
+					} else {
+						$rline->type[]=$word;
+					}
+				}
+				$struct->fields[]=$rline;
+			}
+			processStruct($struct,$cpp,$hpp);
+			$struct= new Struct();
+		} else {
+			echo "Unrecognized line $line\n";
+		}
+	}
+	if($cpp) fclose($cpp);
+	if($hpp) fclose($hpp);
 }
 
 if(!empty($argv[1])) {
-  processInputFile($argv[1]);
+	processInputFile($argv[1]);
 }
