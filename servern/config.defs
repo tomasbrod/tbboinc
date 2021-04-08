@@ -73,6 +73,6 @@ server_keys structn opt=has_keys
 subs vector structn innertag=*
 peers vector structn innertag=* vmax=56
 codesign string 1024
-bullshit enum aa,bb,cc
+#bullshit enum aa,bb,cc
 stdio boolp
 %

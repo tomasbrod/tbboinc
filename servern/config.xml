@@ -27,6 +27,9 @@
       trickle=ignore
       >
       <files size=1k db=main />
+      <files size=16k db=aux >
+        <database type=lmdb path=db />
+      </files>
       <files size=120M path='uploads/postcard' group=no />
       <inputs />
     </postcard>

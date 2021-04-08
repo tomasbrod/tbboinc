@@ -38,7 +38,7 @@ class Struct
 function generateFieldType($struct,$field,$i) {
 	$type=$field->type;
 	if($type[$i]=="varchar") {
-		echo "immstring<".$type[$i+1].">";
+		echo "immstring<".($type[$i+1]+1).">";
 		if(isset($field->def)) $field->def= '"'.$field->def.'"';
 	} elseif($type[$i]=="id") {
 		echo "long";
@@ -70,6 +70,11 @@ function generateFieldType($struct,$field,$i) {
 		$field->enum = explode(',',$type[$i+1]);
 		$struct->enums += array_flip($field->enum);
 		if(isset($field->def)) $field->def= 'v_'.$field->def;
+	} elseif($type[$i]=="halt") {
+		echo "void";
+		$field->serialize=false;
+		//$field->optx=$struct->flags;
+		//$struct->flags++;
 	} else {
 		echo "#error $type[$i]";
 	}
@@ -103,7 +108,7 @@ function generateStructBody($struct) {
 			$struct->tags[]=$field;
 		}
 		if($field->type[0]=='skip') $field->type[0]='ignore';
-		if($field->type[0]=='ignore') continue;
+		if($field->type[0]=='ignore') {$field->serialize=false;}
 		ob_start();
 		echo "  ";
 		generateFieldType($struct,$field,0);
@@ -113,17 +118,23 @@ function generateStructBody($struct) {
 			$struct->flags++;
 			//todo: do not for structs?
 		}
+		if($field->name=='scheduler_request') {
+			var_dump($field);
+		}
 		if($field->serialize)
 			ob_end_flush();
 			else ob_end_clean();
 		if(isset($field->opt)) {
-			echo "  bool {$field->opt};\n";
+			//echo "  bool {$field->opt};\n";
 			$struct->optflags[]=$field->opt;
 		}
 		if(isset($field->def)) {
 			if($field->def==='""') $field->def= '.clear()';
 			if(is_numeric($field->def) or $field->def[0]!='.') $field->def= '= '.$field->def;
 		}
+	}
+	foreach($struct->optflags as $field) {
+		echo "  bool {$field};\n";
 	}
 	if($struct->enums) {
 		$struct->enums=array_keys($struct->enums);
@@ -211,7 +222,7 @@ function generateFieldParse($ref,$field,$i)
 	}
 
 	if($field->type[$i]=='varchar') {
-		echo $tab."xp.get_str($ref, ".$field->type[$i+1].");\n";
+		echo $tab."xp.get_str($ref, ".($field->type[$i+1]+1).");\n";
 	}
 	else if($field->type[$i]=='id' or $field->type[$i]=='int' or $field->type[$i]=='long') {
 		echo $tab."$ref= xp.get_long();\n";
@@ -226,7 +237,7 @@ function generateFieldParse($ref,$field,$i)
 		echo $tab."$ref= xp.get_bool();\n";
 	}
 	else if($field->type[$i]=='string') {
-		echo $tab."xp.get_string($ref, ".$field->type[$i+1].");\n";
+		echo $tab."xp.get_string($ref, ".($field->type[$i+1]+1).");\n";
 	}
 	else if($field->type[$i]=='float' or $field->type[$i]=='double') {
 		echo $tab."$ref= xp.get_double();\n";
@@ -235,11 +246,22 @@ function generateFieldParse($ref,$field,$i)
 		echo $tab."$ref.parse(xp);\n";
 	}
 	else if($field->type[$i]=='boolp') {
-		echo $tab."$ref=true;\n";
+		//echo $tab."$ref=true;\n";
 		echo $tab."xp.skip();\n";
 	}
 	else if($field->type[$i]=='enum') {
 		echo $tab."$ref= xp.get_enum_value(enum_table,sizeof(enum_table));\n";
+	}
+	else if($field->type[$i]=='ulong') {
+		echo $tab."$ref= xp.get_ulong();\n";
+	}
+	else if($field->type[$i]=='uquad') {
+		echo $tab."$ref= xp.get_uquad();\n";
+	}
+	else if($field->type[$i]=='halt') {
+		//echo $tab."$ref= true;\n";
+		echo $tab."xp.halt();\n";
+		echo $tab."return;\n";
 	}
 	else echo $tab."#error parse $field->name {$field->type[$i]} :)\n";
 }
@@ -252,7 +274,7 @@ function generateTagAttrParse($struct,$tag)
 ?>
 	while(xp.get_<?=$what?>()) {
 		long ix = xp.lookup(<?=$table?>,sizeof <?=$table?>, xp.<?=$what?>);
-		printf("<?=$what?>: %s n:%ld\n",xp.<?=$what?>,ix);
+		//printf("<?=$what?>: %s n:%ld\n",xp.<?=$what?>,ix);
 		switch(ix) {
 <?php foreach($list as $index=>$field): ?>
 		case <?=$index?>: //<?=$field->name?>/

@@ -1,0 +1,31 @@
+# 
+hpp build/request.hpp
+cpp build/request.cpp
+
+struct t_file_upload_info
+name string 1023
+xml_signature string 4095
+max_nbytes ulong
+%
+
+struct t_file_upload
+file_info struct t_file_upload_info
+nbytes ulong
+offset ulong
+md5_cksum varchar 32
+data halt
+%
+
+struct t_data_server_request
+core_client_major_version int
+core_client_minor_version int
+core_client_release int
+file_upload struct t_file_upload opt=is_upload
+get_file_size string 1023 opt=is_query
+%
+
+struct t_cgi_request_t
+scheduler_request skip opt=is_sched
+data_server_request struct t_data_server_request opt=is_data
+status boolp
+%

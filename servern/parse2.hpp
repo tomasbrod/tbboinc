@@ -41,6 +41,7 @@ class XML_PARSER2
 	unsigned long get_ulong();
 	unsigned long long get_uquad();
 	short get_enum_value(const char* table[], const size_t length);
+	void halt() {in_tag=3;}
 
 	static long lookup(const char* table[], const size_t length, const char* needle);
 	static const char* array_too_long;

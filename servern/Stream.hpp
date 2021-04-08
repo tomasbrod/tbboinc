@@ -1,6 +1,7 @@
 #pragma once
 #include <unistd.h>
 #include <stdexcept>
+#include <system_error>
 
 typedef unsigned char byte;
 
@@ -208,16 +209,27 @@ struct CBufStream : IStream
 	virtual byte* outofbounds(size_t len, bool wr);
 };
 
-struct CFileStream : IStream
+struct CHandleStream : IStream
 {
 	int file;
+	bool writable;
 	byte static_buffer[512];
-	CFileStream(int ifile) {file=ifile; buffer.reset(); chunk_pos=0;}
-	CFileStream(FILE* ifile);
+	explicit CHandleStream(int ifile);
+	CHandleStream() {file=-1; writable=0; buffer.reset();}
+	~CHandleStream() { if(writable) flush(); }
 	// flush method
 	void flush();
 	// implements IStream
 	virtual void setpos(size_t pos);
 	protected:
 	virtual byte* outofbounds(size_t len, bool wr);
+};
+
+struct CFileStream : CHandleStream
+{
+	CFileStream() : CHandleStream() {}
+	void openRead(const char* filename);
+	void openCreate(const char* filename);
+	void close();
+	~CFileStream() {close();}
 };

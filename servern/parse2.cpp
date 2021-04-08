@@ -148,6 +148,8 @@ bool XML_PARSER2::get_tag(int c)
 {
 	try {
 		do {
+			if(in_tag==3)
+				return false;
 			// if in a tag, then close it (skip attributes)
 			close_tag();
 			// if this was self-closing tag - return false
@@ -470,7 +472,7 @@ void parse_test_1(XML_PARSER2& xp)
 
 void parse_test(FILE* f) {
 	bool flag;
-	CFileStream mf(f);
+	CHandleStream mf(fileno(f));
 	XML_PARSER2 xp(&mf);
 	char name[64];
 	char foo[64];
@@ -490,7 +492,7 @@ void parse_test(FILE* f) {
 
 
 void parse_test_3(FILE* f) {
-	CFileStream mf(f);
+	CHandleStream mf(fileno(f));
 	XML_PARSER2 xp(&mf);
 	char name[64];
 
