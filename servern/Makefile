@@ -3,12 +3,10 @@ all: servern show_keys
 CXX = g++ -std=c++11
 
 servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o build/parse2.o
-	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lssl -lcrypto
+	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lssl -lcrypto -lleveldb -ltokyocabinet
 
 show_keys: build/show_keys.o build/boinclib.o build/Stream.o build/parse2.o
 	$(CXX) -o $@ -g -O0 $^ -lsodium -lssl -lcrypto
-
-all: build/defs.hpp
 
 build/boinclib.o: boinclib.cpp Makefile
 	$(CXX) -c -o $@ -g -O0 -I boinclib $<
@@ -35,9 +33,9 @@ build/boinclib.o: boinclib.cpp boinclib/miofile.cpp boinclib/config.h \
  boinclib/filesys.h boinclib/str_util.cpp boinclib/common_defs.h \
  boinclib/parse.h boinclib/str_util.h boinclib/filesys.cpp \
  boinclib/util.h boinclib/util.cpp boinclib/base64.h boinclib/parse.cpp
-build/kv.o: kv.cpp Stream.hpp kv.hpp
+build/kv.o: kv.cpp Stream.hpp kv.hpp kv-grp.cpp
 build/servern.o: servern.cpp boinclib/miofile.h boinclib/mfile.h \
- parse2.hpp Stream.hpp build/cofig.hpp build/request.hpp parse2.hpp \
+ parse2.hpp Stream.hpp build/config.hpp build/request.hpp parse2.hpp \
  kv.hpp log.hpp
 build/Stream.o: Stream.cpp Stream.hpp log.hpp
-build/show_keys.o: show_keys.cpp parse2.hpp Stream.hpp build/cofig.hpp
+build/show_keys.o: show_keys.cpp parse2.hpp Stream.hpp build/config.hpp

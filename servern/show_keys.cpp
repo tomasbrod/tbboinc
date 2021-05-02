@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string>
 #include "parse2.hpp"
-#include "build/cofig.hpp"
-#include "build/cofig.cpp"
+#include "build/config.hpp"
+#include "build/config.cpp"
 #include <sodium/crypto_hash_sha256.h>
 using std::string;
 
@@ -33,6 +33,10 @@ int main(void) {
 		XML_PARSER2 xp (&fs3);
 		xp.get_tag(); // open the root tag, todo check error code
 		config.parse(xp);
+	}
+	if(!config.has_keys) {
+		printf("Missing server_keys\n");
+		return 1;
 	}
 
 	printf("Master key         : %s\n", config.server_keys.master.c_str());

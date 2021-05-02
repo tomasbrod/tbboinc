@@ -413,9 +413,9 @@ const char* XML_PARSER2::unknown_field = "not expected";
 EXmlParse::EXmlParse( const XML_PARSER2& xp, const char* _msg )
 {
 	if(xp.attr[0]) {
-		snprintf(buf, sizeof buf, "at xml tag %s, attr %s, %s", xp.tag, xp.attr, _msg);
+		snprintf(buf, sizeof buf, "at tag %s, attr %s, %s", xp.tag, xp.attr, _msg);
 	} else {
-		snprintf(buf, sizeof buf, "at xml tag %s, %s", xp.tag, _msg);
+		snprintf(buf, sizeof buf, "at tag %s, %s", xp.tag, _msg);
 	}
 }
 

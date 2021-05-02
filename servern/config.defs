@@ -1,11 +1,55 @@
-hpp build/cofig.hpp
-cpp build/cofig.cpp
+cpp build/config.cpp
+hpp build/config-db.hpp
+echocpp #include "config.hpp"
+echohpp #include "../parse2.hpp"
 
 struct t_config_database
-type attr varchar 7
+name attr varchar 15
+type attr enum lmdb,kyoto,kyotohash,level,tokyo,tokyohash,upscale,gdbm
 path attr string 1024
-#other db options, like locking
+
+# memory map size in MiB (for lmdb is also max db size, +kyoto)
+mmap attr ulong def=0
+
+# nuber of fsyncs per commit, 2 is best, 1 is compromise, 0 is unsafe
+sync attr int def=2
+
+# block size for leveldb and page size for kyoto in KiB
+block attr ulong def=0
+
+# sizes for leveldb in MiB
+memtable attr ulong def=0
+sstable attr ulong def=0
+
+# size of block cache in MiB for LevelDB (default off) or Kyoto (default 64)
+cache attr ulong def=0
+
+# bloom filter bits for leveldb (default off)
+bloom attr ulong def=0
+
+# whether to verify checksums (-1 default, 0 off, 1 on, 2 paranoid)
+checksum attr int def=-1
+
+# compression (-1 default, 0 disable, 1 enable, ... )
+compress attr int def=-1
+
+# small kyoto database, max 16GiB, saves 4B
+small attr bool def=0
+# linear collision chaining, saves 6B
+linear attr bool def=0
+# power of two of the free block pool (default 10)
+kyotofbp attr int def=10
+# number of buckets in thousands (recommended twice the number of records)
+buckets attr ulong def=0
+# if set to N>0, defragment kyoto cabiner every N operations
+defrag attr int def=0
+
+
+#other db options, like locking, subdb, lock release, bloom...
 %
+
+hpp build/config.hpp
+echohpp #include "config-db.hpp"
 
 struct t_config_fastcgi
 threads attr int def=62
@@ -64,7 +108,7 @@ old vector structn
 %
 
 struct t_config
-database structn
+database vector structn
 fastcgi structn
 listen structn
 id structn

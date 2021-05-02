@@ -1,5 +1,11 @@
 <server_config>
-  <database type=lmdb path=db />
+  <!-- first database element is always the main db -->
+  <!-- name attribute defaults to basename(path) -->
+  <_database name=main type=lmdb path=sched.db />
+  <_database name=postcarddb type=lmdb path=post.db />
+  <database name=test_level type=level path=test_level.db sync=2 />
+  <_database name=test_kch type=kyotohash path=test_kyotohash.db />
+  <_database name=test_kcb type=kyoto path=test_kyoto.db />
   <stdio />
   <fastcgi threads=4 path='fcgi.sock' />
   <listen path='plugin.sock' port=3456 />
@@ -7,38 +13,86 @@
     name='saran'
     -keyfile='master.key'
   />
-  <subs>
 
-    <sample_fwd id=1>
-      <!-- example of work-only server -->
-      <forward to='parlon' />
-      <files to='parlon' />
-      <listen/>
-    </sample_fwd>
+  <subs>
 
     <postcard id=2
       key='xxx'
-      report_db=main
       success=fail
       errors=queue
       expire=queue
       files=queue
-      trickle_db=main
       trickle=ignore
       >
       <files size=1k db=main />
-      <files size=16k db=aux >
-        <database type=lmdb path=db />
-      </files>
+      <files size=16k db=postcarddb />
       <files size=120M path='uploads/postcard' group=no />
       <inputs />
     </postcard>
+    <!-- Databases:
+      - reports can be saved into files
+      - files can go into custom database
+      - the custom database can be shared by multiple subs
+      Define database(s) either at top level or inside subproject.
+      Database referenced by name.
+
+      Problem: The aux dbs should not be kept open while idle to avoid
+      blocking the plugin process.
+      lmdb - exclusive write transaction shared with readers
+      kyoto - exclusive writer exclusive to readers
+      upscaledb - unclear
+      leveldb - exclusive
+
+    -->
 
   </subs>
   <peers>
     <parlon id=1 host=parlon port=3456 />
     <zirkon id=2 ip=192.168.0.12 port=3456 />
   </peers>
+
+  
+  <plugin name=sample_fwd id=1>
+    <!-- whatever -->
+  </plugin>
+
+  <feed name='xx' priority=4 >
+    <!-- the first thing scheduler consults when giving out work -->
+    <!-- describes to whom, and from where to assign work -->
+    <filter><!--
+      program_compat='which',
+      arch,
+      cpu features, cache, memory speed,
+      memory size,
+      disk free,
+      network something,
+      GPU api, gpu features, gpu memory size,
+      other coproc,
+      database value,
+      host config (always)
+    --></filter>
+    <!-- assign:
+      call: arguments,
+      queue: (0), locality?,
+      range: range options override,
+    -->
+    <!-- write - set database value to host or user on assign
+      asociated with the plugin of the workunit assigned (key:src_name+name) -->
+    <set db=main to=host key='xxx' id=123 id=auto add-ulong/set-bool/under/over />
+  </feed>
+
+  <program name=spt >
+    <!-- description of boinc application version -->
+    <!-- most important are the compatibility filters -->
+  </program>
+
+  <queue name=sptq46 >
+    <!-- place where plugins can put workunits for feeds to assign -->
+  </queue>
+
+  <range name=sptr >
+    <!-- description of how scheduler should generate workunits -->
+  </range>
 
   <codesign>
 5377
@@ -61,6 +115,5 @@
     <master>aff7697d992b958b1b584814f3218276fd3d21439982edf495f289c0650eafdd</master>
     <old expire=1234 >4c841cfe94c0197d23de1827149727faec68cb532c08fbcedd41888c1e3d25ff</old>
   </server_keys>
-  <bullshit>bb</bullshit>
 </server_config>
 

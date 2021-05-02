@@ -340,11 +340,7 @@ function processStruct($struct,$cpp,$hpp)
 	echo "struct {$struct->name} {\n";
 	generateStructBody($struct);
 	if($hpp) {
-		?>
-	void parse(XML_PARSER2& xp);
-};
-
-<?php
+		echo "  void parse(XML_PARSER2& xp);\n};\n\n";
 		fwrite($hpp,ob_get_clean());
 	}
 	else ob_end_clean();
@@ -382,12 +378,17 @@ function processInputFile($filename)
 	$struct= new Struct();
 	while(($line = fgets($fh))!==FALSE) {
 		$el=array();
-		if(!preg_match("/^[[:space:]]*(.+)[[:space:]]+(.+)/",$line,$el)) continue;
+		if(!preg_match("/^[[:space:]]*([^[:space:]]+)[[:space:]]+(.+)/",$line,$el)) continue;
 		if($el[1][0]=='#') continue;
-		if($el[1]=='hpp')
+		if($el[1]=='hpp') {
 			open_output_file($hpp,'hpp',$el[2]);
-		elseif($el[1]=='cpp') 
+			if($hpp) fwrite($hpp, "#pragma once\n");
+			//if($hpp) fwrite($hpp, "#include \"../parse2.hpp\"\n");
+			//if($cpp) fwrite($cpp, "#include \"".basename($el[2])."\"\n");
+		}
+		elseif($el[1]=='cpp') {
 			open_output_file($cpp,'cpp',$el[2]);
+		}
 		elseif($el[1]=='echocpp') {
 			if($cpp) fwrite($cpp, $el[2]."\n");
 		}
@@ -423,6 +424,7 @@ function processInputFile($filename)
 			$struct= new Struct();
 		} else {
 			echo "Unrecognized line $line\n";
+			//var_dump($el);
 		}
 	}
 	if($cpp) fclose($cpp);

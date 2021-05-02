@@ -162,6 +162,18 @@ void CLog::init(const char* fmt, ...)
 	ident=buffer;
 }
 
+void CLog::put_exception(const std::exception& e)
+{
+		put_prefix(2);
+		int status;
+		const char * resolved_type_name = abi::__cxa_demangle(typeid(e).name(), 0, 0, &status);
+		const char * type_name = resolved_type_name;
+		if(!type_name) type_name = typeid(e).name();
+		if(!type_name) type_name = "???";
+		this->msg2(type_name, e.what());
+		free((void*)resolved_type_name);
+}
+
 // trace macros ( HERE, VALUE(var) ) go to the singleton (use stringstream to stringify)
 
 // the singleton forwards to either stderr or file
