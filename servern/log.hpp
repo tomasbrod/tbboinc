@@ -1,24 +1,39 @@
 #pragma once
 #include <iostream>
+#include <sstream>
 #include <mutex>
+
+namespace StreamInternals
+{
+	template < class Stream, typename Arg > static void put_to_stream( Stream& ss, char join, const Arg& arg)
+	{
+		ss << arg;
+		(void)join;
+	}
+
+	template < class Stream, typename Arg1, typename Arg2, typename ... ArgX > static void put_to_stream( Stream& ss, char join, const Arg1& arg1, const Arg2& arg2, const ArgX&... args )
+	{
+		put_to_stream(ss, join, arg1);
+		ss << join;
+		put_to_stream(ss, join, arg2, args...);
+	}
+};
+
+template < typename ... Args > static std::string tostring( const Args&... args )
+{
+	std::stringstream ss;
+	StreamInternals::put_to_stream(ss, ' ', args...);
+	return ss.str();
+}
 
 class CLog
 {
 	std::string ident;
-	template < typename Arg, typename ... Args > void msg2( const Arg& arg, const Args&... args )
-	{
-		(*output) << ' ';
-		(*output) << arg;
-		msg2(args...);
-	}
 	template < typename ... Args > void msg2( const CLog& arg, const Args&... args )
 	{
 		(*output) << ' ';
 		(*output) << arg.ident_cstr();
 		msg2(args...);
-	}
-	void msg2()
-	{
 	}
 	void endl2( )
 	{
@@ -34,7 +49,7 @@ class CLog
 	{
 		std::lock_guard<std::mutex> lock (cs);
 		put_prefix(0);
-		this->msg2(args...);
+		StreamInternals::put_to_stream(*output, ' ', args...);
 		this->endl2();
 	}
 	
@@ -44,7 +59,7 @@ class CLog
 	{
 		std::lock_guard<std::mutex> lock (cs);
 		put_exception(e);
-		this->msg2(args...);
+		StreamInternals::put_to_stream(*output, ' ', args...);
 		this->endl2();
 	}
 
@@ -52,21 +67,29 @@ class CLog
 	{
 		std::lock_guard<std::mutex> lock (cs);
 		put_prefix(1);
-		this->msg2(args...);
+		StreamInternals::put_to_stream(*output, ' ', args...);
 		this->endl2();
 	}
 
-	// prepares prefix from it's constructor
+	explicit CLog() {}
+
 	explicit CLog(const char* str);
-	explicit CLog();
-	void init(const CLog& parent, const char* str);
-	void init(const char* fmt, ...);
+	template < typename ... Args > explicit CLog(const Args&... args) {
+		std::stringstream ss;
+		StreamInternals::put_to_stream(ss, '.', args...);
+		ident=ss.str();
+	}
+
 	const char* ident_cstr() const { return ident.c_str(); }
+
+	friend std::stringstream& operator<<(std::stringstream& ss, const CLog& other);
 
 	static std::ostream* output;
 	static std::mutex cs;
 	static bool timestamps;
 };
+
+// convert anything to string
 
 // TODO:
 // trace macros ( HERE, VALUE(var) ) go to the singleton (use stringstream to stringify)

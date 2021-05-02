@@ -23,11 +23,9 @@ int main(void) {
 	CLog::output = &std::cout;
 	CLog::timestamps = 0;
 	CLog log ( "test" );
-	CLog log2;
-	log2.init ( log, "blah");
+	CLog log2 ( log, "blah");
 	log2("log2 hello");
-	CLog log3;
-	log3.init ( "%s.hlab", log.ident_cstr());
+	CLog log3 ( "%s.hlab", log.ident_cstr());
 	log3("log3 hello");
 
 	// read config

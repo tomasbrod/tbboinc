@@ -140,19 +140,15 @@ void CLog::put_prefix(short severity)
 	}
 	(*output) << ident;
 	if(!severity)
-		(*output) << ':';
+		(*output) << ": ";
 	else if(severity==1)
-		(*output) << ": Warn:";
+		(*output) << ": Warn: ";
 	else if(severity==2)
-		(*output) << ": Error:";
+		(*output) << ": Error: ";
 }
 
 CLog::CLog(const char* str) : ident(str) {}
-CLog::CLog() {}
-void CLog::init(const CLog& parent, const char* str)
-{
-	ident = parent.ident+'.'+str;
-}
+#if 0
 void CLog::init(const char* fmt, ...)
 {
 	va_list va;
@@ -161,6 +157,7 @@ void CLog::init(const char* fmt, ...)
 	vsnprintf(buffer, sizeof buffer, fmt, va);
 	ident=buffer;
 }
+#endif
 
 void CLog::put_exception(const std::exception& e)
 {
@@ -170,8 +167,14 @@ void CLog::put_exception(const std::exception& e)
 		const char * type_name = resolved_type_name;
 		if(!type_name) type_name = typeid(e).name();
 		if(!type_name) type_name = "???";
-		this->msg2(type_name, e.what());
+		StreamInternals::put_to_stream(*output, ' ', type_name, e.what(), "");
 		free((void*)resolved_type_name);
+}
+
+std::stringstream& operator<<(std::stringstream& ss, const CLog& other)
+{
+	ss << other.ident;
+	return ss;
 }
 
 // trace macros ( HERE, VALUE(var) ) go to the singleton (use stringstream to stringify)

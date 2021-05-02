@@ -5,7 +5,7 @@
   <_database name=postcarddb type=lmdb path=post.db />
   <database name=test_level type=level path=test_level.db sync=2 />
   <_database name=test_kch type=kyotohash path=test_kyotohash.db />
-  <_database name=test_kcb type=kyoto path=test_kyoto.db />
+  <database name=test_kcb type=kyoto path=test_kyoto.db />
   <stdio />
   <fastcgi threads=4 path='fcgi.sock' />
   <listen path='plugin.sock' port=3456 />

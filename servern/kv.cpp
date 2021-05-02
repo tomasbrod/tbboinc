@@ -96,11 +96,13 @@ void KV_Lightning::Open(const t_config_database& cfg)
 	if( mdb_env_create(&env) )
 		throw std::runtime_error("LMDB initialization failed");
 	mdb_env_set_mapsize(env, mega * cfg.mmap);
-	unsigned int flags = MDB_NOSUBDIR | MDB_NORDAHEAD | MDB_NOTLS;
+	unsigned int flags = MDB_NOSUBDIR | MDB_NOTLS;
 	if( cfg.sync == 1 )
 		flags |= MDB_NOMETASYNC;
 	if( cfg.sync == 0 )
 		flags |= MDB_NOSYNC;
+	if( cfg.small == 0 ) // if small is set, readahead is enabled
+		flags |= MDB_NORDAHEAD;
 	int rc = mdb_env_open(env, cfg.path.c_str(), flags, 0660);
 	if(rc)
 		throw std::runtime_error(mdb_strerror(rc));
@@ -233,10 +235,9 @@ class KV_Level : public KVBackend
 		leveldb::Options options;
 		options.create_if_missing = true;
 		#if 0
-		CLog log2; log2.init(LogKV,cfg.name);
-		logger.log.init(log2,"LevelDB");
+		logger.log= CLog(LogKV,cfg.name,"LevelDB");
 		#else 
-		logger.log.init(LogKV,cfg.name);
+		logger.log= CLog(LogKV,cfg.name);
 		#endif
 		options.info_log = &logger;
 		woptions.sync= cfg.sync>0;
@@ -304,7 +305,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 			}
 			#ifndef NDEBUG
 			else {
-				plog("Debug: ",file,line,func,message);
+				plog("Debug:",file,line,func,message);
 			}
 			#endif
 		}
@@ -313,7 +314,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	void Open1(const t_config_database& cfg)
 	{
 		this->cfg = &cfg;
-		logger.plog.init(LogKV,cfg.name);
+		logger.plog= CLog(LogKV,cfg.name);
 		db.tune_logger(&logger, Logger::WARN|Logger::ERROR|Logger::INFO
 			#if 0
 			|Logger::DEBUG

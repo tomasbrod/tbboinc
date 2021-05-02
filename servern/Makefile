@@ -33,7 +33,7 @@ build/boinclib.o: boinclib.cpp boinclib/miofile.cpp boinclib/config.h \
  boinclib/filesys.h boinclib/str_util.cpp boinclib/common_defs.h \
  boinclib/parse.h boinclib/str_util.h boinclib/filesys.cpp \
  boinclib/util.h boinclib/util.cpp boinclib/base64.h boinclib/parse.cpp
-build/kv.o: kv.cpp Stream.hpp kv.hpp kv-grp.cpp
+build/kv.o: kv.cpp Stream.hpp kv.hpp kv-grp.cpp log.hpp
 build/servern.o: servern.cpp boinclib/miofile.h boinclib/mfile.h \
  parse2.hpp Stream.hpp build/config.hpp build/request.hpp parse2.hpp \
  kv.hpp log.hpp
