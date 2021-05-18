@@ -75,6 +75,11 @@ function generateFieldType($struct,$field,$i) {
 		$field->serialize=false;
 		//$field->optx=$struct->flags;
 		//$struct->flags++;
+	} elseif($type[$i]=="named") {
+		echo "NamedPtr< ".$type[$i+1]." >";
+		if(isset($field->def)) $field->def= '"'.$field->def.'"';
+	} elseif($type[$i]=="bsize") {
+		generateFieldType($struct,$field,$i+1);
 	} else {
 		echo "#error $type[$i]";
 	}
@@ -83,7 +88,13 @@ function generateFieldType($struct,$field,$i) {
 function generateStructBody($struct) {
 	foreach($struct->fields as $field) {
 		$field->name=$field->type[0];
-		if(!isset($field->tag)) $field->tag = $field->name;
+		if(!isset($field->tag)) {
+			$field->tag = $field->name;
+			$len = strlen($field->name);
+			if($len>0 and $field->name[$len-1]=='N') {
+				$field->tag= substr($field->name, 0, $len-1);
+			}
+		}
 		$field->serialize=true;
 		array_shift($field->type);
 		if($field->type[0]=='attr') {
@@ -216,9 +227,14 @@ function generateFieldParse($ref,$field,$i)
 	$flag=false;
 	if(isset($field->optx)) $flag="flags[{$field->optx}]";
 	if(isset($field->opt))  $flag=$field->opt;
-	if($flag) {
+	if($flag && $i==0) {
 		echo $tab."if($flag) throw EXmlParse(xp,xp.duplicate_field);\n";
 		echo $tab.$flag."=1;\n";
+	}
+	if($i==0 && !$flag && isset($field->def))
+	{
+		//todo throw duplicate with defaults
+		//echo $tab."if($ref!={$field->def}) throw EXmlParse(xp,xp.duplicate_field);\n";
 	}
 
 	if($field->type[$i]=='varchar') {
@@ -262,6 +278,12 @@ function generateFieldParse($ref,$field,$i)
 		//echo $tab."$ref= true;\n";
 		echo $tab."xp.halt();\n";
 		echo $tab."return;\n";
+	}
+	else if($field->type[$i]=='named') {
+		echo $tab."xp.get_str($ref.name, ".(16).");\n";
+	}
+	else if($field->type[$i]=='bsize') {
+		echo $tab."$ref= xp.get_bsize_uquad();\n";
 	}
 	else echo $tab."#error parse $field->name {$field->type[$i]} :)\n";
 }

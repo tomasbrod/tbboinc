@@ -18,6 +18,21 @@ const char * EStreamOutOfBounds::what () const noexcept {return "Stream access O
 //struct CUnchStream : StreamInternals::PartOne<StreamInternals::Unchecked> {};
 //struct IStream : StreamInternals::PartOne<StreamInternals::Virtual> {};
 
+void IStream::read(void* buf, size_t len) {
+	memcpy(buf,getdata(len,0),len);
+}
+void IStream::write(const void* buf, size_t len) {
+	memcpy(getdata(len,1),buf,len);
+}
+void IStream::skip(unsigned displacement)
+{
+	byte* p = buffer.cur + displacement;
+	if(p >= buffer.base && p < buffer.wend)
+		buffer.cur=p;
+	else
+		setpos(pos()+displacement);
+}
+
 void CBufStream::setpos(size_t pos) { throw EStreamOutOfBounds(); }
 byte* CBufStream::outofbounds(size_t len, bool wr){throw EStreamOutOfBounds();}
 
@@ -62,7 +77,7 @@ void CHandleStream::setpos(size_t pos) {
 	if(pos!=lseek(file, pos, SEEK_SET))
 		throw std::runtime_error("CHandleStream seek failed");
 	chunk_pos=pos;
-	ssize_t rc= read(file, static_buffer, sizeof(static_buffer));
+	ssize_t rc= ::read(file, static_buffer, sizeof(static_buffer));
 	if(rc<0)
 		throw std::runtime_error("CHandleStream read failed");
 	if(rc==0)

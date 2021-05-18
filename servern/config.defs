@@ -1,10 +1,8 @@
 cpp build/config.cpp
 hpp build/config-db.hpp
-echocpp #include "config.hpp"
-echohpp #include "../parse2.hpp"
 
 struct t_config_database
-name attr varchar 15
+name attr varchar 15 def=main
 type attr enum lmdb,kyoto,kyotohash,level,tokyo,tokyohash,upscale,gdbm
 path attr string 1024
 
@@ -38,18 +36,45 @@ small attr bool def=0
 # linear collision chaining, saves 6B
 linear attr bool def=0
 # power of two of the free block pool (default 10)
-kyotofbp attr int def=10
+kyotofbp attr int def=0
 # number of buckets in thousands (recommended twice the number of records)
 buckets attr ulong def=0
 # if set to N>0, defragment kyoto cabiner every N operations
 defrag attr int def=0
 
-
 #other db options, like locking, subdb, lock release, bloom...
 %
 
+hpp build/config-output.hpp
+
+struct t_config_subs_files
+size attr bsize uquad
+db attr named KVBackend def= opt=has_db
+path attr string 1024 def=
+group attr bool def=false
+%
+
+struct t_config_output
+name attr varchar 15
+report_db attr named KVBackend def=main
+trickle_db attr named KVBackend def=main
+success attr enum notify,fail def=notify
+errors attr enum queue,expire def=expire
+expire attr enum notify,queue,disable def=notify
+files attr enum queue,store def=store
+trickle attr enum queue,store,disable def=disable
+filesv vector struct t_config_subs_files tag=files
+%
+
+hpp build/config-plugin.hpp
+struct t_config_plugin
+name attr varchar 15
+key attr string 64 def=
+output vector struct COutput
+inputs skip
+%
+
 hpp build/config.hpp
-echohpp #include "config-db.hpp"
 
 struct t_config_fastcgi
 threads attr int def=62
@@ -66,21 +91,10 @@ name attr string 1024
 keyfile attr string 1024 def=
 %
 
-struct t_config_subs_files
-%
-
 struct t_config_subs
 name tagname string 20
 id attr int
 key attr string 64 def=
-report_db attr string 16 def=main
-success attr enum notify,fail def=notify
-errors attr enum queue,expire def=expire
-expire attr enum notify,queue,disable def=notify
-files attr enum queue,store def=store
-trickle_db attr string 16 def=main
-trickle attr enum queue,store,ignore def=ignore
-filesv vector struct t_config_subs_files tag=files
 inputs skip
 %
 
@@ -108,13 +122,14 @@ old vector structn
 %
 
 struct t_config
-database vector structn
+database vector struct t_config_database1
 fastcgi structn
 listen structn
 id structn
 signature structn
 server_keys structn opt=has_keys
-subs vector structn innertag=*
+subs skip vector structn innertag=*
+plugin vector struct CPlugin
 peers vector structn innertag=* vmax=56
 codesign string 1024
 #bullshit enum aa,bb,cc

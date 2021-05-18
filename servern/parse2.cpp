@@ -397,6 +397,27 @@ unsigned long long XML_PARSER2::get_uquad()
 	return val;
 }
 
+unsigned long long XML_PARSER2::get_bsize_uquad()
+{
+	char buf[256], *end;
+	get_str(buf, sizeof buf);
+	errno = 0;
+	unsigned long long val = strtoull(buf, &end, 0);
+	if (errno || (end[0] && end[1])) throw EXmlParse(*this,"invalid unsigned value");
+	if(end[0] && !end[1]) switch(end[0]) {
+		case 'G':
+			val *= 1024;
+		case 'M':
+			val *= 1024;
+		case 'k':
+			val *= 1024;
+			break;
+		default:
+			throw EXmlParse(*this,"invalid size suffix");
+	}
+	return val;
+}
+
 short XML_PARSER2::get_enum_value(const char* table[], const size_t length)
 {
 	char buf[32];

@@ -1,9 +1,9 @@
 <server_config>
   <!-- first database element is always the main db -->
   <!-- name attribute defaults to basename(path) -->
-  <_database name=main type=lmdb path=sched.db />
+  <database name=main type=lmdb path=sched.db />
   <_database name=postcarddb type=lmdb path=post.db />
-  <database name=test_level type=level path=test_level.db sync=2 />
+  <_database name=test_level type=level path=test_level.db sync=2 />
   <_database name=test_kch type=kyotohash path=test_kyotohash.db />
   <database name=test_kcb type=kyoto path=test_kyoto.db />
   <stdio />
@@ -52,7 +52,7 @@
   </peers>
 
   
-  <plugin name=sample_fwd id=1>
+  <plugin name=sample_fwd >
     <!-- whatever -->
   </plugin>
 
@@ -70,6 +70,7 @@
       other coproc,
       database value,
       host config (always)
+      is_queue_empty
     --></filter>
     <!-- assign:
       call: arguments,

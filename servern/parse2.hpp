@@ -40,6 +40,7 @@ class XML_PARSER2
 	double get_double();
 	unsigned long get_ulong();
 	unsigned long long get_uquad();
+	unsigned long long get_bsize_uquad();
 	short get_enum_value(const char* table[], const size_t length);
 	void halt() {in_tag=3;}
 
@@ -65,19 +66,4 @@ struct EXmlParse : std::exception
 	EXmlParse( const XML_PARSER2& _xp, const char* _msg );
 	EXmlParse( const XML_PARSER2& _xp, bool _attr, const char* _name );
 	const char * what () const noexcept;
-};
-
-template <std::size_t SIZE>
-struct immstring : std::array< char, SIZE >
-{
-	operator char*() { return this->data(); }
-	operator const char*() const { return this->data(); }
-	immstring& operator = (const char* s) {
-		strncpy(this->data(), s, SIZE-1);
-		this->back()=0;
-		return *this;
-	}
-	immstring& operator = (std::string& s) { return (*this) = s.c_str(); }
-	void clear() {(*this)[0]=0;}
-	//todo: comparison...
 };

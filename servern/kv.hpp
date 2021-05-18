@@ -1,11 +1,13 @@
 #pragma once
+#include <memory>
+#include "typese.hpp"
 #include "Stream.hpp"
 #include "build/config-db.hpp"
-
 
 struct KVBackend
 {
 	virtual void Get(const CBuffer& key, CBuffer& val) =0;
+	CBuffer Get(const CBuffer& key) { CBuffer val; Get(key,val); return val; } //fixme
 	virtual void Set(const CBuffer& key, const CBuffer& val) =0;
 	virtual void Del(const CBuffer& key) =0;
 	//virtual void GetNext(CBuffer& key, CBuffer* val) =0;
@@ -20,7 +22,7 @@ struct KVBackend
 
 /* Open a database file according to config node */
 
-KVBackend* OpenKV(const t_config_database& cfg);
+std::unique_ptr<KVBackend> OpenKV(const t_config_database& cfg);
 
 class CLog;
 extern CLog LogKV;
@@ -33,3 +35,8 @@ extern CLog LogKV;
 // upscaledb -
 // we will have one backend for start that will be used for things like queues
 // group commit
+
+struct t_config_database1 : t_config_database
+{
+	KVBackend* kv;
+};

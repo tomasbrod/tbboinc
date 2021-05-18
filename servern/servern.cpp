@@ -2,21 +2,28 @@
 #include <string>
 #include "parse2.hpp"
 #include <fcgiapp.h>
-#include "build/config.hpp"
-#include "build/config.cpp"
+#include "typese.hpp"
+#include "kv.hpp"
 #include "build/request.hpp"
 #include "build/request.cpp"
-#include "kv.hpp"
 #include "log.hpp"
 #include <memory>
+#include "kv-grp.cpp"
+#include "COutput.cpp"
+#include "build/config.hpp"
+#include "build/config.cpp"
 using std::string;
 
 void parse_test(FILE* f);
 void parse_test_3(FILE* f);
 void kv_test();
 
-t_config config;
+struct CConfig : t_config
+{
+	GroupCtl group;
+} config;
 
+std::chrono::steady_clock::time_point tick_epoch;
 
 int main(void) {
 
@@ -27,6 +34,8 @@ int main(void) {
 	log2("log2 hello");
 	CLog log3 ( "%s.hlab", log.ident_cstr());
 	log3("log3 hello");
+
+	tick_epoch = std::chrono::steady_clock::now() - std::chrono::minutes(1);
 
 	// read config
 	try {
@@ -70,19 +79,23 @@ int main(void) {
 
 	//KVBackend kv;
 	//kv.Open(config.database.path.c_str());
-	std::vector<std::unique_ptr<KVBackend>> databases;
 	try {
-		for(const t_config_database& cfg : config.database) {
-			log("Opening database",cfg.enum_table[cfg.type],cfg.path);
-			databases.emplace_back(OpenKV(cfg));
-			//databases.back()->Close();
-		}
+		config.group.init(LogKV, config.database);
 	} catch(std::exception& e) {
 		log.error(e, "while opening databases");
 		return 1;
 	}
 
-	databases.clear();
+	config.group.Open();
+
+	for( auto& plugin : config.plugin ) {
+		plugin.init(config.group);
+		for( auto& output : plugin.output ) {
+			output.init(&plugin, config.group);
+		}
+	}
+	config.group.open_since=Ticks::zero();
+	config.group.Close();
 
 	// create plugin objects
 
@@ -97,10 +110,19 @@ int main(void) {
 
 	//kv_test();
 
+	config.group.dbs.clear();
+
 	// run scheduler in stdio mode
 	CHandleStream clientin(STDIN_FILENO);
 	CHandleStream clientout(STDOUT_FILENO);
 	printf(".\n");
 
 	return 1;
+}
+
+Ticks now()
+{
+	Ticks ticks = std::chrono::duration_cast<Ticks> ( std::chrono::steady_clock::now() - tick_epoch );
+	//LogKV("now",ticks.count());
+	return std::chrono::duration_cast<Ticks> ( std::chrono::steady_clock::now() - tick_epoch );
 }

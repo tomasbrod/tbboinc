@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include "parse2.hpp"
+#include "kv.hpp"
 #include "build/config.hpp"
 #include "build/config.cpp"
 #include <sodium/crypto_hash_sha256.h>

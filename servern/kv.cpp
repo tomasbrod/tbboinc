@@ -5,7 +5,6 @@
 #include <lmdb.h>
 #include <assert.h>
 #include <stdexcept>
-#include <memory>
 #include "Stream.hpp"
 #include "log.hpp"
 // 0.4s
@@ -26,7 +25,6 @@
 // +0.04s
 
 using std::string;
-using std::unique_ptr;
 
 // Because C++ silently disallows calling virtual functions in
 // destructors, it is necessary to override this destructor with
@@ -403,11 +401,11 @@ class KV_KyotoHash : public KV_KyotoAny<kyotocabinet::HashDB>
 {
 };
 
-template<class DB> static KVBackend* opencfg(const t_config_database& cfg)
+template<class DB> static unique_ptr<KVBackend> opencfg(const t_config_database& cfg)
 {
 	DB* db = new DB();
 	db->Open(cfg);
-	return db;
+	return unique_ptr<KVBackend>(db);
 	// implement runtime_error with same message support like log has
 	// log name construction like a log message
 }
@@ -418,7 +416,7 @@ struct Config_database : t_config_database
 	unique_ptr<KVBackend> db;
 };
 
-KVBackend* OpenKV(const t_config_database& cfg)
+unique_ptr<KVBackend> OpenKV(const t_config_database& cfg)
 {
 	switch(cfg.type) {
 		case cfg.v_lmdb:
@@ -439,4 +437,10 @@ KVBackend* OpenKV(const t_config_database& cfg)
 // https://upscaledb.com/apis.html
 // https://www.gnu.org.ua/software/gdbm/manual/index.html
 
-#include "kv-grp.cpp"
+//#include "kv-grp.cpp"
+//#include "COutput.cpp"
+
+void throwNamedPtrNotFound(CLog& log, const char* name, const char* type_text)
+{
+	throw std::runtime_error(tostring(log,name,type_text));
+}
