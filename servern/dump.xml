@@ -1,0 +1,14 @@
+<dump>
+  <names>
+    <plugin n='sample_fwd' i=16385 l=4 />
+    <output n='sample' i=16389 />
+    <peer n='parlon' i=16390 />
+  </names>
+  <!-- while tasks are part of output, they are not clustered on it -->
+  <task id=1 output=16389 ... />
+  <plugin name='sample_fwd' >
+    <q t=1 f=0 />
+    <q t=1 f=1 />
+    <e s=16831251 t=4 />
+  </plugin>
+</dump>

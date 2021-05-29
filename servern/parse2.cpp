@@ -341,10 +341,8 @@ void XML_PARSER2::get_string(std::string& str, size_t max)
 };
 
 
-static const char* Table_boolean[] = {
-	"true", "1", "yes",
-	"false", "0", "no",
-};
+static const char* Table_boolean[] = { "false", "no", "true", "yes", "0", "1" };
+static const bool Values_boolean[] = { 0,       0,    1,      1,     0,   1   };
 
 bool XML_PARSER2::get_bool()
 {
@@ -354,7 +352,7 @@ bool XML_PARSER2::get_bool()
 	get_str(buf,sizeof(buf));
 	long ix = lookup(Table_boolean,sizeof Table_boolean, buf);
 	if(ix==-1) throw EXmlParse(*this,"invalid boolean value");
-	return (ix < 3 );
+	return Values_boolean[ix];
 }
 
 long XML_PARSER2::get_long()

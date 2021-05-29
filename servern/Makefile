@@ -1,8 +1,8 @@
 all: servern
 
-CXX = g++ -std=c++11
+CXX = g++ -std=c++11 -Wformat -Wno-format-overflow
 
-servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o build/parse2.o
+servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o build/parse2.o build/group.o build/COutput.o
 	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lssl -lcrypto -lleveldb
 
 show_keys: build/show_keys.o build/boinclib.o build/Stream.o build/parse2.o
@@ -37,5 +37,6 @@ build/kv.o: kv.cpp kv.hpp typese.hpp log.hpp build/config.hpp Stream.hpp
 build/parse2.o: parse2.cpp parse2.hpp Stream.hpp
 build/servern.o: servern.cpp parse2.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
  build/config.hpp build/config.cpp build/request.hpp \
- build/request.cpp COutput.cpp kv-grp.cpp
+ build/request.cpp COutput.hpp
 build/Stream.o: Stream.cpp Stream.hpp log.hpp
+build/COutput.o: COutput.hpp COutput.cpp typese.hpp Stream.hpp log.hpp kv.hpp group.hpp build/config.hpp build/config.cpp

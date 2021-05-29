@@ -8,7 +8,7 @@ struct NamedPtr {
 	using T = T_;
 	Name name;
 	T* ptr;
-	T& operator->() { return *ptr; }
+	T* operator->() const { return ptr; }
 	NamedPtr& operator = (const char* s) {
 		clear();
 		name=s;
@@ -34,3 +34,19 @@ Ticks now();
 void throwNamedPtrNotFound(CLog& log, const char* name, const char* type_text);
 class XML_PARSER2;
 class CBuffer;
+
+
+template<class T_>
+struct IdedPtr {
+	using T = T_;
+	short id;
+	T* ptr;
+	T& operator->() { return *ptr; }
+	IdedPtr& operator = (short s) {
+		clear();
+		id=s;
+		return *this;
+	}
+	void clear() { id=0; ptr=0; }
+	IdedPtr() {clear();}
+};

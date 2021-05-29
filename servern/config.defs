@@ -6,21 +6,21 @@ name attr varchar 15 def=main
 type attr enum lmdb,kyoto,kyotohash,level,tokyo,tokyohash,upscale,gdbm
 path attr string 1024
 
-# memory map size in MiB (for lmdb is also max db size, +kyoto)
-mmap attr ulong def=0
+# memory map size (for lmdb is also max db size, +kyoto)
+mmap attr bsize uquad def=0
 
 # nuber of fsyncs per commit, 2 is best, 1 is compromise, 0 is unsafe
 sync attr int def=2
 
-# block size for leveldb and page size for kyoto in KiB
-block attr ulong def=0
+# block size for leveldb and page size for kyoto
+block attr bsize uquad def=0
 
-# sizes for leveldb in MiB
-memtable attr ulong def=0
-sstable attr ulong def=0
+# sizes for leveldb
+memtable attr bsize uquad def=0
+sstable attr bsize uquad def=0
 
-# size of block cache in MiB for LevelDB (default off) or Kyoto (default 64)
-cache attr ulong def=0
+# size of block cache for LevelDB (default off) or Kyoto (default 64)
+cache attr bsize uquad def=0
 
 # bloom filter bits for leveldb (default off)
 bloom attr ulong def=0
@@ -38,7 +38,7 @@ linear attr bool def=0
 # power of two of the free block pool (default 10)
 kyotofbp attr int def=0
 # number of buckets in thousands (recommended twice the number of records)
-buckets attr ulong def=0
+buckets attr bsize uquad def=0
 # if set to N>0, defragment kyoto cabiner every N operations
 defrag attr int def=0
 
@@ -49,15 +49,16 @@ hpp build/config-output.hpp
 
 struct t_config_subs_files
 size attr bsize uquad
-db attr named KVBackend def= opt=has_db
-path attr string 1024 def=
+db attr named KVBackend def=
+path attr string 1024 def= opt=isdir
 group attr bool def=false
+ix attr int def=-1
+dirid transient int
 %
 
 struct t_config_output
 name attr varchar 15
-report_db attr named KVBackend def=main
-trickle_db attr named KVBackend def=main
+trickle_db attr named KVBackend def=
 success attr enum notify,fail def=notify
 errors attr enum queue,expire def=expire
 expire attr enum notify,queue,disable def=notify
@@ -134,4 +135,5 @@ peers vector structn innertag=* vmax=56
 codesign string 1024
 #bullshit enum aa,bb,cc
 stdio boolp
+foreign struct t_config_output
 %

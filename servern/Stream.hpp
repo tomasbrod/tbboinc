@@ -13,6 +13,7 @@ using std::unique_ptr;
 template<typename T> using uptr = std::unique_ptr<T>;
 template<typename T> using plain_ptr = T*;
 using std::move;
+class IStream;
 
 struct EStreamOutOfBounds
 	: std::exception
@@ -37,6 +38,7 @@ struct CBuffer
 		wend=base=cur= (byte*) ptr;
 		wend += size;
 	}
+	void copyto(IStream* dest, size_t len);
 };
 
 template <std::size_t SIZE>
@@ -54,7 +56,7 @@ struct immstring : std::array< char, SIZE >
 	immstring(std::string& s) { *this=s; }
 	immstring() {};
 	void clear() {(*this)[0]=0;}
-	bool empty() { return (*this)[0]==0; }
+	bool empty() const { return (*this)[0]==0; }
 	//bool operator == (
 	//todo: comparison...
 };
@@ -102,7 +104,7 @@ namespace StreamInternals
 		size_t pos() const { return chunk_pos + buffer.pos(); }
 		virtual void setpos(size_t pos) =0;
 		virtual void skip(unsigned displacement) =0;
-		//virtual size_t left() =0;
+		virtual size_t left() =0;
 		//virtual size_t length() =0;
 		virtual void read(void* buf, size_t len) =0;
 		virtual void write(const void* buf, size_t len) =0;
@@ -159,6 +161,22 @@ namespace StreamInternals
 			p[3]=v>>24;
 		}
 		
+		unsigned rb4() {
+			byte*p=this->getdata(4,0);
+			return (p[3])
+			 | (p[2]<<8)
+			 | (p[1]<<16)
+			 | (p[0]<<24);
+		}
+
+		void wb4(unsigned v) {
+			byte*p=this->getdata(4,1);
+			p[3]=v,
+			p[2]=v>>8,
+			p[1]=v>>16,
+			p[0]=v>>24;
+		}
+		
 		unsigned long long r6() {
 			byte* p=this->getdata(6,0);
 			return (unsigned long long)(p[0])
@@ -213,6 +231,13 @@ namespace StreamInternals
 			}
 		}
 
+		template <typename T, size_t N>	void writea(const std::array<T,N>& arr) {
+			this->write(arr.data(),N);
+		}
+		template <typename T, size_t N>	void reada(std::array<T,N>& arr) {
+			this->read(arr.data(),N);
+		}
+
 		void wstrf(const char* s, size_t size)
 		{
 			this->write(s,size-1);
@@ -259,6 +284,8 @@ struct IStream : StreamInternals::PartOne<StreamInternals::Virtual>
 	virtual void read(void* buf, size_t len) override;
 	virtual void write(const void* buf, size_t len) override;
 	virtual void skip(unsigned displacement);
+	virtual size_t left() override;
+	virtual void copyto(IStream* dest, size_t len);
 };
 
 template <size_t SIZE>
@@ -278,13 +305,14 @@ struct CBufStream : IStream
 	CBufStream(const CBuffer& ibuf) {buffer=ibuf;}
 	CBufStream() = default;
 	// convert back to CBuffer derived object
-	void release(CBuffer& obuf) {obuf=buffer;}
+	const CBuffer& release() {return buffer;}
 	//
-	size_t left() {
+	virtual size_t left() {
 		return buffer.wend - buffer.cur;
 	}
 	// implements IStream
 	virtual void setpos(size_t pos);
+	virtual void copyto(IStream* dest, size_t len);
 	protected:
 	virtual byte* outofbounds(size_t len, bool wr);
 };
@@ -301,10 +329,14 @@ struct CHandleStream : IStream
 	void flush();
 	// implements IStream
 	virtual void setpos(size_t pos);
+	void copyto(CBufStream* dest, size_t len);
+	void copyto(CHandleStream* dest, size_t len);
+	virtual void copyto(IStream* dest, size_t len);
 	protected:
 	virtual byte* outofbounds(size_t len, bool wr);
 };
 
+#pragma pack(push, 1)
 struct CFileStream : CHandleStream
 {
 	CFileStream() : CHandleStream() {}
@@ -313,3 +345,17 @@ struct CFileStream : CHandleStream
 	void close();
 	~CFileStream() {close();}
 };
+
+template <typename T> class LEonLEtype
+{
+	T value;
+	public:
+	LEonLEtype(const T& i) : value(i) {}
+	LEonLEtype() = default;
+	operator T() const { return value; }
+};
+
+typedef LEonLEtype<uint16_t> LEuint16;
+typedef LEonLEtype<uint32_t> LEuint32;
+typedef LEonLEtype<uint64_t> LEuint64;
+#pragma pack(pop)

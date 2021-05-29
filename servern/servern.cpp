@@ -5,11 +5,10 @@
 #include "typese.hpp"
 #include "kv.hpp"
 #include "build/request.hpp"
-#include "build/request.cpp"
 #include "log.hpp"
 #include <memory>
-#include "kv-grp.cpp"
-#include "COutput.cpp"
+#include "group.hpp"
+#include "COutput.hpp"
 #include "build/config.hpp"
 #include "build/config.cpp"
 using std::string;
@@ -29,11 +28,7 @@ int main(void) {
 
 	CLog::output = &std::cout;
 	CLog::timestamps = 0;
-	CLog log ( "test" );
-	CLog log2 ( log, "blah");
-	log2("log2 hello");
-	CLog log3 ( "%s.hlab", log.ident_cstr());
-	log3("log3 hello");
+	CLog log ( "main" );
 
 	tick_epoch = std::chrono::steady_clock::now() - std::chrono::minutes(1);
 
@@ -62,10 +57,6 @@ int main(void) {
 	//Note: the config defines a dataoobject, while we extend it with runtime values
 	// this runtime object is referenced from t_config.
 
-	// readonly FileStream done. We need:
-	log("Hello", 69, 420, true, "world");
-	EStreamOutOfBounds test;
-	log.error(test, "while testing");
 
 	// way to share global objects
 	// all runtime objects should live under Config.

@@ -111,7 +111,7 @@ function generateStructBody($struct) {
 			$struct->tagname=$field;
 		} elseif($field->type[0]=='transient') {
 			array_shift($field->type);
-			$field->serialize=false;
+			//$field->serialize=false;
 		} elseif($field->type[0]=='ignore' or $field->type[0]=='skip') {
 			$field->serialize=false;
 			$struct->tags[]=$field;

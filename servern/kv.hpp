@@ -11,7 +11,7 @@ struct KVBackend
 	virtual void Set(const CBuffer& key, const CBuffer& val) =0;
 	virtual void Del(const CBuffer& key) =0;
 	//virtual void GetNext(CBuffer& key, CBuffer* val) =0;
-	//virtual void GetLast(CBuffer& key, CBuffer* val =0) =0;
+	virtual void GetLast(CBuffer& key, CBuffer* val =0) =0;
 	virtual void Commit() =0;
 	virtual void Close() =0;
 	virtual ~KVBackend();

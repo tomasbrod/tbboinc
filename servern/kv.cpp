@@ -68,8 +68,6 @@ CLog LogKV ("db");
 	- memory map size (and max db size)
 */
 
-static const size_t mega = 1048576;
-
 class KV_Lightning : public KVBackend
 {
 	MDB_env *env;
@@ -93,7 +91,7 @@ void KV_Lightning::Open(const t_config_database& cfg)
 	this->cfg = &cfg;
 	if( mdb_env_create(&env) )
 		throw std::runtime_error("LMDB initialization failed");
-	mdb_env_set_mapsize(env, mega * cfg.mmap);
+	mdb_env_set_mapsize(env, cfg.mmap);
 	unsigned int flags = MDB_NOSUBDIR | MDB_NOTLS;
 	if( cfg.sync == 1 )
 		flags |= MDB_NOMETASYNC;
@@ -240,13 +238,13 @@ class KV_Level : public KVBackend
 		options.info_log = &logger;
 		woptions.sync= cfg.sync>0;
 		if(cfg.block)
-			options.block_size = 1024ULL * cfg.block;
+			options.block_size = cfg.block;
 		if(cfg.memtable)
-			options.write_buffer_size = mega * cfg.memtable;
+			options.write_buffer_size = cfg.memtable;
 		if(cfg.sstable)
-			options.max_file_size = mega * cfg.sstable;
+			options.max_file_size = cfg.sstable;
 		if(cfg.cache) {
-			options.block_cache = leveldb::NewLRUCache(cfg.cache * mega);
+			options.block_cache = leveldb::NewLRUCache(cfg.cache);
 		}
 		if(cfg.bloom) {
 			options.filter_policy = leveldb::NewBloomFilterPolicy(cfg.bloom);
@@ -291,6 +289,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	protected:
   DB db;
   bool hard_txc;
+  std::unique_ptr<byte[]> result_region;
 	~KV_KyotoAny() {on_destruct();}
 	struct Logger : kyotocabinet::BasicDB::Logger {
 		CLog plog;
@@ -319,7 +318,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 			#endif
 		);
 		if(cfg.mmap)
-			db.tune_map( cfg.mmap * mega );
+			db.tune_map( cfg.mmap );
 		hard_txc = cfg.sync > 0;
 		int opts = 0;
 		if(cfg.compress==1)
@@ -333,7 +332,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		if(cfg.kyotofbp>0)
 			db.tune_fbp( cfg.kyotofbp );
 		if(cfg.buckets)
-			db.tune_buckets( 1000ULL * cfg.buckets );
+			db.tune_buckets( cfg.buckets );
 		if(cfg.defrag>0)
 			db.tune_defrag( cfg.defrag );
 	}
@@ -368,9 +367,22 @@ template <class DB> class KV_KyotoAny : public KVBackend
 			throw std::runtime_error(db.error().name());
 	}
 
-	void Get(const CBuffer& key, CBuffer& val) {}
-	void Set(const CBuffer& key, const CBuffer& val) {}
-	void Del(const CBuffer& key) {}
+	void Get(const CBuffer& key, CBuffer& val)
+	{
+		size_t vsize;
+		char* vdata = db.get((char*)key.base,key.pos(),&vsize);
+		result_region.reset((byte*)vdata);
+		val.reset(vdata, vsize);
+	}
+	void Set(const CBuffer& key, const CBuffer& val)
+	{
+		if(! db.set((char*)key.base,key.pos(),(char*)val.base,val.pos()) )
+			throw std::runtime_error("KyotoDB set failed");
+	}
+	void Del(const CBuffer& key)
+	{
+		db.remove((char*)key.base,key.pos());
+	}
 	void GetFirst(CBuffer& key, CBuffer* val)
 	{ throw std::runtime_error("unimplemented"); }
 	void GetLast(CBuffer& key, CBuffer* val)
@@ -384,17 +396,19 @@ class KV_Kyoto : public KV_KyotoAny<kyotocabinet::TreeDB>
 	{
 		Open1(cfg);
 		if(cfg.block)
-			db.tune_page( cfg.block * mega );
+			db.tune_page( cfg.block );
 		if(cfg.cache)
-			db.tune_page_cache( cfg.cache * mega );
+			db.tune_page_cache( cfg.cache );
 		Open2(cfg);
 	}
+	/*
 	void GetFirst(CBuffer& key, CBuffer* val)
 	{
 	}
 	void GetLast(CBuffer& key, CBuffer* val =0)
 	{
 	}
+	*/
 };
 
 class KV_KyotoHash : public KV_KyotoAny<kyotocabinet::HashDB>
@@ -442,5 +456,5 @@ unique_ptr<KVBackend> OpenKV(const t_config_database& cfg)
 
 void throwNamedPtrNotFound(CLog& log, const char* name, const char* type_text)
 {
-	throw std::runtime_error(tostring(log,name,type_text));
+	throw std::runtime_error(tostring(type_text,name,"not found for",log));
 }

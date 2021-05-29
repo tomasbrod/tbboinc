@@ -32,9 +32,37 @@ void IStream::skip(unsigned displacement)
 	else
 		setpos(pos()+displacement);
 }
+size_t IStream::left() {
+	return SIZE_MAX;
+}
+
+void IStream::copyto(IStream* dest, size_t len)
+{
+	while(size_t cnt = std::min(len, (size_t)(buffer.wend - buffer.cur) )) {
+		dest->write(buffer.cur,cnt);
+		buffer.cur = buffer.wend;
+		len -= cnt;
+		setpos(pos()); //FIXME: formal interface for advancing buffer
+	}
+}
+
+void CBuffer::copyto(IStream* dest, size_t len)
+{
+	if(len > (wend-cur))
+		len=(wend-cur);
+	dest->write(cur,len);
+	cur=wend;
+}
 
 void CBufStream::setpos(size_t pos) { throw EStreamOutOfBounds(); }
 byte* CBufStream::outofbounds(size_t len, bool wr){throw EStreamOutOfBounds();}
+
+void CBufStream::copyto(IStream* dest, size_t len)
+{
+	len = std::min(left(),len);
+	// getdata is instant for CBufStream, use it
+	dest->write(this->getdata(len,0),len);
+}
 
 void CFileStream::openRead(const char* filename)
 {
@@ -92,6 +120,60 @@ byte* CHandleStream::outofbounds(size_t len, bool wr)
 	setpos(pos());
 	buffer.cur+=len;
 	return buffer.base;
+}
+
+void CHandleStream::copyto(CBufStream* dest, size_t len)
+{
+	// getdata is instant for CBufStream, use it
+	this->read(dest->getdata( len, 1), len );
+}
+	
+void CHandleStream::copyto(CHandleStream* dest, size_t len)
+{
+	size_t cnt;
+	if( cnt = std::min(len, (size_t)(buffer.wend - buffer.cur) )) {
+		dest->write(buffer.cur,cnt);
+		buffer.cur = buffer.wend;
+		len -= cnt;
+	}
+	if(len) {
+		int pipefd[2];
+		if(::pipe(pipefd)<0)
+			throw std::system_error( errno, std::system_category());
+		cnt = 0;
+		do {
+			ssize_t rc = ::splice( this->file, NULL, pipefd[0], NULL, len, 0);
+			printf("splice %ld of %lu data in\n", rc, len);
+			if(rc<0)
+				throw std::system_error( errno, std::system_category());
+			if(rc==0)
+				break;
+			len -= rc;
+			cnt += rc;
+			ssize_t wc = ::splice( pipefd[1], NULL, this->file, NULL, cnt, 0);
+			printf("splice %ld of %lu data in\n", wc, cnt);
+			if(wc<0)
+				throw std::system_error( errno, std::system_category());
+		} while(len);
+		while(cnt) {
+			ssize_t wc = ::splice( pipefd[1], NULL, this->file, NULL, cnt, 0);
+			printf("splice %ld of %lu data in\n", wc, cnt);
+			if(wc<0)
+				throw std::system_error( errno, std::system_category());
+			cnt -= wc;
+		}
+	}
+}
+
+void CHandleStream::copyto(IStream* dest, size_t len)
+{
+	len = std::min(left(),len);
+	if(auto bufstream = dynamic_cast<CBufStream*>(dest))
+		CHandleStream::copyto(bufstream,len);
+	else if(auto handlestream = dynamic_cast<CHandleStream*>(dest))
+		CHandleStream::copyto(handlestream,len);
+	else
+		IStream::copyto(dest,len);
 }
 
 static void t() {

@@ -1,40 +1,13 @@
-#include "kv.hpp"
-#include <stdio.h>
-#include <string>
-#include <cstring>
-#include <lmdb.h>
-#include <assert.h>
-#include <stdexcept>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <chrono>
-#include <map>
-#include "Stream.hpp"
-#include "log.hpp"
+#include "group.hpp"
 
 using std::string;;
 
 
-struct GroupCtl
-{
-	std::mutex cs;
-	std::condition_variable cv;
-	unsigned nopen;
-	Ticks open_since;
-	std::map<immstring<16>,unique_ptr<KVBackend>> dbs;
-	struct IdMapElem {
-		immstring<16> type_text;
-		immstring<16> name;
-		short id;
-		short len;
-	};
-	std::vector<IdMapElem> IdMapVec;
-	const Ticks group_delay = Ticks(std::chrono::seconds(3));
-	KVBackend* main;
-	CLog log;
+struct COutput;
+class GroupCtl;
 
-	void init(CLog& ilog, std::vector<t_config_database1>& cfgs)
+
+	void GroupCtl::init(CLog& ilog, std::vector<t_config_database1>& cfgs)
 	{
 		log=ilog;
 		main=0;
@@ -72,7 +45,7 @@ struct GroupCtl
 		}
 	}
 
-	KVBackend* get(const immstring<16>& name)
+	KVBackend* GroupCtl::getKV(const immstring<16>& name)
 	{
 		auto it = dbs.find(name);
 		if(it!=dbs.end()) {
@@ -82,7 +55,7 @@ struct GroupCtl
 		}
 	}
 
-	short getID(const char* type_text, const char* name, byte len=1)
+	short GroupCtl::getID(const char* type_text, const char* name, byte len)
 	{
 		short next = 1<<14;
 		for( const auto& el : IdMapVec ) {
@@ -110,7 +83,7 @@ struct GroupCtl
 		return el1.id;
 	}
 
-	void Open()
+	void GroupCtl::Open()
 	{
 		std::lock_guard<std::mutex> lock (cs);
 		if(!open_since.count()) {
@@ -119,7 +92,7 @@ struct GroupCtl
 		nopen++;
 	}
 
-	void Close()
+	void GroupCtl::Close()
 	{
 		std::unique_lock<std::mutex> lock (cs);
 		if(nopen==1) {
@@ -138,20 +111,36 @@ struct GroupCtl
 			}
 		}
 	}
-	void ActuallyCommit()
+	void GroupCtl::ActuallyCommit()
 	{
 		LogKV("group commit");
 		for(const auto& dbit : dbs) {
 			dbit.second->Commit();
 		}
 	}
-	static const char* type_text;
-};
 
+	//void GroupCtl::releaseTask(TTask *p);
+
+	void GroupCtl::TaskPtr_deleter::operator()(TTask *p)
+	{
+		//todo
+	};
+
+	class TaskPtr
+		: public std::unique_ptr<TTask, GroupCtl::TaskPtr_deleter >
+	{
+	};
+
+	//TaskPtr GroupCtl::acquireTask(unsigned id);
+	//acquire task - select for update, returns custom unique pointer
+	//update  task - save to db
+	//release task - unlock (automatic)
+	
 const char* GroupCtl::type_text = "database";
 
-void bind( NamedPtr<KVBackend>& ptr, GroupCtl& group, CLog& log) {
-	ptr.ptr= group.get(ptr.name);
+void GroupCtl::bind( NamedPtr<KVBackend>& ptr, CLog& log) {
+	if(ptr.name.empty()) return;
+	ptr.ptr= getKV(ptr.name);
 	if(!ptr.ptr)
 		throwNamedPtrNotFound(log, ptr.name, GroupCtl::type_text);
 }

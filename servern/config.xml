@@ -1,10 +1,10 @@
 <server_config>
   <!-- first database element is always the main db -->
   <!-- name attribute defaults to basename(path) -->
-  <database name=main type=lmdb path=sched.db />
+  <database name=main type=lmdb path=sched.db mmap=42M />
   <_database name=postcarddb type=lmdb path=post.db />
   <_database name=test_level type=level path=test_level.db sync=2 />
-  <_database name=test_kch type=kyotohash path=test_kyotohash.db />
+  <database name=test_kch type=kyotohash path=test_kyotohash.db />
   <database name=test_kcb type=kyoto path=test_kyoto.db />
   <stdio />
   <fastcgi threads=4 path='fcgi.sock' />
@@ -54,7 +54,26 @@
   
   <plugin name=sample_fwd >
     <!-- whatever -->
+    
+    <output name='sample'
+      success=fail
+      errors=queue
+      expire=queue
+      files=queue
+      trickle=disable
+      >
+      <files size=1k db=main />
+      <files size=16k db=test_kch />
+      <files size=120M path='uploads/postcard' group=no />
+      <inputs />
+    </output>
   </plugin>
+
+  <foreign name='foreign'>
+    <files size=1k db=main />
+    <files size=120M path='uploads/foreign' group=no />
+    <inputs />
+  </foreign>
 
   <feed name='xx' priority=4 >
     <!-- the first thing scheduler consults when giving out work -->
@@ -85,6 +104,7 @@
   <program name=spt >
     <!-- description of boinc application version -->
     <!-- most important are the compatibility filters -->
+    <!-- inherit another program -->
   </program>
 
   <queue name=sptq46 >
