@@ -26,6 +26,11 @@ template < typename ... Args > static std::string tostring( const Args&... args 
 	return ss.str();
 }
 
+static std::string tostring( const std::string& arg )
+{
+	return arg;
+}
+
 class CLog
 {
 	std::string ident;
@@ -87,6 +92,24 @@ class CLog
 	static std::ostream* output;
 	static std::mutex cs;
 	static bool timestamps;
+};
+
+class ERecoverable : public std::exception
+{
+	std::string msg;
+	void init(CLog& log, const std::string& imsg);
+	public:
+	const char * what () const noexcept override;
+	ERecoverable(const ERecoverable&) = default;
+	template < typename ... Args > ERecoverable(CLog& log, const Args&... args )
+	{
+		init(log, tostring(args...));
+	}
+	template < typename ... Args > ERecoverable(const Args&... args )
+	{
+		CLog log("ERecoverable");
+		init(log, tostring(args...));
+	}
 };
 
 // convert anything to string

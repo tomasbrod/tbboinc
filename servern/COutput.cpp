@@ -1,5 +1,10 @@
 #include "COutput.hpp"
 #include <cstddef>
+#include <iomanip>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 using std::string;
 using std::unique_ptr;
@@ -18,7 +23,14 @@ void COutput::init(CPlugin* iplugin, GroupCtl& group)
 			if(!ptrdb) ptrdb = el.db.ptr;
 			assert(el.path.empty());
 		}
-		else assert(!el.path.empty());
+		else {
+			assert(!el.path.empty());
+			TUploadInfo upload = {
+				.num=1,
+				.taskid=125894,
+			};
+			log(getFileName(el, upload));
+		}
 	}
 }
 
@@ -31,91 +43,157 @@ struct TPointer
 	byte dirid;
 	byte _pad;
 	LEuint64 size;
-	std::array<byte,32> cksum;
+	std::array<byte,16> cksum; // MD5 is 16 bytes
 	static const size_t prefix;
+	enum {
+		Pointer=1,
+		Complete=2,
+		Trickle=4,
+	};
 };
 const size_t TPointer::prefix = offsetof(TPointer,num);
 #pragma pack(pop)
-	
 
-void COutput::saveOutput( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload)
+std::array<byte,16> hashMD5(const CBuffer& buf)
 {
-	// check if task state allows to upload
-	// acquire file number
-	// save and unlock task
-	// find the location
-		assert(upload.size > upload.offset); //with or without offset?
+	return std::array<byte,16> {42,42,};
+}
 
-	std::array<byte,32> cksum;
-	//if a normal file is being uploaded:
+void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload)
+{
+	if(upload.offset >= upload.size)
+		throw EFileUpload("invalid upload offset");
 	// find the location
 	const t_config_subs_files* place = getPlace(upload);
-	assert(place);
-	// if location is a directory, read and write file pointer
+	if(!place)
+		throw EFileUploadPlace("no suitable destination");
+	if(upload.offset >= upload.size)
+		throw EFileUpload("invalid upload offset");
 	CStUnStream<8> key = makeKey(upload);
-	if(place->isdir) {
-		CUnchStream val1;
-		ptrdb->Get(key, val1);
-		if(val1.left() < sizeof(TPointer) ) {
+	CUnchStream val1;
+	const TPointer* ptr = 0;
+	(place->isdir?ptrdb:place->db.ptr)->Get(key, val1);
+	if(val1.length()) {
+		assert(val1.length()>=TPointer::prefix); //db consistency
+		ptr = (const TPointer*)val1.base;
+		if( !(ptr->flags&TPointer::Trickle) != !upload.trickle )
+			throw EFileUpload("file metadata does not match");
+		if( ptr->flags&TPointer::Complete ) //fixme: eat the data and report success
+			try { upload.stream->skip(upload.size-upload.offset); }
+				catch(std::exception&) {}
+	}
+	if(place->isdir || ptr && (ptr->flags&TPointer::Pointer))
+	{
+		// is pointer, or already started uploading as pointer
+		if( !ptr || !(ptr->flags&TPointer::Pointer) ) {
+			assert(val1.left() == sizeof(TPointer)); // db consistency
 			CStUnStream<sizeof(TPointer)> val2;
 			val2.w4(1234/*timestamp*/);
-			val2.w1(1 /*pointer*/ );
+			val2.w1(TPointer::Pointer );
 			val2.w1(upload.num);
 			val2.w1(place->dirid);
 			val2.w1(0);
 			val2.w8(upload.size);
-			val2.writea(cksum);
+			val2.writea(upload.cksum);
 			ptrdb->Set(key,val2);
 		} else {
-			TPointer* ptr = (TPointer*)val1.base;
-			assert(ptr->flags&1); //is pointer
-			assert(ptr->cksum==cksum);
-			assert(ptr->size==upload.size);
+			if( (ptr->size!=upload.size) || (ptr->cksum!=upload.cksum) )
+				throw EFileUpload("resume mismatched checksum or size");
+			if(ptr->dirid!=place->dirid) for( auto& el : filesv ) {
+				if( el.dirid == ptr->dirid && el.isdir ) {
+					place = &el;
+				}
+			}
 		}
-	}
-	// unlock task
-	task.reset();
-	// or recv all and put to DB
-	if(!place->isdir) {
+		CFileStream data;
+		std::string filename = getFileName(*place,upload);
+		try {
+			data.openWrite(filename.c_str());
+			//todo: whether to lock or not?
+		} catch ( EFileAccess& e) {
+			// file access error, probably already finalized
+			if( !isFileComplete( filename, upload.size ) )
+				throw ERecoverable(log1,"open upload file",e.what());
+				else try { upload.stream->skip(upload.size-upload.offset); }
+					catch(std::exception&) {}
+		}
+		if( upload.offset > data.length() )
+			throw EFileUpload("resume offset leaves a hole");
+		if(data.length() > upload.size)
+			throw std::runtime_error("inconsistent file size");
+		try {
+			data.setpos(upload.offset);
+			upload.stream->copyto(&data, upload.size-upload.offset);
+			data.close();
+			CFileStream::setReadOnly(filename.c_str(),true);
+		} catch (EDiskFull& e) {
+			throw ERecoverable(log1,"server storage full");
+		} catch (std::system_error& e) {
+			throw ERecoverable(log1,"uploading file",e.what());
+		}
+	} else {
+		// or recv all and put to DB
 		// if there is something in the db and the upload is of a resume
-		CUnchStream val1;
-		place->db->Get(key, val1);
-		if(upload.offset) {
-			assert(upload.offset <= (val1.length()-TPointer::prefix));
-		}
-		// either file does not exist yet, or it is marked as incomplete
-		if(val1.length()) {
-			TPointer* ptr = (TPointer*)val1.getdata(TPointer::prefix,0);
-			assert( ptr->flags&2 ); // marked as incomplete
-			assert( (val1.length()-TPointer::prefix) <= upload.size ); // todo: size with or without offset?
-		}
-		else assert(upload.offset == 0);
-		CBufStream data; // todo: allocate upload
+		size_t db_size = val1.left();
+		/*if(upload.size<db_size)
+			throw EFileUpload("resume truncates file");*/
+		if(upload.offset>db_size)
+			throw EFileUpload("resume offset leaves a hole");
+		CBufStream data;
+		data.allocate(TPointer::prefix + upload.size);
 		TPointer* ptr = (TPointer*)data.getdata(TPointer::prefix,1);
 		// copy from previous upload
+		val1.skip(TPointer::prefix); // skip prefix
 		val1.copyto(&data, upload.offset );
-		assert(data.pos() == (upload.offset+TPointer::prefix));
+		assert(data.pos() == (upload.offset+TPointer::prefix)); //doublecheck
 		// copy new data
 		upload.stream->copyto(&data, upload.size-upload.offset);
 		// set up metadata
 		ptr->stamp = 1234;
-		ptr->flags = 2 /*incomplete file*/;
+		ptr->flags = 0 /*incomplete file*/;
 		if( data.pos() == (TPointer::prefix+upload.size) )
-			ptr->flags = 0 /* complete file */;
+			ptr->flags = TPointer::Complete /* complete file */;
+		// check hash of the complete file
+		if( hashMD5(CBuffer(data.release().base+TPointer::prefix,upload.size)) != upload.cksum ) {
+			place->db->Del(key);
+			throw ERecoverable(log1,"checksum mismatch");
+		}
 		// finally put into database
-		place->db->Set(key, data.release());
-	}	else {
-		CFileStream data;
-		data.openWriteLock(getFileName(*place,upload));
-		size_t esize = data.length();
-		assert( upload.size >= esize );
-		assert( upload.offset <= esize );
-		data.setpos(upload.offset);
-		upload.stream->copyto(&data, upload.size-upload.offset);
-		data.close();
+		try {
+			place->db->Set(key, data.release());
+		} catch (EDiskFull& e) {
+			throw ERecoverable(log1,"server storage full");
+		}
 	}
+}
+
+void COutput::saveOutput( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload)
+{
+	//todo: check if task state allows to upload of this file
+
+	//todo: if a notice or unordered file, acquire a file number
+
+	// unlock task
+	// todo: if modified, save the task
+	task.reset();
 	// lastly, enqueue task
 	plugin->addValidate(upload.taskid, upload.num);
+}
+
+void COutput::saveReport( CLog& log1, GroupCtl::TaskPtr task, TReport& report, const std::string& tasklog)
+{
+	//serialize and save report
+	//save log just like other output
+}
+
+bool COutput::isFileComplete(const std::string& filename, size_t size )
+{
+	struct ::stat statbuf;
+	if(::stat(filename.c_str(),&statbuf)<0)
+		throw std::system_error( errno, std::system_category());
+	if( statbuf.st_mode & (S_IWUSR|S_IWGRP|S_IWOTH) )
+		return false;
+	return ( statbuf.st_size == size );
 }
 
 const t_config_subs_files* COutput::getPlace(const TUploadInfo& inf) const
@@ -138,6 +216,16 @@ CStUnStream<8> COutput::makeKey(TUploadInfo& inf) const
 	return key;
 }
 
+std::string COutput::getFileName(const t_config_subs_files& place, const TUploadInfo& inf) const
+{
+	std::stringstream ss;
+	ss << place.path << "/"
+	<< std::hex << std::setfill('0')
+	<< std::setw(8) << inf.taskid
+	<< std::setw(2) << inf.num;
+	return ss.str();
+}
+
 //void COutput::saveReport( CLog& log1, GroupCtl::TaskPtr task, TReport& report, const std::string& tasklog);
 // log like: host.192489.task.551456.postcard: 
 
@@ -148,11 +236,15 @@ CStUnStream<8> COutput::makeKey(TUploadInfo& inf) const
 // deemed inportant by <output> happened to it
 void CPlugin::addValidate(unsigned id, short fileno)
 {
+	//lock
 	CStUnStream<8> key;
 	key.wb2(ID);
-	key.w4(id);
+	key.wb4(tail);
+	tail++;
 	CStUnStream<8> val;
+	key.w4(id);
 	val.w1(fileno);
+	//unlock
 	kv->Set(key,val);
 }
 
@@ -162,7 +254,7 @@ void CPlugin::init(GroupCtl& igroup)
 	log=CLog("plugin",name);
 	group= &igroup;
 	kv= igroup.main;
-	ID=group->getID("plugin", this->name, 4);
+	ID=group->getID("plugin", this->name, 2);
 	CStUnStream<8> key;
 	key.wb2(ID);
 	kv->GetLast(key);

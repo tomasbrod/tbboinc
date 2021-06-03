@@ -30,7 +30,8 @@ class COutput : public t_config_output
 		size_t offset;
 		IStream* stream;
 		long taskid;
-		immstring<33> cksum;
+		bool trickle;
+		std::array<byte,16> cksum;
 	};
 	void saveOutput( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload);
 	struct TReport {
@@ -40,6 +41,19 @@ class COutput : public t_config_output
 	private:
 	const t_config_subs_files* getPlace(const TUploadInfo&) const;
 	CStUnStream<8> makeKey(TUploadInfo&) const;
+	std::string getFileName(const t_config_subs_files& place, const TUploadInfo& inf) const;
+	void saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload);
+	bool isFileComplete( const std::string& filename, size_t size );
+};
+
+struct EFileUpload : std::runtime_error
+{
+	using std::runtime_error::runtime_error;
+};
+
+struct EFileUploadPlace : EFileUpload
+{
+	using EFileUpload::EFileUpload;
 };
 
 #include "build/config-plugin.hpp"

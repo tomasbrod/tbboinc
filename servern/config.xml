@@ -65,6 +65,7 @@
       <files size=1k db=main />
       <files size=16k db=test_kch />
       <files size=120M path='uploads/postcard' group=no />
+      <files size=2G path='uploads/big' group=no />
       <inputs />
     </output>
   </plugin>

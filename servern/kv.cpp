@@ -353,6 +353,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	void Close()
 	{
 		logger.plog("KV_KyotoAny::Close()");
+		result_region.reset();
 		// Abort transaction
 		if(! db.end_transaction(false) )
 			throw std::runtime_error(db.error().name());
@@ -361,6 +362,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		}
   }
   void Commit() {
+		result_region.reset();
 		if(! db.end_transaction(true) )
 			throw std::runtime_error(db.error().name());
 		if(! db.begin_transaction(hard_txc) )

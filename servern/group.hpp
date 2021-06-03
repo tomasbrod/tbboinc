@@ -33,7 +33,7 @@ struct GroupCtl
 	Ticks open_since;
 	std::map<immstring<16>,unique_ptr<KVBackend>> dbs;
 	struct IdMapElem {
-		immstring<16> type_text;
+		immstring<8> type_text;
 		immstring<16> name;
 		short id;
 		short len;
