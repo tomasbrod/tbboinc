@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include "parse2.hpp"
+#include "parse4.hpp"
 #include <fcgiapp.h>
 #include "typese.hpp"
 #include "kv.hpp"
@@ -25,6 +26,8 @@ struct CConfig : t_config
 std::chrono::steady_clock::time_point tick_epoch;
 
 int main(void) {
+
+	setlocale(LC_NUMERIC, "C");
 
 	CLog::output = &std::cout;
 	CLog::timestamps = 0;
@@ -53,6 +56,9 @@ int main(void) {
 		return 1;
 	}
 
+	log("XML_TAG_test()");
+	CLog::output->flush();
+	XML_TAG_test();
 
 	//Note: the config defines a dataoobject, while we extend it with runtime values
 	// this runtime object is referenced from t_config.
