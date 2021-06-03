@@ -12,29 +12,27 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
+
 
 const char * EStreamOutOfBounds::what () const noexcept {return "Stream access Out Ouf Bounds";}
 
 //struct CUnchStream : StreamInternals::PartOne<StreamInternals::Unchecked> {};
 //struct IStream : StreamInternals::PartOne<StreamInternals::Virtual> {};
 
-void IStream::read(void* buf, size_t len) {
-	memcpy(buf,getdata(len,0),len);
-}
-void IStream::write(const void* buf, size_t len) {
-	memcpy(getdata(len,1),buf,len);
-}
-void IStream::skip(unsigned displacement)
-{
+void StreamInternals::Virtual::read2(void* buf, size_t len) { throw EStreamOutOfBounds(); }
+void StreamInternals::Virtual::write2(const void* buf, size_t len) { throw EStreamOutOfBounds(); }
+void StreamInternals::Virtual::setpos(ssize_t pos2) { throw EStreamOutOfBounds(); }
+byte* StreamInternals::Virtual::outofbounds(size_t len, bool wr) {throw EStreamOutOfBounds();}
+/*{
 	byte* p = buffer.cur + displacement;
 	if(p >= buffer.base && p < buffer.wend)
 		buffer.cur=p;
 	else
 		setpos(pos()+displacement);
-}
-size_t IStream::left() {
-	return SIZE_MAX;
-}
+}*/
+size_t IStream::left() { return SIZE_MAX; }
+size_t IStream::length() { return 0; }
 
 void IStream::copyto(IStream* dest, size_t len)
 {
@@ -55,7 +53,8 @@ void CBuffer::copyto(IStream* dest, size_t len)
 }
 
 void CBufStream::setpos(size_t pos) { throw EStreamOutOfBounds(); }
-byte* CBufStream::outofbounds(size_t len, bool wr){throw EStreamOutOfBounds();}
+size_t CBufStream::left() { return buffer.wend - buffer.cur; }
+size_t CBufStream::length() { return buffer.length(); }
 
 void CBufStream::copyto(IStream* dest, size_t len)
 {
@@ -64,13 +63,43 @@ void CBufStream::copyto(IStream* dest, size_t len)
 	dest->write(this->getdata(len,0),len);
 }
 
+void CBufStream::allocate(size_t size)
+{
+	assert(false);
+}
+
+
 void CFileStream::openRead(const char* filename)
 {
 	close();
 	file = ::open( filename, O_RDONLY | O_CLOEXEC );
 	if(file<0) {
-		throw std::system_error( errno, std::system_category());
+		if(errno==ENOENT)
+			throw EFileNotFound(errno);
+		else throw std::system_error( errno, std::system_category());
 	}
+	do_stat();
+}
+
+void CFileStream::openWrite(const char* filename)
+{
+	close();
+	file = ::open( filename, O_RDWR | O_CLOEXEC | O_CREAT );
+	if(file<0) {
+		if(errno==EACCES)
+			throw EFileAccess(errno);
+		else throw std::system_error( errno, std::system_category());
+	}
+	do_stat();
+}
+
+void CFileStream::do_stat()
+{
+	stat_length = 0; //TODO
+	struct ::stat statbuf;
+	if(::fstat(file,&statbuf)<0)
+		throw std::system_error( errno, std::system_category());
+	stat_length = statbuf.st_size;
 }
 
 void CFileStream::close()
@@ -85,21 +114,85 @@ void CFileStream::close()
 	chunk_pos=0;
 	buffer.reset();
 }
+size_t CFileStream::length() { return stat_length; }
 
-//CFileStream::~CFileStream() {close();}
-
-CHandleStream::CHandleStream(int ifile)
+CHandleStream::CHandleStream(int ifile, bool iwr)
 {
 	file= ifile;
 	buffer.reset();
 	chunk_pos= 0;
-	writable=0;
+	writable=iwr;
+}
+
+void CFileStream::setReadOnly(const char* name, bool ro)
+{
+	mode_t mode = 0664;
+	if(ro) mode = 0444;
+	if(::chmod(name, mode )<0)
+		throw std::system_error( errno, std::system_category());
+}
+
+void CHandleStream::write3(const byte* buf, size_t len)
+{
+	while(len) {
+		ssize_t rc = ::write(this->file, buf, len);
+		if(rc<=0)
+			throw std::system_error( errno, std::system_category());
+		buf+=rc;
+		len-=rc;
+		chunk_pos += rc;
+	}
+}
+
+size_t CHandleStream::read3(byte* buf, size_t ilen)
+{
+	size_t len=ilen;
+	while(len) {
+		ssize_t rc = ::read(this->file, buf, len);
+		if(rc<0)
+			throw std::system_error( errno, std::system_category());
+		if(rc==0) break;
+		buf+=rc;
+		len-=rc;
+		chunk_pos += rc;
+	}
+	return ilen - len;
+}
+
+void CHandleStream::read2(void* ibuf, size_t len)
+{
+	byte* buf = (byte*)ibuf;
+	// read as much from buffer
+	size_t buflen = std::min(buffer.left(),len);
+	if(buflen) {
+		memcpy(buf,buffer.cur,buflen);
+		buffer.cur += buflen;
+		buf += buflen;
+		len -= buflen;
+	}
+	// read rest from file directly
+	if(len) {
+		buffer.reset();
+		read3(buf,len);
+	}
 }
 
 void CHandleStream::flush()
 {
-	throw std::runtime_error("CHandleStream flush unimplemented");
+	if(!writable) return;
+	write3(buffer.base, buffer.pos());
+	buffer.reset(static_buffer,sizeof(static_buffer));
 }
+
+void CHandleStream::write2(const void* ibuf, size_t len)
+{
+	if(!writable)
+		throw std::runtime_error("CHandleStream is not writable");
+	flush();
+	write3((byte*)ibuf,len);
+}
+
+/*
 void CHandleStream::setpos(size_t pos) {
 	//if(pos==pos()) break;
 	if(pos!=lseek(file, pos, SEEK_SET))
@@ -112,14 +205,35 @@ void CHandleStream::setpos(size_t pos) {
 		throw EStreamOutOfBounds();
 	buffer.reset(static_buffer,rc);
 }
+*/
 byte* CHandleStream::outofbounds(size_t len, bool wr)
 {
 	if(len>sizeof(static_buffer))
 		throw std::runtime_error("CHandleStream read too big");
-	buffer.cur-=len;
-	setpos(pos());
-	buffer.cur+=len;
-	return buffer.base;
+	if(wr && !writable)
+		throw std::runtime_error("CHandleStream is not writable");
+	if(wr) {
+		assert(buffer.pos()>=len);
+		write3(buffer.base, buffer.pos()-len);
+		buffer.reset(static_buffer,sizeof(static_buffer));
+		buffer.cur=buffer.base+len;
+		return buffer.base;
+	} else {
+		buffer.cur-=len;
+		// copy leftover data
+		assert(buffer.left()<sizeof(static_buffer));
+		size_t left;
+		for(left=0; (buffer.cur+left)<buffer.wend; ++left)
+			static_buffer[left] = buffer.cur[left];
+		buffer.base=static_buffer;
+		buffer.wend=buffer.base+left;
+		buffer.cur= buffer.base+len;
+		size_t rc = read3(buffer.wend, sizeof(static_buffer) - left);
+		buffer.wend+=rc;
+		if(buffer.cur>buffer.wend)
+			throw EStreamOutOfBounds(); // EOF reached
+		return buffer.base;
+	}
 }
 
 void CHandleStream::copyto(CBufStream* dest, size_t len)
@@ -184,43 +298,6 @@ static void t() {
 
 // See also: https://docs.microsoft.com/en-us/cpp/cpp/explicit-instantiation?view=msvc-160
 
-class CStreamzzzz // TODO
-	: CUnchStream
-{
-
-	public:
-
-	void read(void *dest, size_t len) {
-		byte* x=this->getdata(len,0);
-		std::copy(x,x+len,static_cast<byte*>(dest));
-	}
-
-	void write(const void *src, size_t len) {
-		byte* x=this->getdata(len,1);
-		std::copy(static_cast<const byte*>(src),static_cast<const byte*>(src)+len,x);
-	}
-
-	std::string ReadShortString() {
-		size_t len = r1();
-		return std::string ((char*)this->getdata(len,0), len);
-	}
-
-	std::string ReadStringAll() {
-		size_t len = length() - pos();
-		return std::string ((char*)this->getdata(len,0), len);
-	}
-
-	void WriteShortString(std::string s) {
-		w1(s.length());
-		std::copy(s.begin(),s.end(),(char*)this->getdata(s.length(),1));
-	}
-	
-	void WriteStringAll(std::string s) {
-		std::copy(s.begin(),s.end(),(char*)this->getdata(s.length(),1));
-	}
-
-};
-
 std::ostream* CLog::output;
 std::mutex CLog::cs;
 bool CLog::timestamps;
@@ -272,6 +349,17 @@ std::stringstream& operator<<(std::stringstream& ss, const CLog& other)
 {
 	ss << other.ident;
 	return ss;
+}
+
+void ERecoverable::init(CLog& log, const std::string& imsg)
+{
+	msg = tostring(imsg,"from",log);
+	log.warn(imsg);
+}
+
+const char * ERecoverable::what () const noexcept
+{
+	return msg.c_str();
 }
 
 // trace macros ( HERE, VALUE(var) ) go to the singleton (use stringstream to stringify)

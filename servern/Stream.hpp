@@ -39,6 +39,13 @@ struct CBuffer
 		wend += size;
 	}
 	void copyto(IStream* dest, size_t len);
+	CBuffer() = default;
+	explicit CBuffer(void* ptr, size_t size)
+		: base((byte*)ptr), wend((byte*)ptr+size), cur((byte*)ptr+size)
+		{}
+	size_t left() {
+		return wend - cur;
+	}
 };
 
 template <std::size_t SIZE>
@@ -76,11 +83,8 @@ namespace StreamInternals
 		void setpos(size_t pos) {
 			cur= base + pos;
 		}
-		void skip(unsigned displacement) {
+		void skip(long displacement) {
 			cur= cur + displacement;
-		}
-		size_t left() {
-			return wend - cur;
 		}
 		void read(void* buf, size_t len) {memcpy(buf,cur,len); cur+=len;}
 		void write(const void* buf, size_t len) {memcpy(cur,buf,len); cur+=len;}
@@ -89,10 +93,13 @@ namespace StreamInternals
 	class Virtual
 	{
 		protected:
-		virtual byte* outofbounds(size_t len, bool wr) =0;
+		virtual byte* outofbounds(size_t len, bool wr);
+		virtual void read2(void* buf, size_t len);
+		virtual void write2(const void* buf, size_t len);
 		CBuffer buffer;
 		size_t chunk_pos;
 		public:
+		virtual void setpos(ssize_t pos);
 		byte* getdata(size_t len, bool wr)
 		{
 			byte* ret= buffer.cur;
@@ -101,14 +108,33 @@ namespace StreamInternals
 				return outofbounds(len,wr);
 			else return ret;
 		}
-		size_t pos() const { return chunk_pos + buffer.pos(); }
-		virtual void setpos(size_t pos) =0;
-		virtual void skip(unsigned displacement) =0;
-		virtual size_t left() =0;
-		//virtual size_t length() =0;
-		virtual void read(void* buf, size_t len) =0;
-		virtual void write(const void* buf, size_t len) =0;
-		virtual ~Virtual() {}
+		size_t pos() const {
+			return chunk_pos + buffer.pos();
+		}
+		void skip(long dis)
+		{
+			if((buffer.cur+dis) > buffer.wend || (buffer.cur+dis) < buffer.base)
+				setpos(pos()+dis);
+			else buffer.cur+=dis;
+		}
+		void read(void* buf, size_t len)
+		{
+			if((buffer.cur+len) > buffer.wend)
+				read2(buf,len);
+			else {
+				memcpy(buf,buffer.cur,len);
+				buffer.cur+=len;
+			}
+		}
+		void write(const void* buf, size_t len)
+		{
+			if((buffer.cur+len) > buffer.wend)
+				write2(buf,len);
+			else {
+				memcpy(buffer.cur,buf,len);
+				buffer.cur+=len;
+			}
+		}
 	};
 
 	template <class Base>
@@ -281,10 +307,8 @@ namespace StreamInternals
 struct CUnchStream : StreamInternals::PartOne<StreamInternals::Unchecked> {};
 struct IStream : StreamInternals::PartOne<StreamInternals::Virtual>
 {
-	virtual void read(void* buf, size_t len) override;
-	virtual void write(const void* buf, size_t len) override;
-	virtual void skip(unsigned displacement);
-	virtual size_t left() override;
+	virtual size_t left();
+	virtual size_t length();
 	virtual void copyto(IStream* dest, size_t len);
 };
 
@@ -306,15 +330,13 @@ struct CBufStream : IStream
 	CBufStream() = default;
 	// convert back to CBuffer derived object
 	const CBuffer& release() {return buffer;}
-	//
-	virtual size_t left() {
-		return buffer.wend - buffer.cur;
-	}
 	// implements IStream
 	virtual void setpos(size_t pos);
-	virtual void copyto(IStream* dest, size_t len);
+	virtual void copyto(IStream* dest, size_t len) final;
+	virtual size_t left() final;
+	virtual size_t length() final;
+	void allocate(size_t size);
 	protected:
-	virtual byte* outofbounds(size_t len, bool wr);
 };
 
 struct CHandleStream : IStream
@@ -322,30 +344,55 @@ struct CHandleStream : IStream
 	int file;
 	bool writable;
 	byte static_buffer[512];
-	explicit CHandleStream(int ifile);
+	explicit CHandleStream(int ifile, bool iwr=0);
 	CHandleStream() {file=-1; writable=0; buffer.reset();}
 	~CHandleStream() { if(writable) flush(); }
 	// flush method
 	void flush();
 	// implements IStream
-	virtual void setpos(size_t pos);
 	void copyto(CBufStream* dest, size_t len);
 	void copyto(CHandleStream* dest, size_t len);
-	virtual void copyto(IStream* dest, size_t len);
+	virtual void copyto(IStream* dest, size_t len) final;
 	protected:
-	virtual byte* outofbounds(size_t len, bool wr);
+	virtual byte* outofbounds(size_t len, bool wr) final;
+	virtual void read2(void* buf, size_t len) final;
+	virtual void write2(const void* buf, size_t len) final;
+	void write3(const byte* buf, size_t len);
+	size_t read3(byte* buf, size_t len);
 };
 
-#pragma pack(push, 1)
 struct CFileStream : CHandleStream
 {
 	CFileStream() : CHandleStream() {}
 	void openRead(const char* filename);
 	void openCreate(const char* filename);
+	void openWrite(const char* filename);
 	void close();
+	virtual size_t length() final;
 	~CFileStream() {close();}
+	static void setReadOnly(const char* name, bool ro);
+	//virtual void setpos(ssize_t pos) override;
+	protected:
+	size_t stat_length;
+	void do_stat();
 };
 
+struct EFileAccess : std::system_error
+{
+	EFileAccess( int ev ) : std::system_error( ev, std::system_category()) {}
+};
+
+struct EFileNotFound : std::system_error
+{
+	EFileNotFound( int ev ) : std::system_error( ev, std::system_category()) {}
+};
+
+struct EDiskFull : std::system_error
+{
+	EDiskFull( int ev ) : std::system_error( ev, std::system_category()) {}
+};
+
+#pragma pack(push, 1)
 template <typename T> class LEonLEtype
 {
 	T value;

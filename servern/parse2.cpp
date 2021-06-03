@@ -122,7 +122,7 @@ int XML_PARSER2::unescape_for(char* cur, size_t len, char delim, int c, size_t* 
 					cur=amp;
 				} else if((cur-amp)>2 && amp[1]=='#') {
 					(*amp++)= '_';
-					(*amp++)= 0;
+					(*amp++)= 0; //FIXME
 				}
 				else (*cur++)=c;
 				amp=0;
@@ -519,7 +519,7 @@ void parse_test_3(FILE* f) {
 	int level = 0;
 	do {
 		if(xp.get_tag()) {
-			printf("L%d %s\n",level,xp.tag,xp.in_tag);
+			printf("L%d %s\n",level,xp.tag/*,xp.in_tag*/);
 			//xp.skip();
 			while(xp.get_attr()) {
 				printf(" attr: %s\n",xp.attr);
