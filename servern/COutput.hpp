@@ -18,6 +18,8 @@ class COutput : public t_config_output
 	KVBackend* ptrdb;
 
 	public:
+	static const char* type_text;
+	static const unsigned type_id = 2;
   void init(CPlugin* iplugin, GroupCtl& group);
 
 	//function to copy socket stream into file storage
@@ -29,11 +31,12 @@ class COutput : public t_config_output
 		size_t size;
 		size_t offset;
 		IStream* stream;
-		long taskid;
+		unsigned long long taskid;
 		bool trickle;
+		const TTask* task;
 		std::array<byte,16> cksum;
 	};
-	void saveOutput( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload);
+	void saveOutput( CLog& log1, TUploadInfo& upload);
 	struct TReport {
 		//...
 	};
@@ -42,7 +45,7 @@ class COutput : public t_config_output
 	const t_config_subs_files* getPlace(const TUploadInfo&) const;
 	CStUnStream<8> makeKey(TUploadInfo&) const;
 	std::string getFileName(const t_config_subs_files& place, const TUploadInfo& inf) const;
-	void saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload);
+	void saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group );
 	bool isFileComplete( const std::string& filename, size_t size );
 };
 
@@ -69,6 +72,8 @@ class CPlugin : public t_config_plugin
 	// split the plugin into two parts: queues and listen
 	// this thing manages the queues
 	public:
+	static const char* type_text;
+	static const unsigned type_id = 1;
 
 	// a taskID should be added to the validation queue, because something
 	// deemed inportant by <output> happened to it

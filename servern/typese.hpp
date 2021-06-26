@@ -29,10 +29,13 @@ void bind( NamedPtr<T>& ptr, std::vector<T>& list, CLog& log)
 }
 
 typedef std::chrono::duration<long,std::ratio<1,64>> Ticks;
+typedef std::chrono::duration<uint32_t,std::ratio<64,1>> Dings;
 
 Ticks now();
+Dings nowd();
 void throwNamedPtrNotFound(CLog& log, const char* name, const char* type_text);
 class XML_PARSER2;
+class XML_TAG4;
 class CBuffer;
 
 
@@ -41,7 +44,7 @@ struct IdedPtr {
 	using T = T_;
 	short id;
 	T* ptr;
-	T& operator->() { return *ptr; }
+	T* operator->() { return ptr; }
 	IdedPtr& operator = (short s) {
 		clear();
 		id=s;

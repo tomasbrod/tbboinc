@@ -2,6 +2,7 @@
 #include <memory>
 #include "typese.hpp"
 #include "Stream.hpp"
+#include <atomic>
 #include "build/config-db.hpp"
 
 struct KVBackend
@@ -10,12 +11,20 @@ struct KVBackend
 	CBuffer Get(const CBuffer& key) { CBuffer val; Get(key,val); return val; } //fixme
 	virtual void Set(const CBuffer& key, const CBuffer& val) =0;
 	virtual void Del(const CBuffer& key) =0;
-	//virtual void GetNext(CBuffer& key, CBuffer* val) =0;
-	virtual void GetLast(CBuffer& key, CBuffer* val =0) =0;
+	virtual void GetNext(const CBuffer& okey, CBuffer& key, CBuffer* val);
+	virtual void GetLast(CBuffer& key, CBuffer* val =0);
 	virtual void Commit() =0;
 	virtual void Close() =0;
 	virtual ~KVBackend();
 	const t_config_database* cfg;
+	std::atomic_bool dirty;
+	typedef std::unique_lock<KVBackend> ulock;
+	friend class GroupCtl;
+	struct Iterator {
+		virtual ~Iterator();
+		virtual bool Get(CBuffer& key, CBuffer& val)=0;
+	};
+	virtual std::unique_ptr<Iterator> getIterator();
 	protected:
 	inline void on_destruct();
 };

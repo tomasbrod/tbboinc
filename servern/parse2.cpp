@@ -341,8 +341,8 @@ void XML_PARSER2::get_string(std::string& str, size_t max)
 };
 
 
-static const char* Table_boolean[] = { "false", "no", "true", "yes", "0", "1" };
-static const bool Values_boolean[] = { 0,       0,    1,      1,     0,   1   };
+static const char* Table_boolean[] = { "0", "1", "false", "no", "true", "yes" };
+static const bool Values_boolean[] = {  0,   1,  0,       0,    1,      1,    };
 
 bool XML_PARSER2::get_bool()
 {

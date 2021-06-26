@@ -9,14 +9,15 @@
 using std::string;
 using std::unique_ptr;
 
+const char* COutput::type_text = "output";
+const char* CPlugin::type_text = "plugin";
 
 void COutput::init(CPlugin* iplugin, GroupCtl& group)
 {
 	plugin = iplugin;
-	CLog log ("output",name);
-	ID=group.getID("output", this->name, 1);
+	CLog log (type_text,name);
+	ID=group.getID(this); //"output", 2, this->name, 0);
 	ptrdb=0;
-	group.bind(trickle_db, log);
 	for( auto& el : filesv ) {
 		if(!el.isdir) {
 			group.bind(el.db, log);
@@ -32,6 +33,7 @@ void COutput::init(CPlugin* iplugin, GroupCtl& group)
 			log(getFileName(el, upload));
 		}
 	}
+	if(!ptrdb) ptrdb = group.main;
 }
 
 #pragma pack(push, 1)
@@ -59,7 +61,7 @@ std::array<byte,16> hashMD5(const CBuffer& buf)
 	return std::array<byte,16> {42,42,};
 }
 
-void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload)
+void COutput::saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group )
 {
 	if(upload.offset >= upload.size)
 		throw EFileUpload("invalid upload offset");
@@ -84,7 +86,7 @@ void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& uplo
 	}
 	if(place->isdir || ptr && (ptr->flags&TPointer::Pointer))
 	{
-		// is pointer, or already started uploading as pointer
+		// is a pointer, or already started uploading as pointer
 		if( !ptr || !(ptr->flags&TPointer::Pointer) ) {
 			assert(val1.left() == sizeof(TPointer)); // db consistency
 			CStUnStream<sizeof(TPointer)> val2;
@@ -105,6 +107,7 @@ void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& uplo
 				}
 			}
 		}
+		if(group) group->ReleaseNoCommit();
 		CFileStream data;
 		std::string filename = getFileName(*place,upload);
 		try {
@@ -131,7 +134,9 @@ void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& uplo
 		} catch (std::system_error& e) {
 			throw ERecoverable(log1,"uploading file",e.what());
 		}
+		if(group) group->Open();
 	} else {
+		if(group) group->ReleaseNoCommit();
 		// or recv all and put to DB
 		// if there is something in the db and the upload is of a resume
 		size_t db_size = val1.left();
@@ -154,28 +159,30 @@ void COutput::saveOutput2( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& uplo
 		if( data.pos() == (TPointer::prefix+upload.size) )
 			ptr->flags = TPointer::Complete /* complete file */;
 		// check hash of the complete file
-		if( hashMD5(CBuffer(data.release().base+TPointer::prefix,upload.size)) != upload.cksum ) {
+		if( hashMD5(CBuffer(data)+TPointer::prefix) != upload.cksum ) {
 			place->db->Del(key);
 			throw ERecoverable(log1,"checksum mismatch");
 		}
 		// finally put into database
 		try {
-			place->db->Set(key, data.release());
+			if(group) group->Open();
+			place->db->Set(key, data);
 		} catch (EDiskFull& e) {
 			throw ERecoverable(log1,"server storage full");
 		}
 	}
 }
 
-void COutput::saveOutput( CLog& log1, GroupCtl::TaskPtr task, TUploadInfo& upload)
+void COutput::saveOutput( CLog& log1, TUploadInfo& upload )
 {
+	
 	//todo: check if task state allows to upload of this file
 
 	//todo: if a notice or unordered file, acquire a file number
 
 	// unlock task
 	// todo: if modified, save the task
-	task.reset();
+	//task.reset();
 	// lastly, enqueue task
 	plugin->addValidate(upload.taskid, upload.num);
 }
@@ -200,7 +207,8 @@ const t_config_subs_files* COutput::getPlace(const TUploadInfo& inf) const
 {
 	for( auto& el : filesv ) {
 		if( inf.size > el.size ) continue;
-		if( el.ix!=-1 && inf.num != el.ix ) continue;
+		if( el.num!=-1 && inf.num != el.num ) continue;
+		if( (inf.num==253 || inf.trickle) && !el.trash ) continue;
 		return &el;
 	}
 	return 0;
@@ -220,8 +228,10 @@ std::string COutput::getFileName(const t_config_subs_files& place, const TUpload
 {
 	std::stringstream ss;
 	ss << place.path << "/"
-	<< std::hex << std::setfill('0')
-	<< std::setw(8) << inf.taskid
+	<< std::hex << std::setfill('0');
+	if(place.group)
+		ss << std::setw(2) << (inf.taskid&255) << "/";
+	ss << std::setw(8) << inf.taskid
 	<< std::setw(2) << inf.num;
 	return ss.str();
 }
@@ -251,10 +261,10 @@ void CPlugin::addValidate(unsigned id, short fileno)
 
 void CPlugin::init(GroupCtl& igroup)
 {
-	log=CLog("plugin",name);
+	log=CLog(type_text,name);
 	group= &igroup;
 	kv= igroup.main;
-	ID=group->getID("plugin", this->name, 2);
+	ID=group->getID(this,2); //"plugin", 1, this->name, 2);
 	CStUnStream<8> key;
 	key.wb2(ID);
 	kv->GetLast(key);
@@ -264,7 +274,8 @@ void CPlugin::init(GroupCtl& igroup)
 	}
 	else tail=0;
 	log("tail",tail);
-	log("offsetof(dirid)",offsetof(TPointer, dirid),"of",sizeof(TPointer));
+	assert(TPointer::prefix==5);
+	assert(sizeof(TPointer)==32);
 }
 
 

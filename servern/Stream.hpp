@@ -46,6 +46,16 @@ struct CBuffer
 	size_t left() {
 		return wend - cur;
 	}
+
+	CBuffer operator+(unsigned dis)
+	{
+		return CBuffer(base+dis, cur-base-dis);
+	}
+
+	static void bin2hex(byte* dest, const void* ptr, size_t size);
+	static inline void bin2hex(byte* dest, const CBuffer& data) {bin2hex(dest,data.base,data.length());}
+	static bool hex2bin(byte* dest, const void* vptr, size_t len);
+	//static inline void hex2bin(byte* dest, const CBuffer& data) {hex2bin(dest,data.base,data.length());}
 };
 
 template <std::size_t SIZE>
@@ -135,6 +145,7 @@ namespace StreamInternals
 				buffer.cur+=len;
 			}
 		}
+		void write(const CBuffer& in) { write(in.base,in.length()); }
 	};
 
 	template <class Base>
@@ -300,6 +311,9 @@ namespace StreamInternals
 
 		// * long prefix
 
+		void writehex(const void* ptr, size_t size) { CBuffer::bin2hex(this->getdata(size*2,1),ptr,size); }
+		void writehex(const CBuffer& data) {CBuffer::bin2hex(this->getdata(data.length()*2,1),data.base,data.length());}
+
 	};
 
 };
@@ -329,7 +343,8 @@ struct CBufStream : IStream
 	CBufStream(const CBuffer& ibuf) {buffer=ibuf;}
 	CBufStream() = default;
 	// convert back to CBuffer derived object
-	const CBuffer& release() {return buffer;}
+	operator const CBuffer&() const { return this->buffer; }
+	operator CBuffer&() { return this->buffer; }
 	// implements IStream
 	virtual void setpos(size_t pos);
 	virtual void copyto(IStream* dest, size_t len) final;

@@ -84,13 +84,31 @@ void CFileStream::openRead(const char* filename)
 void CFileStream::openWrite(const char* filename)
 {
 	close();
-	file = ::open( filename, O_RDWR | O_CLOEXEC | O_CREAT );
+	file = ::open( filename, O_RDWR | O_CLOEXEC | O_CREAT, 0664 );
 	if(file<0) {
 		if(errno==EACCES)
 			throw EFileAccess(errno);
+		else if(errno==ENOENT)
+			throw EFileNotFound(errno);
 		else throw std::system_error( errno, std::system_category());
 	}
+	writable=1;
 	do_stat();
+}
+
+void CFileStream::openCreate(const char* filename)
+{
+	close();
+	file = ::open( filename, O_RDWR | O_CLOEXEC | O_CREAT | O_TRUNC , 0664 );
+	if(file<0) {
+		if(errno==EACCES)
+			throw EFileAccess(errno);
+		else if(errno==ENOENT)
+			throw EFileNotFound(errno);
+		else throw std::system_error( errno, std::system_category());
+	}
+	writable=1;
+	stat_length = 0;
 }
 
 void CFileStream::do_stat()
@@ -122,6 +140,11 @@ CHandleStream::CHandleStream(int ifile, bool iwr)
 	buffer.reset();
 	chunk_pos= 0;
 	writable=iwr;
+	//FIXME: the chunk_pos is wrong on readable handles
+	/*if(!writeable) {
+		outofbounds(0,0);
+		chunk_pos=0;
+	}*/
 }
 
 void CFileStream::setReadOnly(const char* name, bool ro)
@@ -172,7 +195,6 @@ void CHandleStream::read2(void* ibuf, size_t len)
 	}
 	// read rest from file directly
 	if(len) {
-		buffer.reset();
 		read3(buf,len);
 	}
 }
@@ -288,6 +310,53 @@ void CHandleStream::copyto(IStream* dest, size_t len)
 		CHandleStream::copyto(handlestream,len);
 	else
 		IStream::copyto(dest,len);
+}
+
+void CBuffer::bin2hex(byte* dest, const void* vptr, size_t len)
+{
+	byte* ptr = (byte*)vptr;
+	while(len)
+	{
+		snprintf((char*)dest,3,"%02hhx",*ptr);
+		if((ptr[0]>>4)<10)
+			dest[0]=(ptr[0]>>4)+'0';
+		else
+			dest[0]=(ptr[0]>>4)-10+'a';
+		if((ptr[0]&15)<10)
+			dest[1]=(ptr[0]&15)+'0';
+		else
+			dest[1]=(ptr[0]&15)-10+'a';
+		dest+=2;
+		ptr++;
+		len--;
+	}
+}
+
+bool CBuffer::hex2bin(byte* dest, const void* vptr, size_t len)
+{
+	byte* ptr = (byte*)vptr;
+	while(len)
+	{
+		byte n = 0;
+		if(ptr[0]>='0'&&ptr[0]<='9')
+			n =  (ptr[0]-'0')<<4;
+		else if(ptr[0]>='a'&&ptr[0]<='f')
+			n =  (ptr[0]-'a'+10)<<4;
+		else if(ptr[0]>='A'&&ptr[0]<='F')
+			n =  (ptr[0]-'A'+10)<<4;
+		else return false;
+		if(ptr[1]>='0'&&ptr[1]<='9')
+			n |= (ptr[1]-'0');
+		else if(ptr[1]>='a'&&ptr[1]<='f')
+			n |= (ptr[1]-'a'+10);
+		else if(ptr[1]>='A'&&ptr[1]<='F')
+			n |= (ptr[1]-'A'+10);
+		else return false;
+		*(dest++)=n;
+		ptr+=2;
+		len-=2;
+	}
+	return true;
 }
 
 static void t() {

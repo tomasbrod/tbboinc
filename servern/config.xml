@@ -4,15 +4,17 @@
   <database name=main type=lmdb path=sched.db mmap=42M />
   <_database name=postcarddb type=lmdb path=post.db />
   <_database name=test_level type=level path=test_level.db sync=2 />
-  <database name=test_kch type=kyotohash path=test_kyotohash.db />
-  <database name=test_kcb type=kyoto path=test_kyoto.db />
-  <stdio />
-  <fastcgi threads=4 path='fcgi.sock' />
-  <listen path='plugin.sock' port=3456 />
-  <id
+  <database name=test_kch type=kyotoh path=test_kyotohash.db />
+  <_database name=test_kcb type=kyotob path=test_kyoto.db />
+  <group
+    delay=3
     name='saran'
-    -keyfile='master.key'
+    separator='+'
+    -keyfile='server_key.xml'
   />
+  <stdio />
+  <fastcgi threads=16 path='fcgi.sock' />
+  <listen path='plugin.sock' port=3456 />
 
   <subs>
 
@@ -47,8 +49,8 @@
 
   </subs>
   <peers>
-    <parlon id=1 host=parlon port=3456 />
-    <zirkon id=2 ip=192.168.0.12 port=3456 />
+    <parlon host=parlon port=3456 />
+    <zirkon ip=192.168.0.12 port=3456 />
   </peers>
 
   
@@ -62,10 +64,10 @@
       files=queue
       trickle=disable
       >
-      <files size=1k db=main />
-      <files size=16k db=test_kch />
-      <files size=120M path='uploads/postcard' group=no />
-      <files size=2G path='uploads/big' group=no />
+      <place size=1k trash=no db=main />
+      <place size=16k num=0 db=test_kch />
+      <place size=120M path='uploads/postcard' group=no />
+      <place size=2G path='uploads/big' group=yes />
       <inputs />
     </output>
   </plugin>
@@ -127,11 +129,17 @@
 7184df4be83f06a0561f348cf32d8da8c679d69099c4b4de0b63e49e2a3c8df6
 16e62a599e29e07bbf945a49ec436bfb916afc2fbc0cf46b679b0caa3d29248f
   </codesign>
-  <signature id='4d1c674ee40f2868' >
+  <signature id='4d1c674ee40f2868' stripped=no >
 8431e0dfb0c7000d763703c985a867af4c6d2f89c45cf5a668457c3df7720c20
 17ace14f9945ee333321a75288d017fb13458bbcc48a2b47de055f224bdaa096
 3afb5c0f716f7ea163e6a41923ed03bef3a19f1aaec6b75a7afcbc29f8732dc3
 414029fe0ea8816925abde35f4fe3071e22525ce050cf63f4b68593210d423df
+  </signature>
+  <signature id='ee94f28c71349283' stripped=yes >
+295c40b8298f54451b74e317568effba912235fe4f745d5707f50fae01ba0923
+6e19d38158ea2e0f59cb6e8eb44bacae4da915a4e9e35785f1c5886356dc080d
+19207a5d930d4347fdfdf5b88d3d60b4fcfff78f7640464c984beedba797af74
+fad3d8e564a1e4d1a5e2fe145609b46d2f0840b7ee09ead7d1cfecf3d8127d45
   </signature>
   <server_keys>
     <master>aff7697d992b958b1b584814f3218276fd3d21439982edf495f289c0650eafdd</master>

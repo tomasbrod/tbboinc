@@ -43,6 +43,15 @@ void KVBackend::on_destruct() {
 	}
 }
 
+
+void KVBackend::GetNext(const CBuffer& okey, CBuffer& key, CBuffer* val)
+{ throw std::runtime_error("unimplemented"); }
+void KVBackend::GetLast(CBuffer& key, CBuffer* val)
+{ throw std::runtime_error("unimplemented"); }
+std::unique_ptr<KVBackend::Iterator> KVBackend::getIterator()
+{ throw std::runtime_error("unimplemented"); }
+KVBackend::Iterator::~Iterator() {  }
+
 CLog LogKV ("db");
 
 /* Tuning
@@ -73,12 +82,21 @@ class KV_Lightning : public KVBackend
 	MDB_env *env;
 	MDB_dbi dbi;
 	MDB_txn* txn;
-	MDB_cursor *cur;
+	std::mutex cs;
+	using lock_guard = std::lock_guard<std::mutex>;
+	struct Iterator : KVBackend::Iterator
+	{
+		KV_Lightning* kv;
+		MDB_cursor *cur = 0;
+		~Iterator() override;
+		bool Get(CBuffer& key, CBuffer& val) override;
+	};
+	std::unique_ptr<KVBackend::Iterator> getIterator();
 	public:
 	void Get(const CBuffer& key, CBuffer& val);
 	void Set(const CBuffer& key, const CBuffer& val);
 	void Del(const CBuffer& key);
-	void GetFirst(CBuffer& key, CBuffer* val);
+	//void GetNext(const CBuffer& okey, CBuffer& key, CBuffer* val)
 	void GetLast(CBuffer& key, CBuffer* val =0);
 	void Commit();
 	void Open(const t_config_database& cfg);
@@ -92,7 +110,7 @@ void KV_Lightning::Open(const t_config_database& cfg)
 	if( mdb_env_create(&env) )
 		throw std::runtime_error("LMDB initialization failed");
 	mdb_env_set_mapsize(env, cfg.mmap);
-	unsigned int flags = MDB_NOSUBDIR | MDB_NOTLS;
+	unsigned int flags = MDB_NOSUBDIR | MDB_NOTLS | MDB_NOLOCK; //fixme
 	if( cfg.sync == 1 )
 		flags |= MDB_NOMETASYNC;
 	if( cfg.sync == 0 )
@@ -102,11 +120,10 @@ void KV_Lightning::Open(const t_config_database& cfg)
 	int rc = mdb_env_open(env, cfg.path.c_str(), flags, 0660);
 	if(rc)
 		throw std::runtime_error(mdb_strerror(rc));
-	if( rc= mdb_txn_begin(env, 0, 0, &txn) )
+	if( rc= mdb_txn_begin(env, NULL, 0, &txn) )
 		throw std::runtime_error(mdb_strerror(rc));
-	if( rc= mdb_dbi_open(txn, 0, 0, &dbi) )
-		throw std::runtime_error(mdb_strerror(rc));
-	if( rc= mdb_cursor_open(txn, dbi, &cur) )
+	dirty.store(true);
+	if( rc= mdb_dbi_open(txn, NULL, 0, &dbi) )
 		throw std::runtime_error(mdb_strerror(rc));
 }
 
@@ -114,14 +131,13 @@ void KV_Lightning::Close()
 {
 	int rc;
 	if(!env) return;
-	mdb_cursor_close(cur);
-	cur=0;
 	mdb_txn_abort(txn);
 	txn=0;
 	mdb_env_close(env);
 	env=0;
 }
 
+#if 0
 void KV_Lightning::GetFirst(CBuffer& key, CBuffer* val)
 {
 	assert(key.pos() >= 2);
@@ -134,6 +150,7 @@ void KV_Lightning::GetFirst(CBuffer& key, CBuffer* val)
 	key.reset(mkey.mv_data,mkey.mv_size);
 	if(val) val->reset(mval.mv_data,mval.mv_size);
 }
+#endif
 
 void KV_Lightning::GetLast(CBuffer& key, CBuffer* val)
 {
@@ -142,7 +159,12 @@ void KV_Lightning::GetLast(CBuffer& key, CBuffer* val)
 	key.base[1] += 1;
 	MDB_val mkey = {key.pos(),key.base};
 	MDB_val mval;
-	int rv = mdb_cursor_get(cur, &mkey, 0, MDB_SET_RANGE);
+	MDB_cursor *cur;
+	int rv;
+	if( rv= mdb_cursor_open(txn, dbi, &cur) )
+		throw std::runtime_error(mdb_strerror(rv));
+	std::unique_ptr<MDB_cursor,void (*)(MDB_cursor *)> curuniq ( cur, mdb_cursor_close);
+	rv = mdb_cursor_get(cur, &mkey, 0, MDB_SET_RANGE);
 	if(rv==MDB_NOTFOUND) { key.reset(); return; }
 	if(rv) abort();
 	rv = mdb_cursor_get(cur, 0, 0, MDB_PREV);
@@ -161,6 +183,7 @@ void KV_Lightning::Get(const CBuffer& key, CBuffer& val)
 {
 	MDB_val mkey = {key.pos(),key.base};
 	MDB_val mval;
+	lock_guard lock ( cs );
 	int rv = mdb_get ( txn, dbi, &mkey, &mval);
 	if(rv==MDB_NOTFOUND) { val.reset(); return; }
 	val.reset(mval.mv_data,mval.mv_size);
@@ -170,31 +193,85 @@ void KV_Lightning::Set(const CBuffer& key, const CBuffer& val)
 {
 	MDB_val mkey = {key.pos(),key.base};
 	MDB_val mval = {val.pos(),val.base};
-	int rv = mdb_put ( txn, dbi, &mkey, &mval, 0);
-	if(rv)
-		throw std::runtime_error(mdb_strerror(rv));
+	int rc;
+	lock_guard lock ( cs );
+	if(!dirty.load()) {
+		mdb_txn_abort(txn);
+		if( rc= mdb_txn_begin(env, 0, 0, &txn) )
+			throw std::runtime_error(mdb_strerror(rc));
+		dirty.store(true);
+	}
+	rc = mdb_put ( txn, dbi, &mkey, &mval, 0);
+	if(rc)
+		throw std::runtime_error(mdb_strerror(rc));
 }
 
 void KV_Lightning::Del(const CBuffer& key)
 {
 	MDB_val mkey = {key.pos(),key.base};
-	int rv = mdb_del ( txn, dbi, &mkey, NULL);
-	if(rv!=MDB_NOTFOUND)
-		throw std::runtime_error(mdb_strerror(rv));
+	int rc;
+	lock_guard lock ( cs );
+	if(!dirty.load()) {
+		mdb_txn_abort(txn);
+		if( rc= mdb_txn_begin(env, 0, 0, &txn) )
+			throw std::runtime_error(mdb_strerror(rc));
+		dirty.store(true);
+	}
+	rc = mdb_del ( txn, dbi, &mkey, NULL);
+	if(rc!=MDB_NOTFOUND)
+		throw std::runtime_error(mdb_strerror(rc));
 }
 
 void KV_Lightning::Commit()
 {
 	int rc;
-	mdb_cursor_close(cur);
-	cur=0;
-	if( rc= mdb_txn_commit(txn) )
-		throw std::runtime_error(mdb_strerror(rc));
-	txn=0;
-	if( rc= mdb_txn_begin(env, 0, 0, &txn) )
-		throw std::runtime_error(mdb_strerror(rc));
-	if( rc= mdb_cursor_open(txn, dbi, &cur) )
-		throw std::runtime_error(mdb_strerror(rc));
+	lock_guard lock ( cs );
+	if(dirty.load()) {
+		if( rc= mdb_txn_commit(txn) )
+			throw std::runtime_error(mdb_strerror(rc));
+		if( rc= mdb_txn_begin(env, 0, MDB_RDONLY, &txn) )
+			throw std::runtime_error(mdb_strerror(rc));
+		dirty.store(false);
+	}
+}
+
+std::unique_ptr<KVBackend::Iterator> KV_Lightning::getIterator()
+{
+	std::unique_ptr<Iterator> it { new Iterator{} };
+	it->kv=this;
+	return it;
+}
+
+KV_Lightning::Iterator::~Iterator() {
+	if(cur) {
+		lock_guard lock ( kv->cs );
+		mdb_cursor_close(cur);
+	}
+}
+bool KV_Lightning::Iterator::Get(CBuffer& key, CBuffer& val)
+{
+	int rc;
+	MDB_val mkey;
+	MDB_val mval;
+	lock_guard lock ( kv->cs );
+	if(cur) {
+		rc = mdb_cursor_get(cur, &mkey, &mval, MDB_NEXT);
+		if(rc && rc!=MDB_NOTFOUND)
+			throw std::runtime_error(mdb_strerror(rc));
+	} else {
+		if( rc= mdb_cursor_open(kv->txn, kv->dbi, &cur) )
+			throw std::runtime_error(mdb_strerror(rc));
+		rc = mdb_cursor_get(cur, &mkey, &mval, MDB_FIRST);
+		if(rc && rc!=MDB_NOTFOUND)
+			throw std::runtime_error(mdb_strerror(rc));
+	}
+	if(rc==MDB_NOTFOUND) {
+		key.reset();
+		return false;
+	}
+	key.reset(mkey.mv_data,mkey.mv_size);
+	val.reset(mval.mv_data,mval.mv_size);
+	return true;
 }
 
 class KV_Level : public KVBackend
@@ -205,6 +282,9 @@ class KV_Level : public KVBackend
 	//FIXME: make atomic transactions somehow with read_uncommited
 	leveldb::WriteOptions woptions;
 	leveldb::ReadOptions roptions;
+	std::mutex cs;
+	using lock_guard = std::lock_guard<std::mutex>;
+	
 	~KV_Level() {on_destruct();}
 	struct Logger : leveldb::Logger {
 		CLog log;
@@ -235,6 +315,7 @@ class KV_Level : public KVBackend
 		#else 
 		logger.log= CLog(LogKV,cfg.name);
 		#endif
+		logger.log.warn("LevelDB interface is not finished!");
 		options.info_log = &logger;
 		woptions.sync= cfg.sync>0;
 		if(cfg.block)
@@ -280,8 +361,7 @@ class KV_Level : public KVBackend
 	void Get(const CBuffer& key, CBuffer& val)  {}
 	void Set(const CBuffer& key, const CBuffer& val) {}
 	void Del(const CBuffer& key) {}
-	void GetFirst(CBuffer& key, CBuffer* val) {}
-	void GetLast(CBuffer& key, CBuffer* val =0) {}
+	//void GetLast(CBuffer& key, CBuffer* val =0) {}
 };
 
 template <class DB> class KV_KyotoAny : public KVBackend
@@ -289,7 +369,8 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	protected:
   DB db;
   bool hard_txc;
-  std::unique_ptr<byte[]> result_region;
+  bool do_txc;
+  std::unique_ptr<char[]> result_region;
 	~KV_KyotoAny() {on_destruct();}
 	struct Logger : kyotocabinet::BasicDB::Logger {
 		CLog plog;
@@ -312,14 +393,16 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	{
 		this->cfg = &cfg;
 		logger.plog= CLog(LogKV,cfg.name);
-		db.tune_logger(&logger, Logger::WARN|Logger::ERROR|Logger::INFO
+		db.tune_logger(&logger, Logger::WARN|Logger::ERROR
 			#if 0
+			|Logger::INFO
 			|Logger::DEBUG
 			#endif
 		);
 		if(cfg.mmap)
 			db.tune_map( cfg.mmap );
 		hard_txc = cfg.sync > 0;
+		do_txc = cfg.sync > 1;
 		int opts = 0;
 		if(cfg.compress==1)
 			opts |= kyotocabinet::HashDB::TCOMPRESS;
@@ -341,8 +424,10 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		if (!db.open(cfg.path, db.OWRITER | db.OCREATE)) {
 			throw std::runtime_error(db.error().name());
 		}
-		if(! db.begin_transaction(hard_txc) )
-		{throw std::runtime_error(db.error().name());}
+		if(do_txc) {
+			if(! db.begin_transaction(hard_txc) )
+			{throw std::runtime_error(db.error().name());}
+		}
   }
 	public:
 	void Open(const t_config_database& cfg)
@@ -355,43 +440,74 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		logger.plog("KV_KyotoAny::Close()");
 		result_region.reset();
 		// Abort transaction
-		if(! db.end_transaction(false) )
-			throw std::runtime_error(db.error().name());
+		if(do_txc) {
+			if(! db.end_transaction(false) )
+				throw std::runtime_error(db.error().name());
+		}
 		if(!db.close()) {
 			throw std::runtime_error(db.error().name());
 		}
   }
   void Commit() {
 		result_region.reset();
-		if(! db.end_transaction(true) )
-			throw std::runtime_error(db.error().name());
-		if(! db.begin_transaction(hard_txc) )
-			throw std::runtime_error(db.error().name());
+		if(do_txc) {
+			if(! db.end_transaction(true) )
+				throw std::runtime_error(db.error().name());
+			if(! db.begin_transaction(hard_txc) )
+				throw std::runtime_error(db.error().name());
+		} else
+		if(hard_txc)
+			db.synchronize(hard_txc);
+		dirty.store(false);
 	}
 
 	void Get(const CBuffer& key, CBuffer& val)
 	{
 		size_t vsize;
 		char* vdata = db.get((char*)key.base,key.pos(),&vsize);
-		result_region.reset((byte*)vdata);
+		result_region.reset(vdata);
 		val.reset(vdata, vsize);
 	}
 	void Set(const CBuffer& key, const CBuffer& val)
 	{
 		if(! db.set((char*)key.base,key.pos(),(char*)val.base,val.pos()) )
 			throw std::runtime_error("KyotoDB set failed");
+		dirty.store(true);
 	}
 	void Del(const CBuffer& key)
 	{
 		db.remove((char*)key.base,key.pos());
+		dirty.store(true);
 	}
-	void GetFirst(CBuffer& key, CBuffer* val)
-	{ throw std::runtime_error("unimplemented"); }
-	void GetLast(CBuffer& key, CBuffer* val)
-	{ throw std::runtime_error("unimplemented"); }
+	struct Iterator : KVBackend::Iterator
+	{
+		DB& db;
+		typename DB::Cursor cur;
+		std::unique_ptr<char[]> key_region;
+		std::unique_ptr<char[]> val_region;
+		Iterator(DB& kv)
+			:db(kv), cur(&kv) {
+			cur.jump();
+		}
+		~Iterator() override {}
+		bool Get(CBuffer& key, CBuffer& val) override
+		{
+			size_t ksize=0, vsize=0;
+			char* vptr = 0;
+			char* kptr = cur.get(&ksize,(const char**)&vptr,&vsize,true);
+			if(kptr) {
+				key_region.reset(kptr);
+				//val_region.reset(vptr);
+				val.reset(vptr,vsize);
+			}
+			key.reset(kptr,ksize);
+			return kptr!=NULL;
+		}
+	};
+	std::unique_ptr<KVBackend::Iterator> getIterator() { return std::unique_ptr<KVBackend::Iterator> { new Iterator{db} }; }
 };
 
-class KV_Kyoto : public KV_KyotoAny<kyotocabinet::TreeDB>
+class KV_KyotoBTree : public KV_KyotoAny<kyotocabinet::TreeDB>
 {
 	public:
 	void Open(const t_config_database& cfg)
@@ -404,17 +520,13 @@ class KV_Kyoto : public KV_KyotoAny<kyotocabinet::TreeDB>
 		Open2(cfg);
 	}
 	/*
-	void GetFirst(CBuffer& key, CBuffer* val)
+	void GetFirst(CBuffer& key, CBuffer* val) override
 	{
 	}
-	void GetLast(CBuffer& key, CBuffer* val =0)
+	void GetLast(CBuffer& key, CBuffer* val =0) override
 	{
 	}
 	*/
-};
-
-class KV_KyotoHash : public KV_KyotoAny<kyotocabinet::HashDB>
-{
 };
 
 template<class DB> static unique_ptr<KVBackend> opencfg(const t_config_database& cfg)
@@ -437,10 +549,10 @@ unique_ptr<KVBackend> OpenKV(const t_config_database& cfg)
 	switch(cfg.type) {
 		case cfg.v_lmdb:
 			return opencfg<KV_Lightning>(cfg);
-		case cfg.v_kyoto:
-			return opencfg<KV_Kyoto>(cfg);
-		case cfg.v_kyotohash:
-			return opencfg<KV_KyotoHash>(cfg);
+		case cfg.v_kyotob:
+			return opencfg<KV_KyotoBTree>(cfg);
+		case cfg.v_kyotoh:
+			return opencfg<KV_KyotoAny<kyotocabinet::HashDB>>(cfg);
 		case cfg.v_level:
 			return opencfg<KV_Level>(cfg);
 		default:

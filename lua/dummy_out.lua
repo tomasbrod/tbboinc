@@ -1,4 +1,5 @@
-print("Boinc LUA checking in")
+local content="Boinc LUA checking in"
+print(content)
 local name="output.txt"
 local fh = io.open(name, "w")
 if not fh then

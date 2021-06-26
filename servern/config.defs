@@ -3,14 +3,14 @@ hpp build/config-db.hpp
 
 struct t_config_database
 name attr varchar 15 def=main
-type attr enum lmdb,kyoto,kyotohash,level,tokyo,tokyohash,upscale,gdbm
+type attr enum lmdb,kyotob,kyotoh,level,upscale,gdbm,mdbx
 path attr string 1024
 
 # memory map size (for lmdb is also max db size, +kyoto)
 mmap attr bsize uquad def=0
 
 # nuber of fsyncs per commit, 2 is best, 1 is compromise, 0 is unsafe
-sync attr int def=2
+sync attr int def=1
 
 # block size for leveldb and page size for kyoto
 block attr bsize uquad def=0
@@ -42,7 +42,18 @@ buckets attr bsize uquad def=0
 # if set to N>0, defragment kyoto cabiner every N operations
 defrag attr int def=0
 
+# if set to false, this database is not dumped to xml nor hex, not truncated on restoring
+dump attr bool def=1
+
 #other db options, like locking, subdb, lock release, bloom...
+%
+
+struct t_config_group
+group_delay_ms attr int def=3000 tag=delay
+fs_flush attr int def=0 tag=flush
+hostname attr varchar 15 tag=name
+keyfile attr string 1024 def=
+separator attr varchar 1 def=_
 %
 
 hpp build/config-output.hpp
@@ -52,19 +63,24 @@ size attr bsize uquad
 db attr named KVBackend def=
 path attr string 1024 def= opt=isdir
 group attr bool def=false
-ix attr int def=-1
+num attr int def=-1
+trash attr bool def=1
+# trash are logs and trickles
 dirid transient int
 %
 
 struct t_config_output
 name attr varchar 15
-trickle_db attr named KVBackend def=
 success attr enum notify,fail def=notify
-errors attr enum queue,expire def=expire
+errors attr enum queue,expire,disable def=expire
 expire attr enum notify,queue,disable def=notify
 files attr enum queue,store def=store
 trickle attr enum queue,store,disable def=disable
-filesv vector struct t_config_subs_files tag=files
+dynamic attr bool def=0
+nstatic attr int def=1 tag=static
+# reports are questionable
+filesv vector struct t_config_subs_files tag=place
+
 %
 
 hpp build/config-plugin.hpp
@@ -87,28 +103,16 @@ port attr int
 path attr string 1024
 %
 
-struct t_config_id
-name attr string 1024
-keyfile attr string 1024 def=
-%
-
-struct t_config_subs
-name tagname string 20
-id attr int
-key attr string 64 def=
-inputs skip
-%
-
 struct t_config_peers
 name tagname string 20
-id attr int
 host attr string 512 def=
 ip attr string 128 def=
 port attr int
 %
 
 struct t_config_signature
-id attr string 64
+id attr varchar 16
+stripped attr bool def=true
 content content string 1024
 %
 
@@ -126,14 +130,15 @@ struct t_config
 database vector struct t_config_database1
 fastcgi structn
 listen structn
-id structn
-signature structn
+group struct GroupCtl
+signature vector structn
 server_keys structn opt=has_keys
-subs skip vector structn innertag=*
+subs skip
 plugin vector struct CPlugin
 peers vector structn innertag=* vmax=56
 codesign string 1024
 #bullshit enum aa,bb,cc
 stdio boolp
 foreign struct t_config_output
+oldname vector varchar 15
 %

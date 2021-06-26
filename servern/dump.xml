@@ -1,13 +1,16 @@
 <dump>
-  <names>
-    <plugin n='sample_fwd' i=16385 l=4 />
-    <output n='sample' i=16389 />
-    <peer n='parlon' i=16390 />
-  </names>
-  <!-- while tasks are part of output, they are not clustered on it -->
-  <task id=1 output=16389 ... />
+  <!-- first dump the group controller -->
+  <group nonce=32 >
+    <plugin n='sample_fwd' i=17408 s=2 p=0 />
+    <output n=sample i=18432 p=0 />
+  </group>
+  <!-- then enumerate all records in all databases, dumping them -->
+  <unknown db='test_kch' kind=group key=414243 >48656c6c6f21</unknown>
+  <unknown db='test_kch' kind=group key=426c6168 >48656c6c3221</unknown>
+  <task id=1 output=sample ... />
+  <!-- final pass of all Objects -->
   <plugin name='sample_fwd' >
-    <q t=1 f=0 />
+    <q t=1 f=0 /> <!-- task, fileno -->
     <q t=1 f=1 />
     <e s=16831251 t=4 />
   </plugin>

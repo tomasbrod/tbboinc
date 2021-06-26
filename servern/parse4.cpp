@@ -4,7 +4,7 @@
 
 bool quote_all = 0;
 
-inline void XML_TAG4::body(bool line)
+inline IStream* XML_TAG4::body(bool line)
 {
 	if(in_tag==1 || in_tag==2) {
 		mf->w1('>');
@@ -16,6 +16,7 @@ inline void XML_TAG4::body(bool line)
 		mf->w1('\n');
 		in_tag=7;
 	}
+	return mf;
 }
 
 void XML_TAG4::attr_s(const char* s)
@@ -30,6 +31,7 @@ void XML_TAG4::attr_s(const char* s)
 		throw std::runtime_error("wrong state for XML::attr_s");
 	bool need = quote_all;
 	if(!s) return;
+	if(!*s) need=true;
 	for(const char* p=s; !need && *p; ++p)
 	{
 		need |= !isalnum(*p);
@@ -110,7 +112,7 @@ void XML_TAG4::put_bool(bool v)
 void XML_TAG4::put(double v)
 {
 	attr_s();
-	ssize_t len = snprintf((char*)mf->getdata(ENOUGH,1),ENOUGH, "%.15f", v);
+	ssize_t len = snprintf((char*)mf->getdata(ENOUGH,1),ENOUGH, "%f", v);
 	mf->skip(len-ENOUGH);
 	attr_e();
 }
@@ -172,7 +174,16 @@ void XML_TAG4::close()
 	else if(in_tag)
 		throw std::runtime_error("wrong state for XML::close");
 	mf->w1('>');
-	//
+	if(!indent)
+		mf->w1('\n');
+}
+
+void XML_TAG4::open(const std::string&& itag)
+{
+	this->close();
+	tag=std::move(itag);
+	mf->w1('\n');
+	this->open();
 }
 
 void XML_TAG_test()
@@ -184,5 +195,6 @@ void XML_TAG_test()
 	sub.attr("attr2").put(42.667);
 	XML_TAG4(sub,"inner").put("value");
 	XML_TAG4(sub,"nobody").attr("attr3").put("tex t3");
-	//sub = XML_TAG4( doc, "another" );
+	sub.open( "another" );
+	//sub.put_raw("\n1234\n123456\n.\n",15);
 }

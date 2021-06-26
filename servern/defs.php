@@ -103,7 +103,7 @@ function generateStructBody($struct) {
 		}
 		elseif($field->type[0]=='content') {
 			array_shift($field->type);
-			$field->def='';
+			//$field->def='';
 			$struct->content=$field;
 		}
 		elseif($field->type[0]=='tagname') {

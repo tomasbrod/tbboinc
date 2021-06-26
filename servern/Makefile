@@ -1,9 +1,12 @@
-all: servern
+all: dbtry servern
 
 CXX = g++ -std=c++11 -Wformat -Wno-format-truncation
 
-servern: build/servern.o build/boinclib.o build/kv.o build/Stream.o build/parse2.o build/group.o build/COutput.o build/parse4.o
-	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lssl -lcrypto -lleveldb
+servern: build/servern.o build/kv.o build/Stream.o build/parse2.o build/group.o build/COutput.o build/parse4.o build/code.o build/handle.o build/md5.o
+	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lleveldb
+
+dbtry: build/dbtry.o build/kv.o build/Stream.o
+	$(CXX) -o $@ -g -O0 $^ -llmdb -lkyotocabinet -lleveldb -lpthread -lrt
 
 show_keys: build/show_keys.o build/boinclib.o build/Stream.o build/parse2.o
 	$(CXX) -o $@ -g -O0 $^ -lsodium -lssl -lcrypto
@@ -13,6 +16,9 @@ build/boinclib.o: boinclib.cpp Makefile
 
 build/%.o: %.cpp Makefile
 	$(CXX) -c -o $@ -g -O0 $<
+
+build/md5.o: ../boinc/lib/md5.cpp
+	$(CXX) -c -o $@ $<
 
 build/%.hpp build/%.cpp: %.defs defs.php Makefile
 	php defs.php $<
@@ -37,8 +43,12 @@ build/kv.o: kv.cpp kv.hpp typese.hpp log.hpp build/config.hpp Stream.hpp
 build/parse2.o: parse2.cpp parse2.hpp Stream.hpp
 build/servern.o: servern.cpp parse2.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
  build/config.hpp build/config.cpp build/request.hpp \
- build/request.cpp COutput.hpp parse4.hpp
+ build/request.cpp COutput.hpp parse4.hpp group.hpp dump.cpp
 build/Stream.o: Stream.cpp Stream.hpp log.hpp
 build/COutput.o: COutput.hpp COutput.cpp typese.hpp Stream.hpp log.hpp kv.hpp group.hpp build/config.hpp build/config.cpp
-build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp
+build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp parse4.hpp
 build/parse4.o: parse4.hpp Stream.hpp
+build/dbtry.o: parse2.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
+ build/config.hpp parse4.hpp code.cpp
+build/handle.o: handle.cpp
+.PHONY: handle.cpp
