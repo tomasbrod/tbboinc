@@ -164,7 +164,7 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 		wu.rsc_disk_bound = 1e8; //todo 100m
 		wu.delay_bound = 1 * 24 * 3600;
 		wu.priority = 25;
-		wu.batch= 74;
+		wu.batch= 31;
 		wu.target_nresults= wu.min_quorum = 2;
 		wu.max_error_results= wu.max_total_results= 32;
 		wu.max_success_results= 8;
@@ -194,11 +194,7 @@ void submit_wu_in(std::ifstream& todof, unsigned& cntr)
 	strcpy(wu.name, wuname.str().c_str());
 
 	const struct file_desc const_files[]= {
-		"library.lua",0,0,
-		"try.lua","driver.lua",0,
-		"kanon_app.cpp",0,1,
-		"dlk_util.cpp",0,1,
-		"kanonizer_b.cpp",0,1,
+		"dummy_out.lua","driver.lua",0,
 		0,"input.txt",1
 		};
 	build_xml_doc(wu, wuname.str()+".in", const_files);
@@ -216,7 +212,7 @@ int main(int argc, char** argv) {
 		exit(4);
 
 	unsigned count = 0;
-	std::ifstream todof ( "kan_todo.txt" );
+	std::ifstream todof ( "todo.txt" );
 	while(todof) {
 		count++;
 		submit_wu_in(todof, count);
