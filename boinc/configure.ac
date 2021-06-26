@@ -680,6 +680,8 @@ AC_CHECK_HEADERS([intrin.h x86intrin.h pmmintrin.h xmmintrin.h emmintrin.h])
 CXXFLAGS="${save_cxxflags} -mavx"
 CPPFLAGS="${save_cppflags} -mavx"
 AC_CHECK_HEADERS([immintrin.h avxintrin.h])
+CXXFLAGS="${save_cxxflags}"
+CPPFLAGS="${save_cppflags}"
 
 AC_CHECK_DECLS([_xgetbv, xgetbv, __xgetbv, cpuid, _cpuid, __cpuid],
     [],[],[[
