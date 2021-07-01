@@ -268,6 +268,8 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 		for( tu2.k= tuple.k-2; tu2.k>=min; tu2.k-=2 ) {
 			tu2.start += tu2.ofs[0];
 			tu2.ofs .erase(tu2.ofs.begin());
+			/* new request: save stpt as spt as well,
+			 * thus save as stpt if dealing with stpts and it has the 2 */
 			if( min_odd || tu2.ofs[0]==2 ) { // truncate by 4 if STPT
 				insert_spt_tuple(result, tu2, !min_odd, 1);
 			}
@@ -277,9 +279,10 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min)
 {
 	std::stringstream qr;
-	for( const auto& tuple : tuples) {
+	for( auto tuple : tuples) {
 		spt_counters[2][tuple.k] += 1;
 		if(tuple.k >= min) {
+			tuple.k*=2;
 			insert_spt_tuple(result, tuple, 2, 0);
 		}
 	}
@@ -288,9 +291,18 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 void result_insert(RESULT& result, TOutput output) {
 	/* insert into the prime tuple db */
 	#ifndef DONT_CHANGE_TUPLES
-	insert_spt_tuples(result, output.tuples, 11, 14); // 11, 14
-	insert_twin_tuples(result, output.twins, 6);
-	insert_spt_tuples(result, output.twin_tuples, 0, 10);
+	short min_odd = 11;
+	short min_even = 14;
+	short min_twin = 6;
+	short min_stpt = 10;
+	if(output.start>=710000000000000000) {
+		min_odd = 11;
+		min_even = 16;
+	}
+	insert_spt_tuples(result, output.tuples, min_odd, min_even); // 11, 14
+	insert_twin_tuples(result, output.twins, min_twin);
+	insert_spt_tuples(result, output.twin_tuples, 0, min_stpt);
+	insert_spt_tuples(result, output.twin_tuples, 63, min_even);
 	#endif
 
 	/* insert into largest gap table */
