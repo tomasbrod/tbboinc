@@ -276,15 +276,15 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 		}
 	}
 }
-static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min)
+static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min1)
 {
 	for( const auto& tuple2 : tuples) {
 		spt_counters[2][tuple2.k] += 1;
-		if(tuple2.k<min)
+		if(tuple2.k<min1)
 			continue;
 		TOutputTuple tuple = tuple2;
 		tuple.k *=2;
-		min *=2;
+		short min =min1 * 2;
 		bool deriv=0;
 		for(short left=0; 1; left++) {
 			while(1) {
