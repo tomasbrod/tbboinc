@@ -252,7 +252,7 @@ static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, sh
 	qr<<", ofs='"<<tuple.ofs[0];
 	for(unsigned i=1; i<tuple.ofs.size(); ++i)
 		qr<<" "<<tuple.ofs[i];
-	qr<<"' on duplicate key update id=id";
+	qr<<"' on duplicate key update k=k";
 	retval=boinc_db.do_query(qr.str().c_str());
 	if(retval) throw EDatabase("spt row insert failed");
 }
@@ -517,7 +517,7 @@ void process_ready_results(long gen_limit)
 	show_spt_counters();
 }
 
-void database_reprocess()
+void database_reprocess(bool f_write)
 {
 	cerr<<"truncate tables...\n";
 	#ifndef DONT_CHANGE_TUPLES
@@ -578,6 +578,15 @@ void database_reprocess()
 			show_spt_counters();
 		}
 		#endif
+		if(f_write && (0== n_proc % 10000)) {
+			cerr<<"(commit)"<<endl;
+			if(boinc_db.commit_transaction()) {
+				cerr<<"Can't commit transaction!"<<endl;
+				exit(1);
+			}
+			if(boinc_db.start_transaction())
+				exit(4);
+		}
 	}
 	if(retval=mysql_errno(enum_db.mysql)) {
 		cerr<<"mysql_fetch_row error "<<retval<<" "<<mysql_error(enum_db.mysql)<<endl;
@@ -610,7 +619,7 @@ int main(int argc, char** argv) {
 	if(boinc_db.start_transaction())
 		exit(4);
 	if(f_reproc)
-		database_reprocess();
+		database_reprocess(f_write);
 	else
 		process_ready_results(gen_limit);
 	if(f_write) {
