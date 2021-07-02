@@ -138,7 +138,7 @@ void read_output(const char* fn) {
 			if (d>gap)
 				gap= d;
 		if(gap>maxgap) {
-			cout<<"W "<<tuple.start<<"("<<(tuple.ofs.size()+1)<<"):";
+			cout<<"W "<<tuple.start<<"("<<(tuple.k)<<"):";
 			for(const auto& d : tuple.ofs)
 				cout<<" "<<d;
 			cout<<" ["<<(gap+2)<<"]"<<endl;
@@ -189,7 +189,7 @@ void write_output(const char* fn) {
 
 void mksample() {
 	auto& inp = input;
-	inp.start=    3;
+	inp.start=    530051401286439000;
 	inp.end= inp.start  +655000000;
 	inp.mine_k=  16;
 	inp.mino_k=  9;
