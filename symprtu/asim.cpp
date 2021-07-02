@@ -297,7 +297,7 @@ static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>&
 			tuple.k = (tuple2.k-left-1)*2;
 			if(tuple.k<min) break;
 			tuple.start = tuple.start + tuple2.ofs[left];
-			tuple.ofs = vector<unsigned short>( tuple2.ofs.end()+left+1, tuple2.ofs.end() );
+			tuple.ofs = vector<unsigned short>( tuple2.ofs.begin()+left+1, tuple2.ofs.end() );
 		}
 	}
 }
