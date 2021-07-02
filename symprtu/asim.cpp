@@ -278,25 +278,26 @@ static void insert_spt_tuples(const RESULT& result, const vector<TOutputTuple>& 
 }
 static void insert_twin_tuples(const RESULT& result, const vector<TOutputTuple>& tuples, short min)
 {
-	std::stringstream qr;
 	for( const auto& tuple2 : tuples) {
 		spt_counters[2][tuple2.k] += 1;
-		if(tuple2.k >= min) {
-			TOutputTuple tuple = tuple2;
-			tuple.k*=2;
-			insert_spt_tuple(result, tuple, 2, 0);
-		}
+		if(tuple2.k<min)
+			continue;
 		TOutputTuple tuple = tuple2;
-		for(short left=0; tuple.k>=min; left++) {
-			for(short right=0; tuple.k>=min; right++) {
-				if(!left && !right) continue;
-				tuple.k -=1;
-				tuple.ofs.resize(tuple.k-1);
-				insert_spt_tuple(result, tuple, 2, 1);
+		tuple.k *=2;
+		min *=2;
+		bool deriv=0;
+		for(short left=0; 1; left++) {
+			while(1) {
+				insert_spt_tuple(result, tuple, 2, deriv);
+				deriv=true;
+				tuple.k -=2;
+				if(tuple.k<min) break;
+				tuple.ofs.resize(tuple.ofs.size()-1);
 			}
-			tuple.k -=1;
-			tuple.start+=tuple.ofs[0];
-			tuple.ofs.erase(tuple.ofs.begin());
+			tuple.k = (tuple2.k-left-1)*2;
+			if(tuple.k<min) break;
+			tuple.start = tuple.start + tuple2.ofs[left];
+			tuple.ofs = vector<unsigned short>( tuple2.ofs.end()-left+1, tuple2.ofs.end() );
 		}
 	}
 }
