@@ -253,6 +253,7 @@ static void insert_spt_tuple(const RESULT& result, const TOutputTuple& tuple, sh
 	for(unsigned i=1; i<tuple.ofs.size(); ++i)
 		qr<<" "<<tuple.ofs[i];
 	qr<<"' on duplicate key update k=k";
+	stdout<<qr.str()<<endl;
 	retval=boinc_db.do_query(qr.str().c_str());
 	if(retval) throw EDatabase("spt row insert failed");
 }
@@ -542,7 +543,7 @@ void database_reprocess(bool f_write)
 	retval=enum_db.do_query("select r.res, COALESCE(r.user,s.userid), COALESCE(r.batch,s.batch), "
 		"w.data, r.data "
 		"from result_file r join input_file w on r.wu=w.wu left join result s on r.res=s.id "
-		"where r.app in(9,10,11)"); //TODO: use of constant
+		"where r.app in(9,10,11) and r.res=1980666"); //TODO: use of constant
 	if(retval) throw EDatabase("result_file enum query");
 	MYSQL_RES* enum_res= mysql_use_result(enum_db.mysql);
 	if(!enum_res) throw EDatabase("result_file enum use");
