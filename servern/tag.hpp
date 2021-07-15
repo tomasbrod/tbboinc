@@ -7,10 +7,10 @@
 #include <bitset>
 #include "Stream.hpp"
 
-class XML_TAG4
+class XmlTag
 {
 	public:
-	//friend class XML_TAG4;
+	//friend class XmlTag;
 	short in_tag = 0; /* 0- not tag, 1 in tag, 2 1+space, 3 attr eq, 6 - in body */
 	IStream* mf = 0;
 	std::string tag;
@@ -20,16 +20,16 @@ class XML_TAG4
 	inline void attr_s(const char* s = 0);
 	inline void attr_e();
 	public:
-	XML_TAG4() = default;
-	explicit XML_TAG4(IStream* imf, const std::string&& itag)
+	XmlTag() = default;
+	explicit XmlTag(IStream* imf, const std::string&& itag)
 		: mf(imf), tag(itag) { open(); }
-	explicit XML_TAG4(XML_TAG4& iparent, const std::string&& itag)
+	explicit XmlTag(XmlTag& iparent, const std::string&& itag)
 		: mf(iparent.mf), tag(itag), indent(iparent.indent+1)
 		{ iparent.body(1); open(); }
-	explicit XML_TAG4(XML_TAG4& iparent, const char* itag)
+	explicit XmlTag(XmlTag& iparent, const char* itag)
 		: mf(iparent.mf), tag(itag), indent(iparent.indent+1)
 		{ iparent.body(1); open(); }
-	~XML_TAG4() { close(); }
+	~XmlTag() { close(); }
 	void close();
 	void put_raw(const char* buf, size_t len);
 	void put(const char* str);
@@ -42,9 +42,9 @@ class XML_TAG4
 	void put_enum(const char* table[], const size_t length, short v);
 	void put(const std::string& str) {put(str.c_str());}
 	void put(short v) {put((long)v);}
-	XML_TAG4& attr(const char* iattr) { attr2(iattr); return *this; }
-	//XML_TAG4& ctag(const char* itag) { return XML_TAG4(*this,itag); }
-	XML_TAG4& operator = (XML_TAG4& s) = delete;
+	XmlTag& attr(const char* iattr) { attr2(iattr); return *this; }
+	//XmlTag& ctag(const char* itag) { return XmlTag(*this,itag); }
+	XmlTag& operator = (XmlTag& s) = delete;
 	void open(const std::string&& itag);
 	IStream* body(bool line=false);
 };

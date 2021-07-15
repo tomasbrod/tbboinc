@@ -9,7 +9,7 @@
 
 #define TAG_BUF_LEN         4096
 
-class XML_PARSER2
+class XmlParser
 {
 	public: //protected:
 	short in_tag; /* 0- not tag, i - in tag , ' , " */
@@ -24,7 +24,7 @@ class XML_PARSER2
 	char attr[TAG_BUF_LEN];
 
 	public:
-	XML_PARSER2(IStream* mf);
+	XmlParser(IStream* mf);
 
 	bool get_tag() { return get_tag(0); }
 	bool get_attr();
@@ -63,7 +63,7 @@ class XML_PARSER2
 struct EXmlParse : std::exception
 {
 	char buf[128];
-	EXmlParse( const XML_PARSER2& _xp, const char* _msg );
-	EXmlParse( const XML_PARSER2& _xp, bool _attr, const char* _name );
+	EXmlParse( const XmlParser& _xp, const char* _msg );
+	EXmlParse( const XmlParser& _xp, bool _attr, const char* _name );
 	const char * what () const noexcept;
 };

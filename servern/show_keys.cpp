@@ -31,7 +31,7 @@ int main(void) {
 	{
 		CFileStream fs3;
 		fs3.openRead("config.xml");
-		XML_PARSER2 xp (&fs3);
+		XmlParser xp (&fs3);
 		xp.get_tag(); // open the root tag, todo check error code
 		config.parse(xp);
 	}

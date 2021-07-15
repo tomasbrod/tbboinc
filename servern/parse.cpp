@@ -1,5 +1,5 @@
 
-#include "parse2.hpp"
+#include "parse.hpp"
 #include <stdio.h>
 #include <string>
 #include <cstring>
@@ -15,7 +15,7 @@ provide array_too_long
 provide missing_tag
 */
 
-XML_PARSER2::XML_PARSER2(IStream* mf) {
+XmlParser::XmlParser(IStream* mf) {
 	this->mf= mf;
 	tag[0]=0;
 	in_tag=0;
@@ -23,7 +23,7 @@ XML_PARSER2::XML_PARSER2(IStream* mf) {
 	copy_end=copy_buf=0;
 }
 
-long XML_PARSER2::lookup(const char* table[], const size_t length, const char* needle)
+long XmlParser::lookup(const char* table[], const size_t length, const char* needle)
 {
 	long l=0;
 	long r= (length/sizeof(ptrdiff_t))-1;
@@ -44,7 +44,7 @@ static const char* Table[] = {
 	"tree",
 };
 
-void XML_PARSER2::close_tag()
+void XmlParser::close_tag()
 {
 	while(in_tag)
 	{
@@ -59,7 +59,7 @@ void XML_PARSER2::close_tag()
 	}
 }
 
-int XML_PARSER2::skip_ws(int c)
+int XmlParser::skip_ws(int c)
 {
 	while( isascii(c) && isspace(c) ) {
 		c= mf->r1();
@@ -68,7 +68,7 @@ int XML_PARSER2::skip_ws(int c)
 	return c;
 }
 
-int XML_PARSER2::scan_for(char* cur, size_t len, const char* delim, size_t* rsize)
+int XmlParser::scan_for(char* cur, size_t len, const char* delim, size_t* rsize)
 {
 	char* base = cur;
 	char* end = cur+len;
@@ -100,7 +100,7 @@ static const char entity_values[] = {
 	'<', '"',
 };
 
-int XML_PARSER2::unescape_for(char* cur, size_t len, char delim, int c, size_t* rsize)
+int XmlParser::unescape_for(char* cur, size_t len, char delim, int c, size_t* rsize)
 {
 	// copy one argument char
 	// track entities
@@ -144,7 +144,7 @@ int XML_PARSER2::unescape_for(char* cur, size_t len, char delim, int c, size_t* 
 	return c;
 }
 
-bool XML_PARSER2::get_tag(int c)
+bool XmlParser::get_tag(int c)
 {
 	try {
 		do {
@@ -179,7 +179,7 @@ bool XML_PARSER2::get_tag(int c)
 }
 
 
-void XML_PARSER2::scan_attr(char* text, size_t len)
+void XmlParser::scan_attr(char* text, size_t len)
 {
 	//printf("  scan_attr: in_tag=%d [",in_tag);
 	char* max = text + len - 1;
@@ -206,7 +206,7 @@ void XML_PARSER2::scan_attr(char* text, size_t len)
 	//printf("] in_tag=%d\n",in_tag);
 }
 
-int XML_PARSER2::skip_ws_close(int c)
+int XmlParser::skip_ws_close(int c)
 {
 	while( 1 ) {
 		if(c=='>') {
@@ -221,7 +221,7 @@ int XML_PARSER2::skip_ws_close(int c)
 	return c;
 }
 
-bool XML_PARSER2::get_attr()
+bool XmlParser::get_attr()
 {
 	try {
 		int c=' ';
@@ -248,7 +248,7 @@ bool XML_PARSER2::get_attr()
 	catch(EStreamOutOfBounds&) {return false;}
 }
 
-bool XML_PARSER2::skip_comments(char c)
+bool XmlParser::skip_comments(char c)
 {
 	//               0  3 5 7     13 16
 	const char tr[]="!----> [CDATA[]]> > ";
@@ -277,7 +277,7 @@ bool XML_PARSER2::skip_comments(char c)
 	return true;
 }
 
-void XML_PARSER2::get_tree(char* buf, size_t len)
+void XmlParser::get_tree(char* buf, size_t len)
 {
 	if(len>1) {
 		close_tag();
@@ -300,7 +300,7 @@ void XML_PARSER2::get_tree(char* buf, size_t len)
 	}
 }
 
-void XML_PARSER2::get_str(char* str, size_t max)
+void XmlParser::get_str(char* str, size_t max)
 {
 	if(max) str[0]=0;
 	try {
@@ -333,7 +333,7 @@ void XML_PARSER2::get_str(char* str, size_t max)
 	catch(EStreamOutOfBounds&) {};
 }
 
-void XML_PARSER2::get_string(std::string& str, size_t max)
+void XmlParser::get_string(std::string& str, size_t max)
 {
 	std::vector<char> buf (max);
 	get_str(buf.data(), max);
@@ -344,7 +344,7 @@ void XML_PARSER2::get_string(std::string& str, size_t max)
 static const char* Table_boolean[] = { "0", "1", "false", "no", "true", "yes" };
 static const bool Values_boolean[] = {  0,   1,  0,       0,    1,      1,    };
 
-bool XML_PARSER2::get_bool()
+bool XmlParser::get_bool()
 {
 	if(is_closed) //presence of <tag/> means true
 		return true;
@@ -355,7 +355,7 @@ bool XML_PARSER2::get_bool()
 	return Values_boolean[ix];
 }
 
-long XML_PARSER2::get_long()
+long XmlParser::get_long()
 {
 	char buf[256], *end;
 	get_str(buf, sizeof buf);
@@ -365,7 +365,7 @@ long XML_PARSER2::get_long()
 	return val;
 }
 
-double XML_PARSER2::get_double()
+double XmlParser::get_double()
 {
 	char buf[256], *end;
 	get_str(buf, sizeof buf);
@@ -375,7 +375,7 @@ double XML_PARSER2::get_double()
 	return val;
 }
 
-unsigned long XML_PARSER2::get_ulong()
+unsigned long XmlParser::get_ulong()
 {
 	char buf[256], *end;
 	get_str(buf, sizeof buf);
@@ -385,7 +385,7 @@ unsigned long XML_PARSER2::get_ulong()
 	return val;
 }
 
-unsigned long long XML_PARSER2::get_uquad()
+unsigned long long XmlParser::get_uquad()
 {
 	char buf[256], *end;
 	get_str(buf, sizeof buf);
@@ -395,7 +395,7 @@ unsigned long long XML_PARSER2::get_uquad()
 	return val;
 }
 
-unsigned long long XML_PARSER2::get_bsize_uquad()
+unsigned long long XmlParser::get_bsize_uquad()
 {
 	char buf[256], *end;
 	get_str(buf, sizeof buf);
@@ -416,7 +416,7 @@ unsigned long long XML_PARSER2::get_bsize_uquad()
 	return val;
 }
 
-short XML_PARSER2::get_enum_value(const char* table[], const size_t length)
+short XmlParser::get_enum_value(const char* table[], const size_t length)
 {
 	char buf[32];
 	get_str(buf,sizeof(buf));
@@ -425,11 +425,11 @@ short XML_PARSER2::get_enum_value(const char* table[], const size_t length)
 	return ix;
 }
 
-const char* XML_PARSER2::array_too_long = "array too long";
-const char* XML_PARSER2::duplicate_field = "is duplicate";
-const char* XML_PARSER2::unknown_field = "not expected";
+const char* XmlParser::array_too_long = "array too long";
+const char* XmlParser::duplicate_field = "is duplicate";
+const char* XmlParser::unknown_field = "not expected";
 
-EXmlParse::EXmlParse( const XML_PARSER2& xp, const char* _msg )
+EXmlParse::EXmlParse( const XmlParser& xp, const char* _msg )
 {
 	if(xp.attr[0]) {
 		snprintf(buf, sizeof buf, "at tag %s, attr %s, %s", xp.tag, xp.attr, _msg);
@@ -438,7 +438,7 @@ EXmlParse::EXmlParse( const XML_PARSER2& xp, const char* _msg )
 	}
 }
 
-EXmlParse::EXmlParse( const XML_PARSER2& xp, bool _attr, const char* _name )
+EXmlParse::EXmlParse( const XmlParser& xp, bool _attr, const char* _name )
 {
 	if(_attr) {
 		snprintf(buf, sizeof buf, "at xml tag %s, missing attribute %s", xp.tag, _name);
@@ -452,7 +452,7 @@ const char * EXmlParse::what () const noexcept
 	return buf;
 }
 
-void parse_test_1(XML_PARSER2& xp)
+void parse_test_1(XmlParser& xp)
 {
 	char authenticator[32], tag_body[32];
 	char enclosing_tag[TAG_BUF_LEN];
@@ -492,7 +492,7 @@ void parse_test_1(XML_PARSER2& xp)
 void parse_test(FILE* f) {
 	bool flag;
 	CHandleStream mf(fileno(f));
-	XML_PARSER2 xp(&mf);
+	XmlParser xp(&mf);
 	char name[64];
 	char foo[64];
 	int val;
@@ -512,7 +512,7 @@ void parse_test(FILE* f) {
 
 void parse_test_3(FILE* f) {
 	CHandleStream mf(fileno(f));
-	XML_PARSER2 xp(&mf);
+	XmlParser xp(&mf);
 	char name[64];
 
 	strcpy(name, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");

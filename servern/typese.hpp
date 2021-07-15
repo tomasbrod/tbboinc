@@ -34,8 +34,8 @@ typedef std::chrono::duration<uint32_t,std::ratio<64,1>> Dings;
 Ticks now();
 Dings nowd();
 void throwNamedPtrNotFound(CLog& log, const char* name, const char* type_text);
-class XML_PARSER2;
-class XML_TAG4;
+class XmlParser;
+class XmlTag;
 class CBuffer;
 
 

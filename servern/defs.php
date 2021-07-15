@@ -321,7 +321,7 @@ function generateTagAttrParse($struct,$tag)
 
 function generateDeserFunction($struct)
 {
-	echo "void {$struct->name}::parse(XML_PARSER2& xp)\n";
+	echo "void {$struct->name}::parse(XmlParser& xp)\n";
 	echo "{\n";
 	// flags
 	if($struct->flags) {
@@ -362,7 +362,7 @@ function processStruct($struct,$cpp,$hpp)
 	echo "struct {$struct->name} {\n";
 	generateStructBody($struct);
 	if($hpp) {
-		echo "  void parse(XML_PARSER2& xp);\n};\n\n";
+		echo "  void parse(XmlParser& xp);\n};\n\n";
 		fwrite($hpp,ob_get_clean());
 	}
 	else ob_end_clean();

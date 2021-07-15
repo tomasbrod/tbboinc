@@ -9,9 +9,9 @@ class GroupCtl;
 
 struct IDumpable
 {
-	virtual void dump(XML_TAG4& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val) =0;
-	virtual void dump(XML_TAG4& xml) =0; //second pass dump
-	virtual void load(XML_PARSER2& xml, GroupCtl* group) =0;
+	virtual void dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val) =0;
+	virtual void dump(XmlTag& xml) =0; //second pass dump
+	virtual void load(XmlParser& xml, GroupCtl* group) =0;
 };
 
 	void GroupCtl::init(CLog& ilog, std::vector<t_config_database1>& cfgs)
@@ -261,14 +261,14 @@ void bind( std::array<byte,2>& id, GroupCtl& group, CLog& log, short prefix, sho
 }
 
 
-void GroupCtl::dump_id(XML_TAG4& parent)
+void GroupCtl::dump_id(XmlTag& parent)
 {
-	XML_TAG4 names (parent, "group" );
+	XmlTag names (parent, "group" );
 	names.attr("nonce").put((long long unsigned)nonce_l);
 	for(unsigned kind=1; kind<KindMapVec.size(); ++kind) {
 		auto& el = KindMapVec[kind];
 		for(unsigned pos=0; pos<el.ids.size(); ++pos) {
-			XML_TAG4 tag (names, el.type_text);
+			XmlTag tag (names, el.type_text);
 			tag.attr("n").put(el.ids[pos]);
 			short id = (kind<<10) | (1<<14) | (pos<<el.shift);
 			tag.attr("i").put(id);

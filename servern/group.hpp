@@ -86,7 +86,7 @@ struct GroupCtl
 	
 	void bind( NamedPtr<KVBackend>& ptr, CLog& log);
 
-	void dump_id(XML_TAG4& parent);
+	void dump_id(XmlTag& parent);
 
 	uint64_t getNonce(unsigned long cnt = 1);
 	
