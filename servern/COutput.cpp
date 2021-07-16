@@ -30,7 +30,7 @@ void COutput::init(CPlugin* iplugin, GroupCtl& group)
 				.num=1,
 				.taskid=125894,
 			};
-			log(getFileName(el, upload));
+			//log(getFileName(el, upload));
 		}
 	}
 	if(!ptrdb) ptrdb = group.main;

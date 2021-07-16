@@ -2,14 +2,14 @@
 void dumpxml(IStream& hs, bool skipped=false)
 {
 	const size_t cols = 32;
-	XML_TAG4 doc ( &hs, "dump" );
+	XmlTag doc ( &hs, "dump" );
 	if(!skipped) {
 		config.group.dump_id(doc);
 	}
 	for(const auto& dbit : config.group.dbs) {
 		KVBackend* kv= dbit.second.get();
 		if(kv->cfg->dump == skipped) {
-			XML_TAG4 skip(doc,"skipped");
+			XmlTag skip(doc,"skipped");
 			skip.attr("db").put(dbit.first);
 			continue;
 		}
@@ -19,19 +19,19 @@ void dumpxml(IStream& hs, bool skipped=false)
 			long oid = key.rb2();
 			if((oid>>13) == 7)
 			{
-				XML_TAG4 tag( doc, "task" );
+				XmlTag tag( doc, "task" );
 			}
 			else if(CPlugin* plugin = config.group.getPtrO<CPlugin>(oid))
 			{
-				XML_TAG4( doc, plugin->type_text ).put(oid);
+				XmlTag( doc, plugin->type_text ).put(oid);
 			}
 			else if(config.group.getPtrO<GroupCtl>(oid))
 			{
-				//XML_TAG4( doc, "group" ).put(oid);
+				//XmlTag( doc, "group" ).put(oid);
 			}
 			else
 			{
-				XML_TAG4 tag( doc, "unknown" );
+				XmlTag tag( doc, "unknown" );
 				tag.attr("db").put(dbit.first);
 				const char* type_name;
 				const char* type_text = config.group.getTypeText(oid,&type_name);
@@ -61,7 +61,7 @@ void dumphex(IStream& hs, bool skipped=false)
 	const size_t cols = 32;
 	for(const auto& dbit : config.group.dbs) {
 		KVBackend* kv= dbit.second.get();
-		XML_TAG4 tagdb( &hs, string(dbit.first) );
+		XmlTag tagdb( &hs, string(dbit.first) );
 		if(kv->cfg->dump == skipped) {
 			tagdb.attr("skipped").put_bool(1);
 			continue;

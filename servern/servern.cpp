@@ -2,8 +2,8 @@
 #include <string>
 #include <algorithm>
 #include <sodium/crypto_auth.h>
-#include "parse2.hpp"
-#include "parse4.hpp"
+#include "parse.hpp"
+#include "tag.hpp"
 #include <fcgiapp.h>
 #include "typese.hpp"
 #include "kv.hpp"
@@ -129,9 +129,9 @@ void CKeys::init(CLog& log, CConfig& config)
 		signatures[i] = std::move(config.signature[i].content);
 	}
 	codesign = std::move(config.codesign);
-	log("codesign_test",findSignature(codesign_test));
-	log("codesign_test",findSignature(std::string(codesign)));
-	log("codesign_test",findSignature(std::string("Blah")));
+	//log("codesign_test",findSignature(codesign_test));
+	//log("codesign_test",findSignature(std::string(codesign)));
+	//log("codesign_test",findSignature(std::string("Blah")));
 	// signatures is stored without the final "\n.\n"
 	// codesign   is stored without the final "\n.\n"
 }
