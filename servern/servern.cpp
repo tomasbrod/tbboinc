@@ -185,13 +185,13 @@ int main(int argc, char** argv) {
 			log("Reading",config_path);
 			CFileStream fs;
 			fs.openRead(config_path.c_str());
-			XML_PARSER2 xp (&fs);
+			XmlParser xp (&fs);
 			xp.get_tag();
 			config.parse(xp);
 			if(!config.has_keys) {
 				log("Reading","keys.xml");
 				fs.openRead("keys.xml");
-				XML_PARSER2 xp2 (&fs);
+				XmlParser xp2 (&fs);
 				xp2.get_tag();
 				config.server_keys.parse(xp2);
 			}

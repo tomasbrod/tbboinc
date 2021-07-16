@@ -1,14 +1,14 @@
-all: dbtry servern
+all: servern
 
 CXX = g++ -std=c++11 -Wformat -Wno-format-truncation
 
-servern: build/servern.o build/kv.o build/Stream.o build/parse2.o build/group.o build/COutput.o build/parse4.o build/code.o build/handle.o build/md5.o
+servern: build/servern.o build/kv.o build/Stream.o build/parse.o build/group.o build/COutput.o build/tag.o build/code.o build/handle.o build/md5.o
 	$(CXX) -o $@ -g -O0 $^ -lkyotocabinet -llmdb -lsodium -lleveldb
 
 dbtry: build/dbtry.o build/kv.o build/Stream.o
 	$(CXX) -o $@ -g -O0 $^ -llmdb -lkyotocabinet -lleveldb -lpthread -lrt
 
-show_keys: build/show_keys.o build/boinclib.o build/Stream.o build/parse2.o
+show_keys: build/show_keys.o build/boinclib.o build/Stream.o build/parse.o
 	$(CXX) -o $@ -g -O0 $^ -lsodium -lssl -lcrypto
 
 build/boinclib.o: boinclib.cpp Makefile
@@ -40,15 +40,15 @@ build/boinclib.o: boinclib.cpp boinclib/miofile.cpp boinclib/config.h \
  boinclib/parse.h boinclib/str_util.h boinclib/filesys.cpp \
  boinclib/util.h boinclib/util.cpp boinclib/base64.h boinclib/parse.cpp
 build/kv.o: kv.cpp kv.hpp typese.hpp log.hpp build/config.hpp Stream.hpp 
-build/parse2.o: parse2.cpp parse2.hpp Stream.hpp
-build/servern.o: servern.cpp parse2.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
+build/parse.o: parse.cpp parse.hpp Stream.hpp
+build/servern.o: servern.cpp parse.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
  build/config.hpp build/config.cpp build/request.hpp \
- build/request.cpp COutput.hpp parse4.hpp group.hpp dump.cpp
+ build/request.cpp COutput.hpp tag.hpp group.hpp dump.cpp
 build/Stream.o: Stream.cpp Stream.hpp log.hpp
 build/COutput.o: COutput.hpp COutput.cpp typese.hpp Stream.hpp log.hpp kv.hpp group.hpp build/config.hpp build/config.cpp
-build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp parse4.hpp
-build/parse4.o: parse4.hpp Stream.hpp
-build/dbtry.o: parse2.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
- build/config.hpp parse4.hpp code.cpp
+build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp tag.hpp
+build/tag.o: tag.hpp Stream.hpp
+build/dbtry.o: tag.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
+ build/config.hpp tag.hpp code.cpp
 build/handle.o: handle.cpp
 .PHONY: handle.cpp

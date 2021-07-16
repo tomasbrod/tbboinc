@@ -1,10 +1,10 @@
-#include "parse4.hpp"
+#include "tag.hpp"
 
 #define ENOUGH 64
 
 bool quote_all = 0;
 
-inline IStream* XML_TAG4::body(bool line)
+inline IStream* XmlTag::body(bool line)
 {
 	if(in_tag==1 || in_tag==2) {
 		mf->w1('>');
@@ -19,7 +19,7 @@ inline IStream* XML_TAG4::body(bool line)
 	return mf;
 }
 
-void XML_TAG4::attr_s(const char* s)
+void XmlTag::attr_s(const char* s)
 {
 	if(in_tag>=6) return;
 	if(in_tag==1 || in_tag==2) {
@@ -43,7 +43,7 @@ void XML_TAG4::attr_s(const char* s)
 	}
 }
 
-void XML_TAG4::attr_e()
+void XmlTag::attr_e()
 {
 	if(in_tag==4) {
 		mf->w1('\'');
@@ -55,7 +55,7 @@ void XML_TAG4::attr_e()
 	}
 }
 
-void XML_TAG4::open()
+void XmlTag::open()
 {
 	/*
 	if(indent)
@@ -68,12 +68,12 @@ void XML_TAG4::open()
 	in_tag=1;
 }
 
-void XML_TAG4::put_raw(const char* buf, size_t len)
+void XmlTag::put_raw(const char* buf, size_t len)
 {
 	body();
 	mf->write(buf,len);
 }
-void XML_TAG4::put(const char* str)
+void XmlTag::put(const char* str)
 {
 	attr_s(str);
 	for(const char* p = str; *p; ++p)
@@ -95,21 +95,21 @@ void XML_TAG4::put(const char* str)
 	}
 	attr_e();
 }
-void XML_TAG4::put(long v)
+void XmlTag::put(long v)
 {
 	attr_s();
 	ssize_t len = snprintf((char*)mf->getdata(ENOUGH,1),ENOUGH, "%ld", v);
 	mf->skip(len-ENOUGH);
 	attr_e();
 }
-void XML_TAG4::put_bool(bool v)
+void XmlTag::put_bool(bool v)
 {
 	attr_s();
 	mf->w1(v?'1':'0');
 	attr_e();
 }
 
-void XML_TAG4::put(double v)
+void XmlTag::put(double v)
 {
 	attr_s();
 	ssize_t len = snprintf((char*)mf->getdata(ENOUGH,1),ENOUGH, "%f", v);
@@ -117,7 +117,7 @@ void XML_TAG4::put(double v)
 	attr_e();
 }
 
-void XML_TAG4::put(unsigned long long v)
+void XmlTag::put(unsigned long long v)
 {
 	attr_s();
 	ssize_t len = snprintf((char*)mf->getdata(ENOUGH,1),ENOUGH, "%llu", v);
@@ -125,16 +125,16 @@ void XML_TAG4::put(unsigned long long v)
 	attr_e();
 }
 	
-void XML_TAG4::put_bsize(unsigned long long v) {put(v);}
+void XmlTag::put_bsize(unsigned long long v) {put(v);}
 
-void XML_TAG4::put_enum(const char* table[], const size_t length, short v)
+void XmlTag::put_enum(const char* table[], const size_t length, short v)
 {
 	attr_s();
 	mf->write(table[v], strlen(table[v]));
 	attr_e();
 }
 
-void XML_TAG4::attr2(const char* iattr)
+void XmlTag::attr2(const char* iattr)
 {
 	if(in_tag==1) {
 		mf->w1(' ');
@@ -151,7 +151,7 @@ void XML_TAG4::attr2(const char* iattr)
 	}
 }
 
-void XML_TAG4::close()
+void XmlTag::close()
 {
 	if(in_tag==1) {
 		mf->w1(' ');
@@ -178,7 +178,7 @@ void XML_TAG4::close()
 		mf->w1('\n');
 }
 
-void XML_TAG4::open(const std::string&& itag)
+void XmlTag::open(const std::string&& itag)
 {
 	this->close();
 	tag=std::move(itag);
@@ -189,12 +189,12 @@ void XML_TAG4::open(const std::string&& itag)
 void XML_TAG_test()
 {
 	CHandleStream hs (STDOUT_FILENO, true);
-	XML_TAG4 doc ( &hs, "document" );
+	XmlTag doc ( &hs, "document" );
 	doc.attr("attr1").put("text1");
-	XML_TAG4 sub = XML_TAG4( doc, "tag" );
+	XmlTag sub = XmlTag( doc, "tag" );
 	sub.attr("attr2").put(42.667);
-	XML_TAG4(sub,"inner").put("value");
-	XML_TAG4(sub,"nobody").attr("attr3").put("tex t3");
+	XmlTag(sub,"inner").put("value");
+	XmlTag(sub,"nobody").attr("attr3").put("tex t3");
 	sub.open( "another" );
 	//sub.put_raw("\n1234\n123456\n.\n",15);
 }
