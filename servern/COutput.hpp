@@ -10,7 +10,9 @@ class CPlugin;
 #include "build/config-output.hpp"
 
 /* represents <output> element of config */
-class COutput : public t_config_output
+class COutput
+	: public t_config_output
+	, public IGroupObject
 {
 	/* Bound to plugin for event queue */
 	CPlugin* plugin;
@@ -19,7 +21,7 @@ class COutput : public t_config_output
 
 	public:
 	static const char* type_text;
-	static const unsigned type_id = 2;
+	static const unsigned type_id = 0;
   void init(CPlugin* iplugin, GroupCtl& group);
 
 	//function to copy socket stream into file storage
@@ -47,6 +49,11 @@ class COutput : public t_config_output
 	std::string getFileName(const t_config_subs_files& place, const TUploadInfo& inf) const;
 	void saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group );
 	bool isFileComplete( const std::string& filename, size_t size );
+
+	// IGroupObject
+	virtual bool dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val);
+	virtual void dump2(XmlTag& xml);
+	virtual void load(XmlParser& xml, GroupCtl* group);
 };
 
 struct EFileUpload : std::runtime_error
@@ -62,7 +69,9 @@ struct EFileUploadPlace : EFileUpload
 #include "build/config-plugin.hpp"
 
 /* represents <plugin> element of config */
-class CPlugin : public t_config_plugin
+class CPlugin
+	: public t_config_plugin
+	, public IGroupObject
 {
 	GroupCtl* group;
 	KVBackend* kv;
@@ -84,6 +93,10 @@ class CPlugin : public t_config_plugin
 
 	void init(GroupCtl& igroup);
 
+	// IGroupObject
+	virtual bool dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val);
+	virtual void dump2(XmlTag& xml);
+	virtual void load(XmlParser& xml, GroupCtl* group);
 };
 
 

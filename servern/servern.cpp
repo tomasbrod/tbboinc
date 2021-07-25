@@ -156,28 +156,45 @@ int main(int argc, char** argv) {
 
 	tick_epoch = std::chrono::steady_clock::now() - std::chrono::minutes(1);
 
-	const char* reload_path;
-	bool reload_xml;
 	const char* dump_path = "dump.hex";
+	enum { sr_norm, sr_dump, sr_load, sr_whex, sr_whexa, sr_lhex }
+		dump_mode = sr_norm;
 	{
 		std::string config_path = "config.xml";
 		// parse command line
+		/*
+			c= config file
+			load= recreate database from an xml file and exit
+			dump= dump an xml file
+			whex= dump dumpable databases to hex file
+			whexa= dump everything to hex file
+			rhex= read the hex file (incremental)
+		*/
 		for(unsigned ai=1; ai<argc; ++ai)
 		{
 			if(!strncmp(argv[ai],"c=",2)) {
 				config_path = argv[ai]+2;
 			}
-			else log.warn("Unknown option",argv[ai]);
-			/*
-			if(!strncmp(argv[ai],"load=",5)) {
-				reload_path = argv[ai]+2;
-				reload_xml = 1;
+			else if(!strncmp(argv[ai],"load=",5)) {
+				dump_path = argv[ai]+5;
+				dump_mode = sr_load;
 			}
-			if(!strncmp(argv[ai],"lhex=",5)) {
-				reload_path = argv[ai]+2;
-				reload_xml = 0;
+			else if(!strncmp(argv[ai],"dump=",5)) {
+				dump_path = argv[ai]+5;
+				dump_mode = sr_dump;
 			}
-			*/
+			else if(!strncmp(argv[ai],"whex=",5)) {
+				dump_path = argv[ai]+5;
+				dump_mode = sr_whex;
+			}
+			else if(!strncmp(argv[ai],"whexa=",6)) {
+				dump_path = argv[ai]+6;
+				dump_mode = sr_whexa;
+			}
+			else {
+				log.warn("Unknown option",argv[ai]);
+				return 1;
+			}
 		}
 
 		// read config
@@ -228,6 +245,29 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	// dump and restore pt 1
+	CFileStream dump_stream;
+	XmlParser dump_xp (&dump_stream);
+	if(dump_mode==sr_load) {
+		log("Restore",dump_path," phase 1");
+		dump_stream.openRead(dump_path);
+		config.group.load_pre(dump_xp);
+	}
+	if(dump_mode==sr_whex || dump_mode==sr_whexa) {
+		log("Dumping HEX",dump_path);
+		CFileStream hs;
+		hs.openCreate(dump_path);
+		config.group.dumphex(hs);
+		if(dump_mode==sr_whexa)
+			config.group.dumphex(hs,true);
+		hs.close();
+		return 0;
+	}
+	if(dump_mode==sr_lhex) {
+		assert(0);
+		return 0;
+	}
+
 	config.group.Open();
 	CKeys keys;
 	keys.init(log, config);
@@ -238,6 +278,25 @@ int main(int argc, char** argv) {
 			output.init(&plugin, config.group);
 		}
 	}
+
+	// dump and restore pt 2
+	if(dump_mode==sr_load) {
+		log("Restore phase 2");
+		config.group.load(dump_xp);
+		config.group.Close();
+		log.warn("Restore successful, please restart.");
+		return 0;
+	}
+	if(dump_mode==sr_dump) {
+		log("Dumping XML to",dump_path);
+		CFileStream hs;
+		hs.openCreate(dump_path);
+		config.group.dumpxml(hs);
+		return 0;
+	}
+		
+	assert( dump_mode==sr_norm );
+
 	config.group.open_since=Ticks::zero();
 	config.group.Close();
 
@@ -258,14 +317,24 @@ int main(int argc, char** argv) {
 		log("Dumping");
 		CLog::output->flush();
 		CHandleStream hs (STDOUT_FILENO, true);
-		dumpxml(hs);
+		config.group.dumpxml(hs);
 	}
-	if(dump_path) {
-		log("Dumping hex",dump_path);
-		CFileStream hs;
-		hs.openCreate(dump_path);
-		dumphex(hs);
-	}
+
+	/* How would loading go?
+		first initialize everything like normal
+		start loading xml
+		for each tag, pass it to object's load()
+
+		if idmap is to be loaded, clear all databases
+		then initialize everything
+		then proceed loading
+
+		so, check for import file right after opening group
+		group load_pre checks the root tag and presence of idmap
+		if present, all dbs are cleared and idmap is loaded
+		if flag is not set, idmap is just checked agains current one
+		
+	*/
 
 	config.group.dbs.clear();
 

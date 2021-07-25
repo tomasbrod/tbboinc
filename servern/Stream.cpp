@@ -244,6 +244,7 @@ byte* CHandleStream::outofbounds(size_t len, bool wr)
 		buffer.cur-=len;
 		// copy leftover data
 		assert(buffer.left()<sizeof(static_buffer));
+		//FIXME: somehow this aborts during legitimate use
 		size_t left;
 		for(left=0; (buffer.cur+left)<buffer.wend; ++left)
 			static_buffer[left] = buffer.cur[left];

@@ -71,8 +71,11 @@ struct immstring : std::array< char, SIZE >
 	immstring& operator = (std::string& s) { return (*this) = s.c_str(); }
 	immstring(const char* s) { *this=s; }
 	immstring(std::string& s) { *this=s; }
-	immstring() {};
-	void clear() {(*this)[0]=0;}
+	immstring() {clear();};
+	void clear() {
+		memset(this->data(),0,SIZE);
+		/*std::array< char, SIZE >::fill(0); (*this)[0]=0;*/
+	}
 	bool empty() const { return (*this)[0]==0; }
 	//bool operator == (
 	//todo: comparison...

@@ -50,7 +50,7 @@ void XmlParser::close_tag()
 	{
 		int c= mf->r1();
 		if(copy_buf<copy_end) *(copy_buf++)=c;
-		if(in_tag>1) {
+		if(in_tag>3) {
 			if(in_tag==c) in_tag=1;
 		}
 		else if(c=='>') { in_tag=0; break; }

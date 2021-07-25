@@ -1,0 +1,24 @@
+# 
+hpp build/dump.def.hpp
+cpp build/dump.def.cpp
+
+struct t_dump_group_entry
+k tagname varchar 7
+n attr varchar 15
+i attr ulong
+p attr ulong
+m attr ulong def=0
+%
+
+struct t_dump_group
+nonce attr uquad
+entry content vector struct t_dump_group_entry innertag=*
+%
+
+struct t_dump_unknown
+db attr varchar 15
+kind attr varchar 15 def=
+name attr varchar 15 def=
+key attr varchar 1025
+val content varchar 16777216
+%

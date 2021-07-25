@@ -25,6 +25,7 @@ struct KVBackend
 		virtual bool Get(CBuffer& key, CBuffer& val)=0;
 	};
 	virtual std::unique_ptr<Iterator> getIterator();
+	virtual void WipeClean() =0;
 	protected:
 	inline void on_destruct();
 };

@@ -1,6 +1,8 @@
 #include "COutput.hpp"
 #include <cstddef>
 #include <iomanip>
+#include "tag.hpp"
+#include "parse.hpp"
 
 #include <fcntl.h>
 #include <sys/types.h>
@@ -16,7 +18,7 @@ void COutput::init(CPlugin* iplugin, GroupCtl& group)
 {
 	plugin = iplugin;
 	CLog log (type_text,name);
-	ID=group.getID(this); //"output", 2, this->name, 0);
+	ID=group.registerOID(this); //"output", 2, this->name, 0);
 	ptrdb=0;
 	for( auto& el : filesv ) {
 		if(!el.isdir) {
@@ -264,7 +266,7 @@ void CPlugin::init(GroupCtl& igroup)
 	log=CLog(type_text,name);
 	group= &igroup;
 	kv= igroup.main;
-	ID=group->getID(this,2); //"plugin", 1, this->name, 2);
+	ID=group->registerOID(this,3);
 	CStUnStream<8> key;
 	key.wb2(ID);
 	kv->GetLast(key);
@@ -279,3 +281,30 @@ void CPlugin::init(GroupCtl& igroup)
 }
 
 
+bool COutput::dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val)
+{
+	//todo: actually dump it here
+	return false;
+}
+void COutput::dump2(XmlTag& xml)
+{
+}
+void COutput::load(XmlParser& xml, GroupCtl* group)
+{
+	xml.skip();
+}
+
+bool CPlugin::dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val)
+{
+	return false;
+}
+void CPlugin::dump2(XmlTag& doc)
+{
+	XmlTag tag (doc, type_text);
+	tag.attr("n").put(this->name);
+	tag.put("would dump the queue here");
+}
+void CPlugin::load(XmlParser& xml, GroupCtl* group)
+{
+	xml.skip();
+}

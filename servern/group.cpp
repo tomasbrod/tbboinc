@@ -1,19 +1,14 @@
 #include "group.hpp"
 #include "parse.hpp"
 #include "tag.hpp"
+#include "build/dump.def.hpp"
+#include "build/dump.def.cpp"
 
 using std::string;;
 
 
 struct COutput;
 class GroupCtl;
-
-struct IDumpable
-{
-	virtual void dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val) =0;
-	virtual void dump(XmlTag& xml) =0; //second pass dump
-	virtual void load(XmlParser& xml, GroupCtl* group) =0;
-};
 
 	void GroupCtl::init(CLog& ilog, std::vector<t_config_database1>& cfgs)
 	{
@@ -37,12 +32,16 @@ struct IDumpable
 		CStUnStream<2> key;
 		key.wb2(1<<14);
 		CBufStream data = main->Get(key);
-		KindMapVec.clear();
-		if(data.left()) {
-			while(data.left()) {
-				KindMapElem el;
+		for(auto& el : KindMapVec) {
+			el.type_text.clear();
+			el.ids.clear();
+			el.ptrs.clear();
+			el.ptr=0;
+		}
+		for(unsigned kind=0; data.left(); ++kind) {
+				KindMapElem &el = KindMapVec[kind];
 				data.rstrf(el.type_text);
-				el.shift=data.r1();
+				el.hmask=data.r1();
 				size_t num = data.r1();
 				el.ids.resize(num);
 				el.ptrs.resize(num,0);
@@ -50,12 +49,10 @@ struct IDumpable
 					data.rstrf(name);
 					//log("loaded name",el.type_text,name);
 				}
-				//log("loaded KindMapElem",el.type_text,el.shift,el.ids.size());
-				KindMapVec.push_back(el);
-			}
+				//log("loaded KindMapElem",el.type_text,el.ids.size());
 		}
-		short id = getID("group",0,"",this,8);
-		assert(id=16384);
+		//todo: catch EStreamOutOfBounds and explain it correctly
+		//note: group/idmap does not have to be registered, we can overlay COutput on the same slot
 		key.skip(-2);
 		key.wb2(16385);
 		main->Get(key,data);
@@ -63,8 +60,8 @@ struct IDumpable
 			nonce_v=nonce_l=0;
 		else
 			nonce_v=nonce_l=data.r8();
-		//log("nonce_l",nonce_l);
-		//log("test nonce",getNonce());
+		log("nonce_l",nonce_l);
+		log("test nonce",getNonce());
 	}
 
 	KVBackend* GroupCtl::getKV(const immstring<16>& name)
@@ -77,28 +74,27 @@ struct IDumpable
 		}
 	}
 
-	short GroupCtl::getID(const char* type_text, unsigned kind, const char* name, void* optr, unsigned shift)
+	short GroupCtl::registerOID(const char* type_text, unsigned kind, const char* name, unsigned hmask, IGroupObject* optr)
 	{
 		assert(kind<8);
-		if(kind>=KindMapVec.size()) {
-			KindMapVec.resize(kind+1);
-		}
 		KindMapElem& km = KindMapVec[kind];
-		if(km.shift==255) {
+		if(km.type_text.empty()) {
 			km.type_text = type_text;
-			km.shift = shift;
-		} else {
-			assert(!strcmp(km.type_text, type_text));
-			assert(km.shift==shift);
+			km.hmask = hmask;
 		}
+		if(km.hmask!=hmask or strcmp(km.type_text, type_text)) {
+			throw std::runtime_error(tostring(log,"mismatch while registering",kind,"as",type_text,hmask,"into",km.type_text,km.hmask));
+		}
+		assert(!strcmp(km.type_text, type_text));
+		assert(km.hmask==hmask);
 		unsigned fpos=255;
 		for(unsigned pos=0; pos<km.ids.size(); ++pos) {
 			if( !strcmp(km.ids[pos],name) ) {
 				if(!km.ptrs[pos])
 					km.ptrs[pos]= optr;
 					else assert( km.ptrs[pos]==optr);
-				short id = (kind<<10) | (1<<14) | (pos<<shift);
-				if(kind) LogKV("bound",type_text,name,"to",id);
+				short id = (kind<<10) | (1<<14) | (pos);
+				LogKV("bound",type_text,name,"to",id);
 				return id;
 			}
 			else if(!km.ids[pos][0] && fpos<255)
@@ -112,32 +108,42 @@ struct IDumpable
 			km.ids[fpos]= name;
 			km.ptrs[fpos]=optr;
 		}
-		short id = (kind<<10) | (1<<14) | (fpos<<shift);
-		LogKV("bound",type_text,name,"to",id,"(new) shl",shift);
+		short id = (kind<<10) | (1<<14) | (fpos);
+		LogKV("bound",type_text,name,"to",id,"(new)");
+		save_idmap();
+		return id;
+	}
+	void GroupCtl::save_idmap()
+	{
 		/* Save the ID map */
 		CStUnStream<2> key;
 		key.wb2(1<<14);
-		CStUnStream<2048> data; //todo: checked
+		CStUnStream<1048576> data; //todo: checked
 		for(unsigned kind=0; kind<KindMapVec.size(); ++kind) {
 			const auto& el = KindMapVec[kind];
 			data.wstrf(el.type_text);
-			data.w1(el.shift);
+			data.w1(el.hmask);
 			data.w1(el.ids.size());
 			for(const auto& name : el.ids) {
 				data.wstrf(name);
 			}
 		}
 		main->Set(key,data);
-		return id;
 	}
 
-	void* GroupCtl::getPtrO(unsigned oid, unsigned kind)
+	IGroupObject* GroupCtl::getPtr(unsigned oid, unsigned kind)
 	{
-		if( ((oid>>10)&7) != kind)
+		if( kind!=255 && ((oid>>10) & 0b101111) != kind )
 			return 0;
-		assert(KindMapVec.size()>kind);
+		assert(kind==255 || KindMapVec.size()>kind);
+		kind = (oid >> 10) & 15;
+		if(kind>KindMapVec.size())
+			return 0;
 		KindMapElem& el = KindMapVec[kind];
-		unsigned pos = ((oid&1023)>>el.shift) & 255;
+		unsigned pos = oid & 255;
+		if(kind==0) pos= 0;
+		if((oid>>8) & 3 > el.hmask)
+			return 0;
 		if(pos>=el.ptrs.size())
 			return 0; //todo: throw?
 		return el.ptrs[pos];
@@ -145,11 +151,11 @@ struct IDumpable
 
 	const char* GroupCtl::getTypeText(unsigned oid, const char** name)
 	{
-		unsigned kind = ((oid>>10)&7);
+		unsigned kind = ((oid>>10)&15);
 		if(name) *name=0;
 		if(kind<KindMapVec.size()) {
 			KindMapElem& el = KindMapVec[kind];
-			unsigned pos = ((oid&1023)>>el.shift) & 255;
+			unsigned pos = oid & 255;
 			if(name && (pos<el.ids.size()))
 				*name = el.ids[pos];
 			return KindMapVec[kind].type_text;
@@ -236,16 +242,21 @@ uint64_t GroupCtl::getNonce(unsigned long cnt)
 	uint64_t ret = nonce_v++;
 	if(ret>=nonce_l) {
 		nonce_l+=16;
+		save_nonce();
+	}
+	assert(nonce_v); //overflow
+	return ret;
+}
+void GroupCtl::save_nonce()
+{
 		CStUnStream<2> key;
 		CStUnStream<8> val;
 		key.wb2(16385);
 		val.w8(nonce_l);
 		main->Set(key,val);
-		// force a commit under lock
-	}
-	assert(nonce_v); //overflow
-	return ret;
-}
+		//todo: force a commit under lock
+		//fixme: commit must not be forced, instead save this in standard group commit
+}	
 
 const char* GroupCtl::type_text = "group";
 
@@ -266,16 +277,217 @@ void GroupCtl::dump_id(XmlTag& parent)
 {
 	XmlTag names (parent, "group" );
 	names.attr("nonce").put((long long unsigned)nonce_l);
-	for(unsigned kind=1; kind<KindMapVec.size(); ++kind) {
+	for(unsigned kind=0; kind<KindMapVec.size(); ++kind) {
 		auto& el = KindMapVec[kind];
 		for(unsigned pos=0; pos<el.ids.size(); ++pos) {
+			if(el.ids[pos].empty()) continue;
 			XmlTag tag (names, el.type_text);
+			short id = (kind<<10) | (1<<14) | (pos);
 			tag.attr("n").put(el.ids[pos]);
-			short id = (kind<<10) | (1<<14) | (pos<<el.shift);
-			tag.attr("i").put(id);
-			if(el.shift)
-				tag.attr("s").put((long)el.shift);
+			tag.attr("i").put((long)id);
 			tag.attr("p").put((long)pos);
+			if(el.hmask)
+				tag.attr("m").put((long)el.hmask);
+		}
+	}
+}
+
+IGroupObject::~IGroupObject() {}
+
+void GroupCtl::dumpxml(IStream& hs, bool skipped)
+{
+	const size_t cols = 32;
+	XmlTag doc ( &hs, "dump" );
+	if(!skipped) {
+		this->dump_id(doc);
+	}
+	for(const auto& dbit : dbs) {
+		KVBackend* kv= dbit.second.get();
+		if(kv->cfg->dump == skipped) {
+			XmlTag skip(doc,"skipped");
+			skip.attr("db").put(dbit.first);
+			continue;
+		}
+		std::unique_ptr<KVBackend::Iterator> it = kv->getIterator();
+		CUnchStream key, val;
+		while(it->Get(key,val)) {
+			long oid = key.rb2();
+			if (oid<=0x40FF) continue;
+			bool dumped=0;
+			if(IGroupObject* obj = getPtr(oid))
+			{
+				dumped=obj->dump(doc, kv, oid, key, val);
+			}
+			if(!dumped)
+			{
+				XmlTag tag( doc, "unknown" );
+				tag.attr("db").put(dbit.first);
+				const char* type_name;
+				const char* type_text = getTypeText(oid,&type_name);
+				if(type_text)
+					tag.attr("kind").put(type_text);
+				if(type_name && *type_name)
+					tag.attr("name").put(type_name);
+				tag.attr("key");
+				key.skip(-2);
+				hs.writehex(key);
+				hs.w1(' ');
+				tag.in_tag=2;
+				tag.body();
+				while(val.length()>cols) {
+					hs.w1('\n');
+					hs.writehex(val.base,cols);
+					val.base+=cols;
+				}
+				hs.writehex(val);
+			}
+		}
+	}
+	if(!skipped) {
+		for(unsigned kind=1; kind<KindMapVec.size(); ++kind) {
+			auto& el = KindMapVec[kind];
+			for(unsigned pos=0; pos<el.ids.size(); ++pos) {
+				if(el.ptrs[pos]) {
+					el.ptrs[pos]->dump2(doc);
+				}
+			}
+		}
+	}
+}
+
+void GroupCtl::dumphex(IStream& hs, bool skipped)
+{
+	const size_t cols = 32;
+	for(const auto& dbit : dbs) {
+		KVBackend* kv= dbit.second.get();
+		XmlTag tagdb( &hs, string(dbit.first) );
+		if(kv->cfg->dump == skipped) {
+			tagdb.attr("skipped").put_bool(1);
+			continue;
+		}
+		std::unique_ptr<KVBackend::Iterator> it = kv->getIterator();
+		CUnchStream key, val;
+		while(it->Get(key,val)) {
+			tagdb.body(1);
+			hs.w1('[');
+			hs.writehex(key);
+			hs.w1(']');
+			if((val.length()+key.length()+2)>cols)
+				hs.w1('\n');
+			while(val.length()>cols) {
+				hs.writehex(val.base,cols);
+				val.base+=cols;
+				hs.w1('\n');
+			}
+			hs.writehex(val);
+		}
+	}
+}
+
+void GroupCtl::load_pre(XmlParser& xp)
+{
+	xp.get_tag();
+	xp.get_tag();
+	if(0==strcmp(xp.tag,"group")) {
+		t_dump_group st;
+		st.parse(xp);
+		nonce_v=nonce_l= st.nonce;
+		for(auto& el : KindMapVec) {
+			el.type_text.clear();
+			el.ids.clear();
+			el.ptrs.clear();
+			el.ptr=0;
+		}
+		for(auto& el : st.entry) {
+			unsigned kind = ((el.i>>10)&15);
+			unsigned pos = el.i&255;
+			KindMapVec[kind].type_text=el.k;
+			KindMapVec[kind].hmask=el.m;
+			if(pos>=KindMapVec[kind].ids.size()) {
+				KindMapVec[kind].ids.resize(pos+1);
+				KindMapVec[kind].ptrs.resize(pos+1,NULL);
+			}
+			KindMapVec[kind].ids[pos]=el.n;
+			KindMapVec[kind].ptrs[pos]=NULL;
+		}
+		for(const auto& dbit : dbs) {
+			if(dbit.second->cfg->dump) {
+				dbit.second->WipeClean();
+				log.warn("Wiped",dbit.second->cfg->name);
+			}
+		}
+		save_idmap();
+		save_nonce();
+	}
+	else {
+		throw EXmlParse(xp,false,"group");
+	}
+}
+
+void GroupCtl::load(XmlParser& xp)
+{
+	while(xp.get_tag()) {
+		// find kind matching the xp.tag
+		unsigned kind = 20;
+		for(kind=0; kind<20; ++kind) {
+			if(0==strcmp(KindMapVec[kind].type_text,xp.tag))
+				break;
+		}
+		if(/*it is object*/ kind < 16 ) {
+			xp.get_attr();
+			assert(0==strcmp("n",xp.attr));
+			immstring<16> name;
+			xp.get_str(name,16);
+			//find the object name
+			IGroupObject* obj=0;
+			for(unsigned pos=0; pos<KindMapVec[kind].ids.size(); ++pos) {
+				if(0==strcmp(KindMapVec[kind].ids[pos],name)) {
+					obj=KindMapVec[kind].ptrs[pos];
+					break;
+				}
+			}
+			if(/*found object ptr*/obj) {
+				obj->load(xp,this);
+			} else {
+				log.warn("Found orphan object",xp.tag,name);
+				xp.skip();
+			}
+		} else if( /*it is not object*/ kind < 20 ) {
+			IGroupObject* obj= KindMapVec[kind].ptr;
+			if(obj) {
+				obj->load(xp,this);
+			} else {
+				log.warn("Found orphan special",xp.tag);
+				xp.skip();
+			}
+		}
+		else if(0==strcmp("unknown",xp.tag)) {
+			std::unique_ptr<t_dump_unknown> st ( new t_dump_unknown );
+			st->parse(xp);
+			auto kv = getKV(st->db);
+			if(kv) {
+				size_t klen = strlen(st->key) / 2;
+				size_t vlen = strlen(st->val) / 2;
+				bool dec = CBuffer::hex2bin(
+					(byte*)static_cast<char*>(st->key),
+					static_cast<const char*>(st->key),
+					klen*2);
+				dec &= CBuffer::hex2bin(
+					(byte*)static_cast<char*>(st->val),
+					static_cast<const char*>(st->val),
+					vlen*2);
+				if(dec) {
+					kv->Set(
+						CBuffer(static_cast<char*>(st->key), klen),
+						CBuffer(static_cast<char*>(st->val), vlen)
+					);
+				}
+				else log.warn("Unable to decode unknown data tag for",st->db);
+			}
+			else log.warn("Unable resolve unknown data tag for",st->db);
+		} else {
+			log.warn("Found unknown tag",xp.tag);
+			xp.skip();
 		}
 	}
 }

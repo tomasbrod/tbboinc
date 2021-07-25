@@ -20,7 +20,10 @@ build/%.o: %.cpp Makefile
 build/md5.o: ../boinc/lib/md5.cpp
 	$(CXX) -c -o $@ $<
 
-build/%.hpp build/%.cpp: %.defs defs.php Makefile
+build/config.cpp build/config-db.hpp build/config-output.hpp build/config-plugin.hpp build/config.hpp: config.defs defs.php
+	php defs.php $<
+
+build/dump.def.cpp build/dump.def.hpp: dump.defs defs.php
 	php defs.php $<
 
 fuh: file_upload_handler.cpp Makefile
@@ -46,7 +49,7 @@ build/servern.o: servern.cpp parse.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
  build/request.cpp COutput.hpp tag.hpp group.hpp dump.cpp
 build/Stream.o: Stream.cpp Stream.hpp log.hpp
 build/COutput.o: COutput.hpp COutput.cpp typese.hpp Stream.hpp log.hpp kv.hpp group.hpp build/config.hpp build/config.cpp
-build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp tag.hpp
+build/group.o: group.cpp group.hpp kv.hpp typese.hpp log.hpp Stream.hpp build/config.hpp tag.hpp build/dump.def.cpp build/dump.def.hpp
 build/tag.o: tag.hpp Stream.hpp
 build/dbtry.o: tag.hpp Stream.hpp typese.hpp log.hpp kv.hpp \
  build/config.hpp tag.hpp code.cpp

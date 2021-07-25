@@ -24,6 +24,14 @@ struct TTask
 	GroupCtl* group;
 };
 
+struct IGroupObject
+{
+	virtual bool dump(XmlTag& xml, KVBackend* kv, short oid, CUnchStream& key, CUnchStream& val) =0;
+	virtual void dump2(XmlTag& xml) =0;
+	virtual void load(XmlParser& xml, GroupCtl* group) =0;
+	virtual ~IGroupObject();
+};
+
 
 struct GroupCtl
 	: t_config_group
@@ -36,11 +44,14 @@ struct GroupCtl
 
 	struct KindMapElem {
 		immstring<8> type_text;
-		unsigned shift=255;
+		union {
+			unsigned hmask;
+			IGroupObject* ptr;
+		};
 		std::vector<immstring<16>> ids;
-		std::vector<void*> ptrs;
+		std::vector<IGroupObject*> ptrs;
 	};
-	std::vector<KindMapElem> KindMapVec;
+	std::array<KindMapElem,20> KindMapVec;
 
 	const Ticks group_delay = Ticks(std::chrono::seconds(3));
 	KVBackend* main;
@@ -52,13 +63,12 @@ struct GroupCtl
 
 	KVBackend* getKV(const immstring<16>& name);
 
-	short getID(const char* type_text, unsigned kind, const char* name, void* ptr, unsigned shift);
-	void* getPtr(unsigned pos, unsigned kind);
-	void* getPtrO(unsigned oid, unsigned kind);
-	template<class T> short getID(T* ptr, unsigned shift=0) { return getID(T::type_text, T::type_id, ptr->name, ptr, shift); }
-	//template<class T> T* getPtr(unsigned pos) { return (T*)getPtr(pos, T::type_id); }
-	template<class T> T* getPtrO(unsigned oid) { return (T*)getPtrO(oid, T::type_id); }
+	short registerOID(const char* kind_text, unsigned kind, const char* name, unsigned hmask, IGroupObject* ptr);
+	IGroupObject* getPtr(unsigned oid, unsigned kind=255);
 	const char* getTypeText(unsigned oid, const char** name=0);
+	template<class T> short registerOID(T* ptr, unsigned hmask=0) { return registerOID(T::type_text, T::type_id, ptr->name, hmask, ptr); }
+	template<class T> T* getPtr(unsigned oid) { return (T*)getPtr(oid, T::type_id); }
+	//TODO: allow registering non-object handlers (task,user...)
 
 	void Open();
 
@@ -87,13 +97,20 @@ struct GroupCtl
 	void bind( NamedPtr<KVBackend>& ptr, CLog& log);
 
 	void dump_id(XmlTag& parent);
+	void dumpxml(IStream& hs, bool skipped=false);
+	void dumphex(IStream& hs, bool skipped=false);
+	void load_pre(XmlParser& xp);
+	void load(XmlParser& xp);
+	void save_idmap();
+	void save_nonce();
 
 	uint64_t getNonce(unsigned long cnt = 1);
 	
 	static const char* type_text;
 	static const unsigned type_id = 0;
+
 };
 
 
 //future
-void bind( std::array<byte,2>& id, GroupCtl& group, CLog& log, short prefix, short len);
+//void bind( std::array<byte,2>& id, GroupCtl& group, CLog& log, short prefix, short len);

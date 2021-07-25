@@ -101,6 +101,7 @@ class KV_Lightning : public KVBackend
 	void Commit();
 	void Open(const t_config_database& cfg);
 	void Close();
+	void WipeClean();
 	~KV_Lightning() {on_destruct();}
 };
 
@@ -235,6 +236,20 @@ void KV_Lightning::Commit()
 	}
 }
 
+void KV_Lightning::WipeClean()
+{
+	lock_guard lock ( cs );
+	int rc;
+	if(!dirty.load()) {
+		mdb_txn_abort(txn);
+		if( rc= mdb_txn_begin(env, 0, 0, &txn) )
+			throw std::runtime_error(mdb_strerror(rc));
+		dirty.store(true);
+	}
+	if( rc= mdb_drop(txn,dbi,0) )
+		throw std::runtime_error(mdb_strerror(rc));
+}
+
 std::unique_ptr<KVBackend::Iterator> KV_Lightning::getIterator()
 {
 	std::unique_ptr<Iterator> it { new Iterator{} };
@@ -362,6 +377,7 @@ class KV_Level : public KVBackend
 	void Set(const CBuffer& key, const CBuffer& val) {}
 	void Del(const CBuffer& key) {}
 	//void GetLast(CBuffer& key, CBuffer* val =0) {}
+	void WipeClean() {}
 };
 
 template <class DB> class KV_KyotoAny : public KVBackend
@@ -419,9 +435,9 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		if(cfg.defrag>0)
 			db.tune_defrag( cfg.defrag );
 	}
-	void Open2(const t_config_database& cfg)
+	void Open2(const t_config_database& cfg,unsigned long xflag)
 	{
-		if (!db.open(cfg.path, db.OWRITER | db.OCREATE)) {
+		if (!db.open(cfg.path, db.OWRITER | db.OCREATE | xflag)) {
 			throw std::runtime_error(db.error().name());
 		}
 		if(do_txc) {
@@ -433,7 +449,7 @@ template <class DB> class KV_KyotoAny : public KVBackend
 	void Open(const t_config_database& cfg)
 	{
 		Open1(cfg);
-		Open2(cfg);
+		Open2(cfg,0);
 	}
 	void Close()
 	{
@@ -479,6 +495,11 @@ template <class DB> class KV_KyotoAny : public KVBackend
 		db.remove((char*)key.base,key.pos());
 		dirty.store(true);
 	}
+	void WipeClean()
+	{
+		Close();
+		Open2(*this->cfg, db.OTRUNCATE);
+	}
 	struct Iterator : KVBackend::Iterator
 	{
 		DB& db;
@@ -517,7 +538,7 @@ class KV_KyotoBTree : public KV_KyotoAny<kyotocabinet::TreeDB>
 			db.tune_page( cfg.block );
 		if(cfg.cache)
 			db.tune_page_cache( cfg.cache );
-		Open2(cfg);
+		Open2(cfg,0);
 	}
 	/*
 	void GetFirst(CBuffer& key, CBuffer* val) override
