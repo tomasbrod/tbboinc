@@ -312,6 +312,13 @@ void result_insert(RESULT& result, TOutput output) {
 	if(output.start>=600000000000000000) {
 		min_odd = 11;
 		min_even = 16;
+		//min_twin=7; ??
+	}
+	if(output.start>=2148001660000000000) {
+		min_odd = 13;
+		min_even = 16;
+		min_stpt = 10;
+		min_twin=7;
 	}
 	insert_spt_tuples(result, output.tuples, min_odd, min_even); // 11, 14
 	insert_twin_tuples(result, output.twins, min_twin);
