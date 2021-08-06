@@ -567,9 +567,10 @@ int handle_file_upload(FILE* in, R_RSA_PUBLIC_KEY& key, bool use_db) {
             || mysql_stmt_bind_param(insert_stmt, bind)
             || mysql_stmt_execute(insert_stmt)
         ) {
-            mysql_stmt_close(insert_stmt);
             free(blob_data);
-            return return_error(ERR_TRANSIENT, "file_upload_handler: db error %s",mysql_error(boinc_db.mysql));
+            return_error(ERR_TRANSIENT, "file_upload_handler: db error %s",mysql_error(boinc_db.mysql));
+            mysql_stmt_close(insert_stmt);
+            return 1;
         }
         mysql_stmt_close(insert_stmt);
         free(blob_data);
