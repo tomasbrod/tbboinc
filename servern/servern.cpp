@@ -268,7 +268,8 @@ int main(int argc, char** argv) {
 		return 0;
 	}
 
-	config.group.Open();
+	config.group.Start();
+	config.group.open_since=Ticks::zero();
 	CKeys keys;
 	keys.init(log, config);
 
@@ -283,7 +284,7 @@ int main(int argc, char** argv) {
 	if(dump_mode==sr_load) {
 		log("Restore phase 2");
 		config.group.load(dump_xp);
-		config.group.Close();
+		config.group.Commit();
 		log.warn("Restore successful, please restart.");
 		return 0;
 	}
@@ -297,8 +298,7 @@ int main(int argc, char** argv) {
 		
 	assert( dump_mode==sr_norm );
 
-	config.group.open_since=Ticks::zero();
-	config.group.Close();
+	config.group.Commit();
 
 	// create plugin objects
 

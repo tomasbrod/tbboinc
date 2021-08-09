@@ -163,51 +163,62 @@ class GroupCtl;
 		return 0;
 	}
 
-	void GroupCtl::Open()
-	{
-		std::lock_guard<std::mutex> lock (cs);
-		if(!open_since.count()) {
-			open_since = now();
-		}
-		nopen++;
+void GroupCtl::Start()
+{
+	std::lock_guard<std::mutex> lock (cs);
+	if(!open_since.count()) {
+		open_since = now();
 	}
+	nopen++;
+}
 
-	void GroupCtl::Close()
-	{
-		#if 1
-		std::unique_lock<std::mutex> lock (cs);
-		if(nopen==1) {
+void GroupCtl::Release()
+{
+	std::lock_guard<std::mutex> lock (cs);
+	nopen--;
+}
+
+void GroupCtl::Commit()
+{
+	std::unique_lock<std::mutex> lock (cs);
+	bool dirty;
+	again:
+	if(nopen==1) {
+		// the last to call commit
+		dirty=false;
+		for(const auto& db : dbs)
+			dirty |= db.second->dirty;
+		// short path if not dirty
+		if(dirty) {
 			while((now()-open_since)<group_delay) {
+				// if too early, give chance to other transactions
 				lock.unlock();
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 				lock.lock();
+				goto again;
 			}
-			ActuallyCommit();
-			cv.notify_all();
-		} else {
-			nopen--;
-			LogKV("wait for group commit leader");
-			while(nopen) {
-				cv.wait(lock);
+			LogKV("group commit");
+			for(const auto& dbit : dbs) {
+				if(dbit.second.get()==main) continue;
+				dbit.second->Commit();
 			}
+			//sync();
+			main->Commit();
 		}
-		#else
-		old_os = open_since;
-		dirty=false;
-		for(const auto& db : dbs)
-			dirty |= db->dirty;
-		while(dirty) {
-			if(open_since!=old_os) break;
-			if((now()-open_since)<group_delay)
-				sleep(1);
-			else {
-				ActuallyCommit();
-				dirty=false;
-			}
+		nopen=0;
+		cv.notify_all();
+	} else {
+		nopen--;
+		Ticks old_os = open_since;
+		LogKV("wait for group commit leader");
+		//wait unless nopen is zero or open_since changed
+		while(nopen && open_since<=old_os ) {
+			cv.wait(lock);
 		}
-		open_since = 0;
-		#endif
 	}
+}
+
+#if 0
 	void GroupCtl::ActuallyCommit()
 	{
 		LogKV("group commit");
@@ -218,6 +229,7 @@ class GroupCtl;
 		//sync();
 		main->Commit();
 	}
+#endif
 
 	//void GroupCtl::releaseTask(TTask *p);
 

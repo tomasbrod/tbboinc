@@ -70,24 +70,24 @@ struct GroupCtl
 	template<class T> T* getPtr(unsigned oid) { return (T*)getPtr(oid, T::type_id); }
 	//TODO: allow registering non-object handlers (task,user...)
 
-	void Open();
+	// Prevent other threads from commiting
+	void Start();
 
-	void ReleaseNoCommit() {}
-	void Close();
+	// Wait for commit. Last thread to release commits, others wait.
+	void Commit();
 
-	void ActuallyCommit();
+	// Allow other threads to commit, without waiting or commiting.
+	void Release();
 
+	//trash:
 	void releaseTask(TTask *p);
-
 	struct TaskPtr_deleter {
 		void operator()(TTask *p);
 	};
-
 	class TaskPtr
 		: public std::unique_ptr<TTask, GroupCtl::TaskPtr_deleter >
 	{
 	};
-
 	TaskPtr acquireTask(unsigned id);
 	//acquire task - select for update, returns custom unique pointer
 	//update  task - save to db

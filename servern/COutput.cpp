@@ -109,7 +109,7 @@ void COutput::saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group )
 				}
 			}
 		}
-		if(group) group->ReleaseNoCommit();
+		if(group) group->Release();
 		CFileStream data;
 		std::string filename = getFileName(*place,upload);
 		try {
@@ -136,9 +136,9 @@ void COutput::saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group )
 		} catch (std::system_error& e) {
 			throw ERecoverable(log1,"uploading file",e.what());
 		}
-		if(group) group->Open();
+		if(group) group->Start();
 	} else {
-		if(group) group->ReleaseNoCommit();
+		if(group) group->Release();
 		// or recv all and put to DB
 		// if there is something in the db and the upload is of a resume
 		size_t db_size = val1.left();
@@ -167,7 +167,7 @@ void COutput::saveOutput2( CLog& log1, TUploadInfo& upload, GroupCtl* group )
 		}
 		// finally put into database
 		try {
-			if(group) group->Open();
+			if(group) group->Start();
 			place->db->Set(key, data);
 		} catch (EDiskFull& e) {
 			throw ERecoverable(log1,"server storage full");
